@@ -7,6 +7,7 @@ import terraform
 import shutil
 import yaml
 import json
+import glob
 
 p = configargparse.get_argument_parser()
 
@@ -147,17 +148,10 @@ class Terraform_Flannel(ci.CI):
 
         full_ansible_tmp_path = os.path.join(self.ansible_playbook_root, "tmp")
         utils.mkdir_p(full_ansible_tmp_path)
-        # Copy kubernetes prebuilt binaries
-        for file in ["kubelet","kubectl","kube-apiserver","kube-controller-manager","kube-scheduler","kube-proxy"]:
-            full_file_path = os.path.join(utils.get_k8s_folder(), constants.KUBERNETES_LINUX_BINS_LOCATION, file)
-            self.logging.info("Copying %s to %s." % (full_file_path, full_ansible_tmp_path))
-            shutil.copy(full_file_path, full_ansible_tmp_path)
-
-        for file in ["kubelet.exe", "kubectl.exe", "kube-proxy.exe"]:
-            full_file_path = os.path.join(utils.get_k8s_folder(), constants.KUBERNETES_WINDOWS_BINS_LOCATION, file)
-            self.logging.info("Copying %s to %s." % (full_file_path, full_ansible_tmp_path))
-            shutil.copy(full_file_path, full_ansible_tmp_path)
-
+        # Copy prebuilt binaries to ansible tmp
+        for path in glob.glob("%s/*" % utils.get_bins_path()):
+            self.logging.info("Copying %s to %s." % (path, full_ansible_tmp_path))
+            shutil.copy(path, full_ansible_tmp_path)
 
         azure_ccm = "false"
         # Generate azure.json if needed and populate group vars with necessary paths
