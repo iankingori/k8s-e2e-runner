@@ -330,10 +330,33 @@ class Terraform_Flannel(ci.CI):
 
         self._prepullImages(self.opts.containerRuntime)
 
-    def build(self):
-        self.logging.info("Building k8s binaries.")
-        utils.get_k8s(repo=self.opts.k8s_repo, branch=self.opts.k8s_branch)
+    def _build_k8s_binaries(self):
+        k8s_path = utils.get_k8s_folder()
+        utils.clone_repo(self.opts.k8s_repo, self.opts.k8s_branch, k8s_path)
         utils.build_k8s_binaries()
+
+    def _build_containerd_binaries(self):
+        containerd_path = utils.get_containerd_folder()
+        utils.clone_repo(self.opts.containerd_repo, self.opts.containerd_branch, containerd_path)
+        utils.build_containerd_binaries()
+
+    def _build_sdn_binaries(self):
+        sdn_path = utils.get_sdn_folder()
+        utils.clone_repo(self.opts.sdn_repo, self.opts.sdn_branch, sdn_path)
+        utils.build_sdn_binaries()
+
+    def build(self, binsToBuild):
+        builder_mapping = {
+            "k8sbins": self._build_k8s_binaries,
+            "containerdbins": self._build_containerd_binaries,
+            "sdnbins": self._build_sdn_binaries
+        }
+        def noop_func():
+            pass
+        
+        for bins in binsToBuild:
+            self.logging.info("Building %s binaries." % bins)
+            builder_mapping.get(bins, noop_func)()
 
     def up(self):
         self.logging.info("Bringing cluster up.")

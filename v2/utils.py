@@ -4,6 +4,8 @@ import log
 from threading import Timer
 import errno
 import shutil
+import glob
+import constants
 
 logging = log.getLogger(__name__)
 
@@ -58,9 +60,61 @@ def mkdir_p(dir_path):
         if e.errno != errno.EEXIST:
             raise
 
+def get_go_path():
+    return os.environ.get("GOPATH") if os.environ.get("GOPATH") else "/go"
+
+def get_bins_path():
+    # returns location where all built bins should be stored
+    path = os.path.join("/tmp/bins")
+    mkdir_p(path)
+    return path
+    
 def get_k8s_folder():
-    gopath = os.environ.get("GOPATH") if os.environ.get("GOPATH") else "/go"
+    gopath = get_go_path()
     return os.path.join(gopath, "src", "k8s.io", "kubernetes")
+
+def get_containerd_folder():
+    gopath = get_go_path()
+    return os.path.join(gopath, "src", "github.com", "containerd", "cri")
+
+def get_sdn_folder():
+    gopath = get_go_path()
+    return os.path.join(gopath, "src", "github.com", "Microsoft", "windows-container-networking")
+
+def build_containerd_binaries(containerd_path=None):
+    containerd_path = containerd_path if containerd_path else get_containerd_folder()
+    logging.info("Building containerd binaries")
+    cmd = ["GOOS=windows", "make"]
+
+    _, err, ret = run_cmd(cmd, stderr=True, cwd=containerd_path, shell=True)
+
+    if ret != 0:
+        logging.error("Failed to build containerd windows binaries with error: %s" % err)
+        raise Exception("Failed to build containerd windows binaries with error: %s" % err)
+    
+    logging.info("Succesfully built containerd binaries.")
+    logging.info("Copying built bins to central location")
+    containerd_bins_location = os.path.join(containerd_path, constants.CONTAINERD_BINS_LOCATION)
+    for path in glob.glob("%s/*" % containerd_bins_location):
+        shutil.copy(path, get_bins_path())
+
+
+def build_sdn_binaries(sdn_path=None):
+    sdn_path = sdn_path if sdn_path else get_sdn_folder()
+    logging.info("Build sdn binaries")
+    cmd = ["GOOS=windows", "make", "all"]
+
+    _, err, ret = run_cmd(cmd, stderr=True, cwd=sdn_path, shell=True)
+
+    if ret != 0:
+        logging.error("Failed to build sdn windows binaries with error: %s" % err)
+        raise Exception("Failed to build sdn windows binaries with error: %s" % err)
+    
+    logging.info("Successfuly build sdn binaries.")
+    logging.info("Copying built bins to central location")
+    sdn_bins_location = os.path.join(sdn_path, constants.SDN_BINS_LOCATION)
+    for path in glob.glob("%s/*" % sdn_bins_location):
+        shutil.copy(path, get_bins_path())
 
 def build_k8s_binaries(k8s_path=None):
     k8s_path = k8s_path if k8s_path else get_k8s_folder()
@@ -82,6 +136,14 @@ def build_k8s_binaries(k8s_path=None):
         raise Exception("Failed to build k8s windows binaries with error: %s" % err)
     
     logging.info("Succesfully built k8s binaries.")
+    logging.info("Copying built bins to central location.")
+    k8s_linux_bins_location = os.path.join(k8s_path, constants.KUBERNETES_LINUX_BINS_LOCATION)
+    for path in glob.glob("%s/*" % k8s_linux_bins_location):
+        shutil.copy(path, get_bins_path())
+    k8s_windows_bins_location = os.path.join(k8s_path, constants.KUBERNETES_WINDOWS_BINS_LOCATION)
+    for path in glob.glob("%s/*" % k8s_windows_bins_location):
+        shutil.copy(path, get_bins_path())
+
 
 def get_k8s(repo, branch):
     logging.info("Get Kubernetes.")

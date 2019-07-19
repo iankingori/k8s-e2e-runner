@@ -22,7 +22,7 @@ def parse_args():
     p.add('-c', '--configfile', is_config_file=True, help='Config file path.')
     p.add('--up', type=str2bool, default=False, help='Deploy test cluster.')
     p.add('--down', type=str2bool, default=False, help='Destroy cluster on finish.')
-    p.add('--build', type=str2bool, default=True, help='Build k8s binaries.')
+    p.add('--build', action="append", help='Build k8s binaries. Values: k8sbins, containerdbins, sdnbins')
     p.add('--test', type=str2bool, default=False, help='Run tests.')
     p.add('--admin-openrc', default=False, help='Openrc file for OpenStack cluster')
     p.add('--log-path', default="/tmp/civ2_logs", help='Path to place all artifacts')
@@ -30,6 +30,10 @@ def parse_args():
     p.add('--cluster-name', help="Name of cluster.")
     p.add('--k8s-repo', default="http://github.com/kubernetes/kubernetes")
     p.add('--k8s-branch', default="master")
+    p.add('--containerd-repo', default="http://github.com/jterry75/cri")
+    p.add('--containerd-branch', default="windows_port")
+    p.add('--sdn-repo', default="http://github.com/microsoft/windows-container-networking")
+    p.add('--sdn-branch', default="master")
     p.add('--hold', type=str2bool, default=False, help='Useful for debugging while running in containerd. \
                                                         Sleeps the process after setting the env for testing so user can manually exec from container.')
 
@@ -47,8 +51,8 @@ def main():
         ci = ci_factory.get_ci(opts.ci)
         success = 0
 
-        if opts.build:
-            ci.build()
+        if opts.build is not None:
+            ci.build(opts.build)
 
         if opts.up == True:
             if opts.down == True:
