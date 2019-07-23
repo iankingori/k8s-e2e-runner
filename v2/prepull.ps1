@@ -6,6 +6,11 @@ param (
 
 mkdir c:\tmp
 
+# ( atuvenie ) This is hacky and ugly and horrible and should in no way remain here. Temp until fix in ansible.
+if ( $runtime -eq "containerd") {
+    wget "https://www.dropbox.com/s/8d93vkszcgja493/containerd-shim-runhcs-v1.exe?dl=1" -OutFile c:\k\containerd-shim-runhcs-v1.exe
+}
+
 $pullCmd = "docker pull"
 if ( $runtime -eq "containerd") {
     $pullCmd = "c:\k\ctr.exe --namespace k8s.io image pull"
