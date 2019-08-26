@@ -4,6 +4,7 @@ import utils
 import os
 import configargparse
 import subprocess
+import stat
 
 p = configargparse.get_argument_parser()
 
@@ -13,6 +14,7 @@ p.add("--parallel-test-nodes", default=1)
 p.add("--test-dry-run", default="False")
 p.add("--test-focus-regex", default="\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]")
 p.add("--test-skip-regex", default="\\[LinuxOnly\\]")
+p.add("--kubetest-link", default="")
 
 class CI(object):
 
@@ -45,6 +47,19 @@ class CI(object):
         # KUBE_TEST_REPO_LIST= will be set in _prepareTests
         #pass
         self.logging.info("PREPARE TEST ENV: Default NOOP")
+
+    def _getKubetest(self):
+        self.logging.info("Get Kubetest")
+        if self.opts.kubetest_link == "":
+            cmd = ["go", "get", "-u", "k8s.io/test-infra/kubetest"]
+            _, err, ret = utils.run_cmd(cmd, stderr=True)
+            if ret != 0:
+                self.logging.error("Failed to get kubetest binary with error: %s" % err)
+                raise Exception("Failed to get kubetest binary with errorr: %s" % err)
+        else:
+            kubetestbin = "/usr/bin/kubetest"
+            utils.download_file(self.opts.kubetest_link, kubetestbin)
+            os.chmod(kubetestbin, stat.S_IRWXU | stat.S_IRWXG)
 
     def _prepareTests(self):
         # Sets KUBE_TEST_REPO_LIST
@@ -91,12 +106,7 @@ class CI(object):
             self.logging.error("Failed to build k8s ginkgo binaries with error: %s" % err)
             raise Exception("Failed to build k8s ginkgo binaries with error: %s" % err)
 
-        self.logging.info("Get Kubetest")
-        cmd = ["go", "get", "-u", "k8s.io/test-infra/kubetest"]
-        _, err, ret = utils.run_cmd(cmd, stderr=True)
-        if ret != 0:
-            self.logging.error("Failed to get kubetest binary with error: %s" % err)
-            raise Exception("Failed to get kubetest binary with errorr: %s" % err)
+        self._getKubetest()
 
     def _runTests(self):
         # invokes kubetest
