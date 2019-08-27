@@ -243,7 +243,7 @@ resource "azurerm_virtual_machine" "winMinionVM" {
     publisher = "MicrosoftWindowsServer"
     offer     = "WindowsServerSemiAnnual"
     sku       = "Datacenter-Core-1809-with-Containers-smalldisk"
-    version   = "1809.0.20190522"
+    version   = "1809.0.20190711"
   }
 
   os_profile {
