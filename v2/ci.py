@@ -51,7 +51,8 @@ class CI(object):
     def _getKubetest(self):
         self.logging.info("Get Kubetest")
         if self.opts.kubetest_link == "":
-            cmd = ["go", "get", "-u", "k8s.io/test-infra/kubetest"]
+            os.putenv("GO111MODULE", "on")
+            cmd = ["go", "get", "k8s.io/test-infra/kubetest"]
             _, err, ret = utils.run_cmd(cmd, stderr=True)
             if ret != 0:
                 self.logging.error("Failed to get kubetest binary with error: %s" % err)
