@@ -14,6 +14,7 @@ p.add("--ansibleRepo", default="http://github.com/e2e-win/flannel-kubernetes", h
 p.add("--ansibleBranch", default="master", help="Ansible Repository branch for ovn-ovs playbooks.")
 p.add("--flannelMode", default="overlay", help="Option: overlay or host-gw")
 p.add("--containerRuntime", default="docker", help="Container runtime to set in ansible: docker / containerd.")
+p.add("--remoteCmdRetries", type=int, default=5, help="Number of retries Ansible adhoc command should do.")
 
 class Terraform_Flannel(ci.CI):
 
@@ -133,13 +134,15 @@ class Terraform_Flannel(ci.CI):
                 f.write(hosts_var_content)
                 f.write(win_hosts_extra_vars)
 
-        # Enable ansible log and set ssh options
+        # Enable ansible log, json output and set ssh options
         with open(self.ansible_config_file, "a") as f:
             log_file = os.path.join(self.opts.log_path, "ansible-deploy.log")
             log_config = "log_path=%s\n" % log_file
+            json_output = "stdout_callback = json\nbin_ansible_callbacks = True"
             # This probably goes better in /etc/ansible.cfg (set in dockerfile )
             ansible_config="\n\n[ssh_connection]\nssh_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\n"
             f.write(log_config)
+            f.write(json_output)
             f.write(ansible_config)
 
         full_ansible_tmp_path = os.path.join(self.ansible_playbook_root, "tmp")
@@ -250,32 +253,49 @@ class Terraform_Flannel(ci.CI):
             self.logging.error("Ansible failed to fetch file from %s with error: %s" % (machine, out))
             raise Exception("Ansible failed to fetch file from %s with error: %s" % (machine, out))
 
-    def _runRemoteCmd(self, command, machines, windows=False, root=False):
+    # Used by _runRemoteCmd to add more retries
+    def _parseAnsibleOutput(self, out):
+        json_data = json.loads(out)
+        machinesToRetry = []
+        for vm in json_data['stats'].keys():
+            if json_data['stats'][vm]['failures'] == 1 or json_data['stats'][vm]['unreachable'] == 1:
+                machinesToRetry.append(vm)
+        return machinesToRetry
+
+    def _runRemoteCmd(self, command, machines, retries, windows=False, root=False):
         self.logging.info("Running cmd %s on remote machines %s." % (command, machines))
-        cmd=["ansible"]
-        if root:
-            cmd.append("--become")
-        if windows:
-            task = "win_shell"
+
+        def _runRemoteAnsible(command, machines, windows=False, root=False):
+            cmd=["ansible"]
+            if root:
+                cmd.append("--become")
+            if windows:
+                task = "win_shell"
+            else:
+                task = "shell"
+                cmd.append("--key-file=%s" % self.opts.ssh_private_key_path)
+            cmd.append("'%s'" % " ".join(machines))
+            cmd.append("-m")
+            cmd.append(task)
+            cmd.append("-a")
+            cmd.append("'%s'" % command)
+            ret, out = self._waitForConnection(machines, windows=windows)
+            if ret != 0:
+                self.logging.error("No connection to machines. Error: %s" % out)
+            out, _, ret = utils.run_cmd(cmd, stdout=True, cwd=self.ansible_playbook_root, shell=True)
+            return ret, out
+
+        ret, out = _runRemoteAnsible(command, machines, windows, root)
+        while retries !=0 and ret != 0:
+            self.logging.info("Ansible failed to run command %s. Retrying." % command)
+            retries -= 1
+            ret, out = _runRemoteAnsible(command, machines=self._parseAnsibleOutput(out), windows=windows, root=root)
+        if ret == 0:
+            self.logging.info("Ansible succesfully ran command %s on machines %s." % (command, machines))
         else:
-            task = "shell"
-            cmd.append("--key-file=%s" % self.opts.ssh_private_key_path)
+            self.logging.error("Ansible failed to run command %s on machines %s with error: %s" % (command, machines, out))
+            raise Exception("Ansible failed to run command %s on machines %s with error: %s" % (command, machines, out))
 
-        cmd.append("'%s'" % " ".join(machines))
-        cmd.append("-m")
-        cmd.append(task)
-        cmd.append("-a")
-        cmd.append("'%s'" % command)
-
-        ret, out = self._waitForConnection(machines, windows=windows)
-        if ret != 0:
-            self.logging.error("No connection to machines. Error: %s" % out)
-            raise Exception("No connection to machines. Error: %s" % out)
-
-        out, _, ret = utils.run_cmd(cmd, stdout=True, cwd=self.ansible_playbook_root, shell=True)
-        if ret != 0:
-            self.logging.error("Ansible failed to run command %s on machine %s with error: %s" % (cmd, machines, out))
-            raise Exception("Ansible failed to run command %s on machine %s with error: %s" % (cmd, machines, out))
 
     def _prepullImages(self, runtime):
         # TO DO: This path should be passed as param
@@ -283,7 +303,7 @@ class Terraform_Flannel(ci.CI):
         self.logging.info("Copying prepull script to all windows nodes.")
         vms = self.deployer.get_cluster_win_minion_vms_names()
         self._copyTo(prepull_script, "c:\\", vms, windows=True)
-        self._runRemoteCmd(("c:\\prepull.ps1 -runtime %s" % runtime), vms, windows=True)
+        self._runRemoteCmd(("c:\\prepull.ps1 -runtime %s" % runtime), vms, self.opts.remoteCmdRetries, windows=True)
 
     def _prepareTestEnv(self):
         # For Ansible based CIs: copy config file from .kube folder of the master node
@@ -338,7 +358,7 @@ class Terraform_Flannel(ci.CI):
             self.logging.info("Copying collect-logs script to windows nodes.")
             vms = self.deployer.get_cluster_win_minion_vms_names()
             self._copyTo(collect_logs_script, "c:\\", vms, windows=True)
-            self._runRemoteCmd(("c:\\collect-logs.ps1 -ArchivePath C:\\k\\logs.zip"), vms, windows=True)
+            self._runRemoteCmd(("c:\\collect-logs.ps1 -ArchivePath C:\\k\\logs.zip"), vms, self.opts.remoteCmdRetries, windows=True)
             for vm_name in vms:
                 logs_vm_path = os.path.join(self.opts.log_path, "%s.zip" % vm_name)
                 self._copyFrom("C:\\k\\logs.zip", logs_vm_path, vm_name, windows=True)
@@ -354,8 +374,8 @@ class Terraform_Flannel(ci.CI):
         try:
             self.logging.info("Copying collect-logs script to linux master node.")
             self._copyTo(collect_logs_script, "/home/ubuntu", [linux_master], root=True)
-            self._runRemoteCmd(("chmod +x /home/ubuntu/collect-logs.sh"), [linux_master], root=True)
-            self._runRemoteCmd(("/home/ubuntu/./collect-logs.sh"), [linux_master], root=True)
+            self._runRemoteCmd(("chmod +x /home/ubuntu/collect-logs.sh"), [linux_master], self.opts.remoteCmdRetries, root=True)
+            self._runRemoteCmd(("/home/ubuntu/./collect-logs.sh"), [linux_master], self.opts.remoteCmdRetries, root=True)
             self._copyFrom("/home/ubuntu/k8s-logs.tar.gz", logs_vm_path, linux_master, root=True)
         except Exception as e:
             self.logging.info("Collecting logs on master node failed.")
