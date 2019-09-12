@@ -75,7 +75,7 @@ class CI(object):
             raise Exception("Failed to get kubernetes nodes: %s." % err)
         linux_nodes = out.strip().split("\n")
         for node in linux_nodes:
-            taint_cmd=[kubectl, "taint", "nodes", node, "key=value:NoSchedule"]
+            taint_cmd=[kubectl, "taint", "nodes", node, "node-role.kubernetes.io/master=:NoSchedule"]
             label_cmd=[kubectl, "label", "nodes", node, "node-role.kubernetes.io/master=NoSchedule"]
             _, err, ret = utils.run_cmd(taint_cmd, stderr=True)
             if ret != 0:
