@@ -7,6 +7,10 @@ variable win_minion_vm_size {}
 variable win_minion_vm_name_prefix {}
 variable win_minion_vm_password {}
 variable ssh_key_data {}
+variable win_img_publisher {}
+variable win_img_offer {}
+variable win_img_sku {}
+variable win_img_version {}
 
 variable azure_sub_id {}
 variable "azure_client_id" {}
@@ -241,10 +245,10 @@ resource "azurerm_virtual_machine" "winMinionVM" {
   }
 
   storage_image_reference {
-    publisher = "MicrosoftWindowsServer"
-    offer     = "WindowsServerSemiAnnual"
-    sku       = "Datacenter-Core-1809-with-Containers-smalldisk"
-    version   = "1809.0.20190711"
+    publisher = "${var.win_img_publisher}"
+    offer     = "${var.win_img_offer}"
+    sku       = "${var.win_img_sku}"
+    version   = "${var.win_img_version}"
   }
 
   os_profile {
