@@ -14,11 +14,11 @@ RUN pip install pywinrm
 
 # Install Golang
 
-RUN curl -O https://dl.google.com/go/go1.12.1.linux-amd64.tar.gz
-RUN tar -xvf go1.12.1.linux-amd64.tar.gz
+RUN curl -O https://dl.google.com/go/go1.12.4.linux-amd64.tar.gz
+RUN tar -xvf go1.12.4.linux-amd64.tar.gz
 RUN mv go /usr/local
 RUN rm -rf go
-RUN rm go1.12.1.linux-amd64.tar.gz
+RUN rm go1.12.4.linux-amd64.tar.gz
 ENV GOPATH "/go"
 ENV PATH "$PATH:/usr/local/go/bin:$GOPATH/bin"
 RUN mkdir -p /go/src
