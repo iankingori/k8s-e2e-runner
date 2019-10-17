@@ -5,6 +5,7 @@ variable master_vm_size {}
 variable win_minion_count {}
 variable win_minion_vm_size {}
 variable win_minion_vm_name_prefix {}
+variable win_minion_vm_password {}
 variable ssh_key_data {}
 
 variable azure_sub_id {}
@@ -249,7 +250,7 @@ resource "azurerm_virtual_machine" "winMinionVM" {
   os_profile {
     computer_name  = "${var.win_minion_vm_name_prefix}${count.index}"
     admin_username = "azureuser"
-    admin_password = "Passw0rd1234"
+    admin_password = "${var.win_minion_vm_password}"
   }
 
   os_profile_windows_config {

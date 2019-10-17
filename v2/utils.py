@@ -3,7 +3,9 @@ import os
 import log
 from threading import Timer
 import errno
+import random
 import shutil
+import string
 import glob
 import constants
 
@@ -59,6 +61,10 @@ def mkdir_p(dir_path):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
+
+def generate_random_password(length=20):
+    password_characters = string.ascii_letters + string.digits + "!?.,@#$%^&="
+    return ''.join(random.choice(password_characters) for i in range(length))
 
 def get_go_path():
     return os.environ.get("GOPATH") if os.environ.get("GOPATH") else "/go"
