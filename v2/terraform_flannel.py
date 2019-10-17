@@ -312,7 +312,7 @@ class Terraform_Flannel(ci.CI):
         self._copyFrom("/etc/kubernetes/tls/admin-key.pem","/etc/kubernetes/tls/admin-key.pem", linux_master, root=True)
 
         with open("/tmp/kubeconfig") as f:
-            content = yaml.load(f)
+            content = yaml.full_load(f)
         for cluster in content["clusters"]:
             cluster["cluster"]["server"] = "https://kubernetes"
         with open("/tmp/kubeconfig", "w") as f:
