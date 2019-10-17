@@ -6,6 +6,8 @@ import configargparse
 import subprocess
 import stat
 
+TESTINFRA_REPO_URL = "https://github.com/kubernetes/test-infra"
+
 p = configargparse.get_argument_parser()
 
 p.add("--repo-list", default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list",
@@ -53,10 +55,10 @@ class CI(object):
         if self.opts.kubetest_link == "":
             # Clone repository using git and then install
             # Workaround for https://github.com/kubernetes/test-infra/issues/14712
-            utils.clone_repo("https://github.com/kubernetes/test-infra", "master", "/tmp/test-infra")
+            utils.clone_repo(TESTINFRA_REPO_URL, "master", "/tmp/test-infra")
             os.putenv("GO111MODULE", "on")
             cmd = ["go", "install", "./kubetest"]
-            _, err, ret = utils.run_cmd(cmd, stderr=True, cwd=/tmp/test-infra)
+            _, err, ret = utils.run_cmd(cmd, stderr=True, cwd="/tmp/test-infra")
             if ret != 0:
                 self.logging.error("Failed to get kubetest binary with error: %s" % err)
                 raise Exception("Failed to get kubetest binary with errorr: %s" % err)
