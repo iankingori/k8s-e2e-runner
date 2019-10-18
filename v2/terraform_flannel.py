@@ -166,6 +166,11 @@ class Terraform_Flannel(ci.CI):
             f.write("AZURE_CCM: %s\n" % azure_ccm)
             f.write("AZURE_CCM_LOCAL_PATH: %s\n" % Terraform_Flannel.AZURE_CCM_LOCAL_PATH)
 
+    def _add_ssh_key(self):
+        self.logging.info("Adding SSH key.")
+        vms = self.deployer.get_cluster_win_minion_vms_names()
+        self._runRemoteCmd(("mkdir C:\\\\Users\\\\azureuser\\\\.ssh"), vms, self.opts.remoteCmdRetries, windows=True)
+        self._copyTo(self.opts.ssh_public_key_path, "C:\\\\Users\\\\azureuser\\\\.ssh\\\\authorized_keys", vms, windows=True)
 
     def _deploy_ansible(self):
         self.logging.info("Starting Ansible deployment.")
@@ -357,6 +362,7 @@ class Terraform_Flannel(ci.CI):
         try:
             self.deployer.up()
             self._prepare_ansible()
+            self._add_ssh_key()
             self._deploy_ansible()
         except Exception as e:
             raise e

@@ -206,9 +206,9 @@ resource "azurerm_network_interface" "winMinNic" {
   }
 }
 
-resource "azurerm_virtual_machine_extension" "powershell_winrm" {
+resource "azurerm_virtual_machine_extension" "powershell_winservices" {
   count                = "${var.win_minion_count}"
-  name                 = "EnableWinRM"
+  name                 = "EnableWinServices"
   location             = "${var.location}"
   resource_group_name  = "${azurerm_resource_group.clusterRg.name}"
   virtual_machine_name = "${element(azurerm_virtual_machine.winMinionVM.*.name, count.index)}"
@@ -218,8 +218,8 @@ resource "azurerm_virtual_machine_extension" "powershell_winrm" {
 
   settings = <<SETTINGS
     {
-        "fileUris": ["https://raw.githubusercontent.com/adelina-t/k8s-ovn-ovs/terraform_flannel/v2/enableWinrm.ps1"],
-        "commandToExecute": "powershell -ExecutionPolicy Unrestricted -File enableWinrm.ps1"
+        "fileUris": ["https://raw.githubusercontent.com/e2e-win/k8s-ovn-ovs/master/v2/enableWinServices.ps1"],
+        "commandToExecute": "powershell -ExecutionPolicy Unrestricted -File enableWinServices.ps1 *> C:\\enableWinServices.log"
     }
 SETTINGS
 }
