@@ -11,7 +11,7 @@ import errno
 import json
 
 p = configargparse.get_argument_parser()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("bootstrap")
 
 JOB_REPO_CLONE_DST = os.path.join(tempfile.gettempdir(), "k8s-ovn-ovs")
 DEFAULT_JOB_CONFIG_PATH = os.path.join(tempfile.gettempdir(), "job_config.txt")
@@ -73,7 +73,7 @@ def parse_args():
 
 def gcloud_login(service_account):
     logger.info("Logging in to gcloud.")
-    cmd = "gcloud auth activate-service-account --key-file=%s" % service_account
+    cmd = "gcloud auth activate-service-account --no-user-output-enabled --key-file=%s" % service_account
     cmd = cmd.split()
 
     try:
@@ -97,21 +97,20 @@ def get_cluster_name():
 def setup_logging(log_out_file):
     level = logging.DEBUG
     logger.setLevel(level)
-    #formatter = logging.Formatter(fmt='%(levelname)s %(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s : %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
     stream = logging.StreamHandler()
     stream.setLevel(level)
-    #stream.setFormatter(formatter)
+    stream.setFormatter(formatter)
 
     fileLog = logging.FileHandler(log_out_file)
     fileLog.setLevel(level)
-    #fileLog.setFormatter(formatter)
+    fileLog.setFormatter(formatter)
 
     logger.addHandler(stream)
     logger.addHandler(fileLog)
 
-
 def clone_repo(repo, branch="master", dest_path=None):
-    cmd = ["git", "clone", "--single-branch", "--branch", branch, repo]
+    cmd = ["git", "clone", "-q", "--single-branch", "--branch", branch, repo]
     if dest_path:
         cmd.append(dest_path)
     logger.info("Cloning git repo %s on branch %s in location %s" % (repo, branch, dest_path if not None else os.getcwd()))
@@ -128,7 +127,7 @@ def mkdir_p(dir_path):
             raise
 
 def download_file(url, dst):
-    cmd = ["wget", url, "-O", dst]
+    cmd = ["wget", "-q", url, "-O", dst]
     ret = call(cmd)
 
     if ret != 0:
@@ -224,6 +223,10 @@ def main():
         job_config_file = get_job_config_file(opts.job_config)
         logger.info("Using job config file: %s" % job_config_file)
         cluster_name=get_cluster_name()
+
+        # Reset logging format before running civ2
+        for handler in logger.handlers:
+            handler.setFormatter(logging.Formatter('%(message)s'))
 
         cmd = ["python", "civ2.py"] + opts.job_args[1:]
         cmd.append("--configfile=%s" % job_config_file)
