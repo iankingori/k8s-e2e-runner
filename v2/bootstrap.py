@@ -6,6 +6,7 @@ import time
 import os
 import subprocess
 import select
+import socket
 import errno
 import json
 
@@ -202,7 +203,14 @@ def main():
     # setup logging
     setup_logging(os.path.join(log_paths["build_log"]))
 
-    time.sleep(200) # Give the container a chance to get DNS
+    logger.info("Waiting for DNS")
+    while True:
+        try:
+            socket.gethostbyname("github.com")
+            break
+        except socket.error:
+            time.sleep(3)
+
     try:
         gcloud_login(opts.service_account)
 
