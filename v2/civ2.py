@@ -7,7 +7,7 @@ import sys
 
 p = configargparse.get_argument_parser()
 
-logging = log.getLogger(__name__)
+logging = log.getLogger("civ2")
 
 def parse_args():
 
