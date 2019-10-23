@@ -157,8 +157,8 @@ def get_k8s(repo, branch):
     clone_repo(repo, branch, k8s_path)
 
 def download_file(url, dst):
-    cmd = ["wget", url, "-O", dst]
-    _, err, ret = run_cmd(cmd)
+    cmd = ["wget", "-q", url, "-O", dst]
+    _, err, ret = run_cmd(cmd, stderr=True)
 
     if ret != 0:
         logging.error("Failed to download file: %s" % url)
