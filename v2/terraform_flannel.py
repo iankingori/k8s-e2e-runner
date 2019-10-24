@@ -128,7 +128,7 @@ class Terraform_Flannel(ci.CI):
         # Creating hosts_vars for hosts
         for vm_name in windows_minions_hostnames:
             vm_username = self.deployer.get_win_vm_username(vm_name) # TO DO: Have this configurable trough opts
-            vm_pass = self.deployer.get_win_vm_password(vm_name)
+            vm_pass = self.deployer.get_win_vm_password()
             hosts_var_content = self.ansible_host_var_windows_template.replace("USERNAME_PLACEHOLDER", vm_username).replace("PASS_PLACEHOLDER", vm_pass)
             filepath = os.path.join(self.ansible_host_var_dir, vm_name)
             with open(filepath, "w") as f:
