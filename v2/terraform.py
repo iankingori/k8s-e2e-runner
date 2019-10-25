@@ -18,7 +18,7 @@ p.add("--master-vm-size", default="Standard_D2s_v3", help="Size of master vm")
 p.add("--win-minion-count", type=int ,default=2, help="Number of windows minions for the deployment.")
 p.add("--win-minion-name-prefix", default="winvm", help="Prefix for win minion vm names.")
 p.add("--win-minion-size", default="Standard_D2s_v3", help="Size of minion vm")
-p.add("--win-minion-password", default=utils.generate_random_password(), help="Password for win minion vm")
+p.add("--win-minion-password", default=None, help="Password for win minion vm")
 
 p.add("--terraform-config")
 p.add("--ssh-public-key-path", default=os.path.join(os.path.join(os.getenv("HOME"), ".ssh", "id_rsa.pub")) )
@@ -34,6 +34,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
         self.terraform_root = "/tmp/terraform_root"
         self.terraform_config_path = os.path.join(self.terraform_root, "terraform.tf")
         self.terraform_vars_file = os.path.join(self.terraform_root, "terraform.tfvars")
+        self.win_minion_password = None
 
         self.logging = log.getLogger(__name__)
 
@@ -123,8 +124,15 @@ class TerraformProvisioner(deployer.NoopDeployer):
 
         return pub_key
 
-    def get_win_vm_password(self, vm_name):
-        return self.opts.win_minion_password
+    def get_win_vm_password(self):
+        if self.opts.win_minion_password is None:
+            if self.win_minion_password is None:
+                ssh_public_key = self._get_ssh_public_key(self.opts.ssh_public_key_path)
+                self.win_minion_password = utils.generate_random_password(key=ssh_public_key)
+        else:
+            self.win_minion_password = self.opts.win_minion_password
+
+        return self.win_minion_password
 
     def get_win_vm_username(self, vm_name):
         return "azureuser"
@@ -144,7 +152,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
             f.write(out_format % ("win_minion_count", self.get_cluster_win_minion_vm_count()))
             f.write(out_format % ("win_minion_vm_size", self.get_cluster_win_minion_vm_size()))
             f.write(out_format % ("win_minion_vm_name_prefix", self.get_cluster_win_minion_vm_prefix()))
-            f.write(out_format % ("win_minion_vm_password", self.opts.win_minion_password))
+            f.write(out_format % ("win_minion_vm_password", self.get_win_vm_password()))
             f.write(out_format % ("ssh_key_data", ssh_public_key))
 
     def _get_terraform_vars_azure(self):

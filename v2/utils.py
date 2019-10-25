@@ -8,6 +8,9 @@ import shutil
 import string
 import glob
 import constants
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS1_v1_5
+from base64 import b64encode
 
 logging = log.getLogger(__name__)
 
@@ -62,9 +65,20 @@ def mkdir_p(dir_path):
         if e.errno != errno.EEXIST:
             raise
 
-def generate_random_password(length=20):
-    password_characters = string.ascii_letters + string.digits + "!?.,@#$%^&="
-    return ''.join(random.choice(password_characters) for i in range(length))
+def generate_random_password(key, length=20):
+    passw = ''.join(random.choice(string.ascii_lowercase) for i in range(length // 4))
+    passw += ''.join(random.choice(string.ascii_uppercase) for i in range(length // 4))
+    passw += ''.join(random.choice(string.digits) for i in range(length // 4))
+    passw += ''.join(random.choice("!?.,@#$%^&=") for i in range(length - 3 * (length // 4)))
+    passw = ''.join(random.sample(passw, len(passw)))
+
+    pubKeyObj =  RSA.importKey(key)
+    cipher = Cipher_PKCS1_v1_5.new(pubKeyObj)
+    cipher_text = cipher.encrypt(passw.encode())
+    enc_pwd = b64encode(cipher_text)
+    logging.info("Encrypted pass: %s" % enc_pwd)
+
+    return passw
 
 def get_go_path():
     return os.environ.get("GOPATH") if os.environ.get("GOPATH") else "/go"

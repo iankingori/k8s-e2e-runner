@@ -26,7 +26,7 @@ class Terraform_Flannel(ci.CI):
                             "[kube-minions-windows]\nKUBE_MINIONS_WINDOWS_PLACEHOLDER\n")
     ANSIBLE_HOSTS_PATH="%s/inventory/hosts" % ANSIBLE_PLAYBOOK_ROOT
     DEFAULT_ANSIBLE_WINDOWS_ADMIN="Admin"
-    DEFAULT_ANSIBLE_HOST_VAR_WINDOWS_TEMPLATE="ansible_user: USERNAME_PLACEHOLDER\nansible_password: PASS_PLACEHOLDER\nansible_winrm_read_timeout_sec: 240\n"
+    DEFAULT_ANSIBLE_HOST_VAR_WINDOWS_TEMPLATE='ansible_user: "USERNAME_PLACEHOLDER"\nansible_password: "PASS_PLACEHOLDER"\nansible_winrm_read_timeout_sec: 240\n'
     DEFAULT_ANSIBLE_HOST_VAR_DIR="%s/inventory/host_vars" % ANSIBLE_PLAYBOOK_ROOT
     DEFAULT_GROUP_VARS_PATH="%s/inventory/group_vars/all" % ANSIBLE_PLAYBOOK_ROOT
     HOSTS_FILE="/etc/hosts"
@@ -128,7 +128,7 @@ class Terraform_Flannel(ci.CI):
         # Creating hosts_vars for hosts
         for vm_name in windows_minions_hostnames:
             vm_username = self.deployer.get_win_vm_username(vm_name) # TO DO: Have this configurable trough opts
-            vm_pass = self.deployer.get_win_vm_password(vm_name)
+            vm_pass = self.deployer.get_win_vm_password()
             hosts_var_content = self.ansible_host_var_windows_template.replace("USERNAME_PLACEHOLDER", vm_username).replace("PASS_PLACEHOLDER", vm_pass)
             filepath = os.path.join(self.ansible_host_var_dir, vm_name)
             with open(filepath, "w") as f:
