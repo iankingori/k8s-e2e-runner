@@ -26,8 +26,6 @@ p.add("--ssh-private-key-path", default=os.path.join(os.path.join(os.getenv("HOM
 
 class TerraformProvisioner(deployer.NoopDeployer):
 
-    win_minion_password = None
-
     def __init__(self):
         self.opts = p.parse_known_args()[0]
         self.cluster = self._generate_cluster()
@@ -36,6 +34,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
         self.terraform_root = "/tmp/terraform_root"
         self.terraform_config_path = os.path.join(self.terraform_root, "terraform.tf")
         self.terraform_vars_file = os.path.join(self.terraform_root, "terraform.tfvars")
+        self.win_minion_password = None
 
         self.logging = log.getLogger(__name__)
 
