@@ -81,6 +81,7 @@ function Get-ServiceLogs {
     }
 }
 
+
 # Creates a KubernetesLogs folder at the required destination
 function Get-KubernetesLogs {
     param(
@@ -89,11 +90,13 @@ function Get-KubernetesLogs {
 
     $ovnServices = @("kubelet", "ovn-kuberntes-node", "ovs-vswitchd", "ovn-controller", "ovsdb-server")
     $flannelServices = @("kubelet", "kube-proxy", "flanneld")
+    $containerdServices = @("containerd")
 
     $path = Join-Path -Path $Destination -ChildPath "kubernetes-logs"
     New-Item -ItemType directory -Path $path | Out-Null
 
     Get-ServiceLogs -Services $flannelServices -Destination $path
+    Get-Servicelogs -Services $containerd -Destination $path
 }
 
 function Main {
@@ -104,7 +107,7 @@ function Main {
 
     Get-WindowsLogs -Destination $path
     Get-KubernetesLogs -Destination  $path
-
+    
     Compress-Archive -Path $path -CompressionLevel Optimal -DestinationPath $ArchivePath
 
     Remove-Item -Recurse -Force -Path $path
