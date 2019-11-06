@@ -27,6 +27,7 @@ def parse_args():
     p.add('--admin-openrc', default=False, help='Openrc file for OpenStack cluster')
     p.add('--log-path', default="/tmp/civ2_logs", help='Path to place all artifacts')
     p.add('--ci', help="OVN-OVS, Flannel")
+    p.add('--install-patch', action="append", help="URLs of KBs to install on Windows nodes")
     p.add('--cluster-name', help="Name of cluster.")
     p.add('--k8s-repo', default="http://github.com/kubernetes/kubernetes")
     p.add('--k8s-branch', default="master")
@@ -55,6 +56,9 @@ def main():
 
         if opts.build is not None:
             ci.build(opts.build)
+
+        if opts.install_patch is not None:
+            ci.set_patches(" ".join(opts.install_patch))
 
         if opts.up == True:
             if opts.down == True:

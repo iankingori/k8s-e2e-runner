@@ -79,7 +79,6 @@ class Terraform_Flannel(ci.CI):
         self.deployer = terraform.TerraformProvisioner()
 
         self.default_ansible_path = Terraform_Flannel.DEFAULT_ANSIBLE_PATH
-        self.ansible_windows_admin = 'azureuser'
         self.ansible_playbook = Terraform_Flannel.ANSIBLE_PLAYBOOK
         self.ansible_playbook_root = Terraform_Flannel.ANSIBLE_PLAYBOOK_ROOT
         self.ansible_hosts_template = Terraform_Flannel.ANSIBLE_HOSTS_TEMPLATE
@@ -89,6 +88,10 @@ class Terraform_Flannel(ci.CI):
         self.ansible_host_var_dir = Terraform_Flannel.DEFAULT_ANSIBLE_HOST_VAR_DIR
         self.ansible_config_file = Terraform_Flannel.ANSIBLE_CONFIG_FILE
         self.ansible_group_vars_file = Terraform_Flannel.DEFAULT_GROUP_VARS_PATH
+        self.patches = None
+
+    def set_patches(self, patches=None):
+        self.patches = patches
 
     def _generate_azure_config(self):
         azure_config = Terraform_Flannel.AZURE_CONFIG_TEMPALTE
@@ -171,6 +174,19 @@ class Terraform_Flannel(ci.CI):
         vms = self.deployer.get_cluster_win_minion_vms_names()
         self._runRemoteCmd(("mkdir C:\\\\Users\\\\azureuser\\\\.ssh"), vms, self.opts.remoteCmdRetries, windows=True)
         self._copyTo(self.opts.ssh_public_key_path, "C:\\\\Users\\\\azureuser\\\\.ssh\\\\authorized_keys", vms, windows=True)
+
+    def _install_patches(self):
+        self.logging.info("Installing patches.")
+        installer_script = os.path.join("/tmp/k8s-ovn-ovs/v2/installPatches.ps1")
+        vms = self.deployer.get_cluster_win_minion_vms_names()
+
+        self._copyTo(installer_script, "c:\\", vms, windows=True)
+        self._runRemoteCmd(("c:\\installPatches.ps1 %s" % self.patches), vms, self.opts.remoteCmdRetries, windows=True, root=True)
+
+        ret, out = self._waitForConnection(vms, windows=True)
+        if ret != 0:
+            self.logging.error("No connection to machines. Error: %s" % out)
+            raise Exception("No connection to machines. Error: %s" % out)
 
     def _deploy_ansible(self):
         self.logging.info("Starting Ansible deployment.")
@@ -270,6 +286,10 @@ class Terraform_Flannel(ci.CI):
                 cmd.append("--become")
             if windows:
                 task = "win_shell"
+
+                if root:
+                    cmd.append("--become-method=runas")
+                    cmd.append("--become-user=azureuser")
             else:
                 task = "shell"
                 cmd.append("--key-file=%s" % self.opts.ssh_private_key_path)
@@ -369,6 +389,8 @@ class Terraform_Flannel(ci.CI):
             self.deployer.up()
             self._prepare_ansible()
             self._add_ssh_key()
+            if self.patches is not None:
+                self._install_patches()
             self._deploy_ansible()
         except Exception as e:
             raise e
