@@ -5,12 +5,9 @@ variable master_vm_size {}
 variable win_minion_count {}
 variable win_minion_vm_size {}
 variable win_minion_vm_name_prefix {}
-variable win_minion_vm_password {}
 variable ssh_key_data {}
-variable win_img_publisher {}
-variable win_img_offer {}
-variable win_img_sku {}
-variable win_img_version {}
+variable win_img_uri {}
+variable win_img_storage_account {}
 
 variable azure_sub_id {}
 variable "azure_client_id" {}
@@ -126,7 +123,6 @@ resource "azurerm_virtual_machine" "masterVM" {
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Premium_LRS"
-    disk_size_gb      = "100"
   }
 
   storage_image_reference {
@@ -211,9 +207,9 @@ resource "azurerm_network_interface" "winMinNic" {
   }
 }
 
-resource "azurerm_virtual_machine_extension" "powershell_winservices" {
+resource "azurerm_virtual_machine_extension" "powershell_winrm" {
   count                = "${var.win_minion_count}"
-  name                 = "EnableWinServices"
+  name                 = "EnableWinRM"
   location             = "${var.location}"
   resource_group_name  = "${azurerm_resource_group.clusterRg.name}"
   virtual_machine_name = "${element(azurerm_virtual_machine.winMinionVM.*.name, count.index)}"
@@ -223,8 +219,8 @@ resource "azurerm_virtual_machine_extension" "powershell_winservices" {
 
   settings = <<SETTINGS
     {
-        "fileUris": ["https://raw.githubusercontent.com/e2e-win/k8s-ovn-ovs/master/v2/enableWinServices.ps1"],
-        "commandToExecute": "powershell -ExecutionPolicy Unrestricted -File enableWinServices.ps1 *> C:\\enableWinServices.log"
+        "fileUris": ["https://raw.githubusercontent.com/adelina-t/k8s-ovn-ovs/terraform_flannel/v2/enableWinrm.ps1"],
+        "commandToExecute": "powershell -ExecutionPolicy Unrestricted -File enableWinrm.ps1"
     }
 SETTINGS
 }
@@ -239,24 +235,18 @@ resource "azurerm_virtual_machine" "winMinionVM" {
   vm_size               = "${var.win_minion_vm_size}"
 
   storage_os_disk {
-    name              = "WinOSDisk-${count.index}"
+    name              = "${var.win_minion_vm_name_prefix}${count.index}-osdisk"
+    image_uri         = "${var.win_img_uri}"
+    vhd_uri           = "https://${var.win_img_storage_account}.blob.core.windows.net/testvm-vhds/${var.rg_name}${count.index}osdisk.vhd"
     caching           = "ReadWrite"
     create_option     = "FromImage"
-    managed_disk_type = "Premium_LRS"
-    disk_size_gb      = "100"
-  }
-
-  storage_image_reference {
-    publisher = "${var.win_img_publisher}"
-    offer     = "${var.win_img_offer}"
-    sku       = "${var.win_img_sku}"
-    version   = "${var.win_img_version}"
-  }
+    os_type           = "Windows"
+}
 
   os_profile {
     computer_name  = "${var.win_minion_vm_name_prefix}${count.index}"
     admin_username = "azureuser"
-    admin_password = "${var.win_minion_vm_password}"
+    admin_password = "Passw0rd1234"
   }
 
   os_profile_windows_config {
