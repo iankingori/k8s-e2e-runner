@@ -5,6 +5,7 @@ import utils
 import os
 import subprocess
 import json
+import urlparse
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.mgmt.resource import ResourceManagementClient
 
@@ -19,13 +20,17 @@ p.add("--win-minion-count", type=int ,default=2, help="Number of windows minions
 p.add("--win-minion-name-prefix", default="winvm", help="Prefix for win minion vm names.")
 p.add("--win-minion-size", default="Standard_D2s_v3", help="Size of minion vm")
 p.add("--win-minion-password", default=None, help="Password for win minion vm")
-
+p.add("--win-minion-image", default="MicrosoftWindowsServer:WindowsServerSemiAnnual:Datacenter-Core-1809-with-Containers-smalldisk:1809.0.20190826", help="Windows image SKU or custom vhd path")
 p.add("--terraform-config")
 p.add("--ssh-public-key-path", default=os.path.join(os.path.join(os.getenv("HOME"), ".ssh", "id_rsa.pub")) )
 p.add("--ssh-private-key-path", default=os.path.join(os.path.join(os.getenv("HOME"), ".ssh", "id_rsa")))
 
+
 class TerraformProvisioner(deployer.NoopDeployer):
 
+    CUSTOM_VHD = "custom_vhd"
+    AZURE_IMAGE_URN = "image_urn"
+ 
     def __init__(self):
         self.opts = p.parse_known_args()[0]
         self.cluster = self._generate_cluster()
@@ -140,10 +145,52 @@ class TerraformProvisioner(deployer.NoopDeployer):
     def get_master_username(self):
         return "azureuser"
 
+    def _is_url(self, image):
+        return urlparse.urlparse(image).scheme in ("http","https")  
+
+    def _is_azure_image_urn(self, image):
+        return len(image.split(":")) == 4 
+
+    def _parse_azure_storage_account(self, image_url):
+        return urlparse.urlparse(image_url).netloc.split(".")[0]
+
+    def _parse_azure_image_urn(self, image_urn):
+        image = {}
+        split_urn = image_urn.split(":")
+        image["win_img_publisher"] = split_urn[0]
+        image["win_img_offer"] = split_urn[1]
+        image["win_img_sku"] = split_urn[2]
+        image["win_img_version"] = split_urn[3]
+        return image
+
+    def _get_win_minion_image_type(self, image):
+        if self._is_url(image):
+            return TerraformProvisioner.CUSTOM_VHD
+        if self._is_azure_image_urn(image):
+            return TerraformProvisioner.AZURE_IMAGE_URN
+        return None
+
     def _create_terraform_vars_file(self):
         self.logging.info("Creating terraform vars file.")
         out_format = '%s = "%s"\n'
         ssh_public_key = self._get_ssh_public_key(self.opts.ssh_public_key_path)
+
+        win_min_image_type = self._get_win_minion_image_type(self.opts.win_minion_image)
+ 
+        if win_min_image_type == None:
+           msg = "Unrecognized image string: %s" % self.opts.win_minion_image
+           self.logging.error(msg)
+           raise Exception(msg)
+   
+        extra_args = ""
+        if win_min_image_type == TerraformProvisioner.CUSTOM_VHD:
+            extra_args = extra_args + (out_format % ("win_img_uri", self.opts.win_minion_image))
+            extra_args = extra_args + (out_format % ("win_img_storage_account", self._parse_azure_storage_account(self.opts.win_minion_image)))
+        if win_min_image_type == TerraformProvisioner.AZURE_IMAGE_URN:
+            image = self._parse_azure_image_urn(self.opts.win_minion_image)
+            for key in image.keys():
+                extra_args = extra_args + (out_format % (key, image[key]))
+
         with open(self.terraform_vars_file, "w") as f:
             f.write(out_format % ("location", self.get_cluster_location()))
             f.write(out_format % ("rg_name", self.get_cluster_rg_name()))
@@ -154,6 +201,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
             f.write(out_format % ("win_minion_vm_name_prefix", self.get_cluster_win_minion_vm_prefix()))
             f.write(out_format % ("win_minion_vm_password", self.get_win_vm_password()))
             f.write(out_format % ("ssh_key_data", ssh_public_key))
+            f.write(extra_args)
 
     def _get_terraform_vars_azure(self):
         cmd = []
