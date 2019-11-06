@@ -97,6 +97,10 @@ def get_containerd_folder():
     gopath = get_go_path()
     return os.path.join(gopath, "src", "github.com", "containerd", "cri")
 
+def get_containerd_shim_folder():
+    gopath = get_go_path()
+    return os.path.join(gopath, "src", "github.com", "Microsoft", "hcsshim")
+
 def get_sdn_folder():
     gopath = get_go_path()
     return os.path.join(gopath, "src", "github.com", "Microsoft", "windows-container-networking")
@@ -118,6 +122,21 @@ def build_containerd_binaries(containerd_path=None):
     for path in glob.glob("%s/*" % containerd_bins_location):
         shutil.copy(path, get_bins_path())
 
+def build_containerd_shim(containerd_shim_path=None):
+    containerd_shim_path = containerd_shim_path if containerd_shim_path else get_containerd_shim_folder()
+    logging.info("Building containerd shim")
+    cmd = ["GOOS=windows", "go", "build", "-o", constants.CONTAINERD_SHIM_BIN, constants.CONTAINERD_SHIM_DIR]
+
+    _, err, ret = run_cmd(cmd, stderr=True, cwd=containerd_shim_path, shell=True)
+
+    if ret != 0:
+        logging.error("Failed to build containerd shim with error: %s" % err)
+        raise Exception("Failed to build containerd shim with error: %s" % err)
+
+    logging.info("Succesfully built containerd shim.")
+    logging.info("Copying built shim to central location")
+    containerd_shim_bin = os.path.join(containerd_shim_path, constants.CONTAINERD_SHIM_BIN)
+    shutil.copy(containerd_shim_bin, get_bins_path())
 
 def build_sdn_binaries(sdn_path=None):
     sdn_path = sdn_path if sdn_path else get_sdn_folder()
@@ -130,7 +149,7 @@ def build_sdn_binaries(sdn_path=None):
         logging.error("Failed to build sdn windows binaries with error: %s" % err)
         raise Exception("Failed to build sdn windows binaries with error: %s" % err)
     
-    logging.info("Successfuly build sdn binaries.")
+    logging.info("Successfuly built sdn binaries.")
     logging.info("Copying built bins to central location")
     sdn_bins_location = os.path.join(sdn_path, constants.SDN_BINS_LOCATION)
     for path in glob.glob("%s/*" % sdn_bins_location):

@@ -339,6 +339,11 @@ class Terraform_Flannel(ci.CI):
         utils.clone_repo(self.opts.containerd_repo, self.opts.containerd_branch, containerd_path)
         utils.build_containerd_binaries()
 
+    def _build_containerd_shim(self):
+        containerd_shim_path = utils.get_containerd_shim_folder()
+        utils.clone_repo(self.opts.containerd_shim_repo, self.opts.containerd_shim_branch, containerd_shim_path)
+        utils.build_containerd_shim()
+
     def _build_sdn_binaries(self):
         sdn_path = utils.get_sdn_folder()
         utils.clone_repo(self.opts.sdn_repo, self.opts.sdn_branch, sdn_path)
@@ -348,6 +353,7 @@ class Terraform_Flannel(ci.CI):
         builder_mapping = {
             "k8sbins": self._build_k8s_binaries,
             "containerdbins": self._build_containerd_binaries,
+            "containerdshim": self._build_containerd_shim,
             "sdnbins": self._build_sdn_binaries
         }
         def noop_func():
