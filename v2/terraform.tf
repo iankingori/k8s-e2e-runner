@@ -122,6 +122,7 @@ resource "azurerm_virtual_machine" "masterVM" {
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Premium_LRS"
+    disk_size_gb      = "100"
   }
 
   storage_image_reference {
@@ -238,6 +239,7 @@ resource "azurerm_virtual_machine" "winMinionVM" {
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Premium_LRS"
+    disk_size_gb      = "100"
   }
 
   storage_image_reference {
