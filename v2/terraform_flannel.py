@@ -357,6 +357,8 @@ class Terraform_Flannel(ci.CI):
     def _build_containerd_binaries(self):
         containerd_path = utils.get_containerd_folder()
         utils.clone_repo(self.opts.containerd_repo, self.opts.containerd_branch, containerd_path)
+        ctr_path = utils.get_ctr_folder()
+        utils.clone_repo(self.opts.ctr_repo, self.opts.ctr_branch, ctr_path)
         utils.build_containerd_binaries()
 
     def _build_containerd_shim(self):

@@ -35,6 +35,8 @@ def parse_args():
     p.add('--containerd-branch', default="windows_port")
     p.add('--containerd-shim-repo', default="https://github.com/Microsoft/hcsshim")
     p.add('--containerd-shim-branch', default="master")
+    p.add('--ctr-repo', default="https://github.com/containerd/containerd")
+    p.add('--ctr-branch', default="master")
     p.add('--sdn-repo', default="http://github.com/microsoft/windows-container-networking")
     p.add('--sdn-branch', default="master")
     p.add('--hold', type=str2bool, default=False, help='Useful for debugging while running in containerd. \
