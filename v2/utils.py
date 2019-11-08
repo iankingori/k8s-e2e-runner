@@ -97,9 +97,16 @@ def get_containerd_folder():
     gopath = get_go_path()
     return os.path.join(gopath, "src", "github.com", "containerd", "cri")
 
-def get_containerd_shim_folder():
+def get_containerd_shim_folder(fromVendor=False):
     gopath = get_go_path()
-    return os.path.join(gopath, "src", "github.com", "Microsoft", "hcsshim")
+
+    if fromVendor:
+        containerd_path = get_containerd_folder()
+        path_prefix = os.path.join(containerd_path, "vendor")
+    else:
+        path_prefix = os.path.join(gopath, "src")
+
+    return os.path.join(path_prefix, "github.com", "Microsoft", "hcsshim")
 
 def get_ctr_folder():
     gopath = get_go_path()
@@ -141,9 +148,24 @@ def build_containerd_binaries(containerd_path=None, ctr_path=None):
 
     shutil.copy(os.path.join(ctr_path, constants.CONTAINERD_CTR_LOCATION), get_bins_path())
 
-def build_containerd_shim(containerd_shim_path=None):
+def build_containerd_shim(containerd_shim_path=None, fromVendor=False):
     containerd_shim_path = containerd_shim_path if containerd_shim_path else get_containerd_shim_folder()
     logging.info("Building containerd shim")
+
+    if fromVendor:
+        vendoring_path = get_containerd_folder()
+        cmd = ["go", "get", "github.com/LK4D4/vndr"]
+        _, err, ret = run_cmd(cmd, stderr=True, shell=True)
+        if ret != 0:
+            logging.error("Failed to install vndr with error: %s" % err)
+            raise Exception("Failed to install vndr with error: %s" % err)
+
+        cmd = ["vndr", "-whitelist", "hcsshim", "github.com/Microsoft/hcsshim"]
+        _, err, ret = run_cmd(cmd, stderr=True, cwd=vendoring_path, shell=True)
+        if ret != 0:
+            logging.error("Failed to install vndr with error: %s" % err)
+            raise Exception("Failed to install vndr with error: %s" % err)
+
     cmd = ["GOOS=windows", "go", "build", "-o", constants.CONTAINERD_SHIM_BIN, constants.CONTAINERD_SHIM_DIR]
 
     _, err, ret = run_cmd(cmd, stderr=True, cwd=containerd_shim_path, shell=True)

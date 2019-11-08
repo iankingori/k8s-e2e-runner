@@ -362,9 +362,17 @@ class Terraform_Flannel(ci.CI):
         utils.build_containerd_binaries()
 
     def _build_containerd_shim(self):
-        containerd_shim_path = utils.get_containerd_shim_folder()
-        utils.clone_repo(self.opts.containerd_shim_repo, self.opts.containerd_shim_branch, containerd_shim_path)
-        utils.build_containerd_shim()
+        if self.opts.containerd_shim_repo is None:
+            fromVendor = True
+        else:
+            fromVendor = False
+
+        containerd_shim_path = utils.get_containerd_shim_folder(fromVendor)
+
+        if not fromVendor:
+            utils.clone_repo(self.opts.containerd_shim_repo, self.opts.containerd_shim_branch, containerd_shim_path)
+
+        utils.build_containerd_shim(containerd_shim_path, fromVendor)
 
     def _build_sdn_binaries(self):
         sdn_path = utils.get_sdn_folder()
