@@ -131,7 +131,7 @@ def build_containerd_binaries(containerd_path=None, ctr_path=None):
     logging.info("Succesfully built containerd binaries.")
 
     logging.info("Building ctr")
-    cmd = ["GOOS=windows", "make bin/ctr"]
+    cmd = ["GOOS=windows", "make bin/ctr.exe"]
 
     _, err, ret = run_cmd(cmd, stderr=True, cwd=ctr_path, shell=True)
 
