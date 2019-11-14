@@ -97,16 +97,28 @@ def get_containerd_folder():
     gopath = get_go_path()
     return os.path.join(gopath, "src", "github.com", "containerd", "cri")
 
-def get_containerd_shim_folder():
+def get_containerd_shim_folder(fromVendor=False):
     gopath = get_go_path()
-    return os.path.join(gopath, "src", "github.com", "Microsoft", "hcsshim")
+
+    if fromVendor:
+        containerd_path = get_containerd_folder()
+        path_prefix = os.path.join(containerd_path, "vendor")
+    else:
+        path_prefix = os.path.join(gopath, "src")
+
+    return os.path.join(path_prefix, "github.com", "Microsoft", "hcsshim")
+
+def get_ctr_folder():
+    gopath = get_go_path()
+    return os.path.join(gopath, "src", "github.com", "containerd", "containerd")
 
 def get_sdn_folder():
     gopath = get_go_path()
     return os.path.join(gopath, "src", "github.com", "Microsoft", "windows-container-networking")
 
-def build_containerd_binaries(containerd_path=None):
+def build_containerd_binaries(containerd_path=None, ctr_path=None):
     containerd_path = containerd_path if containerd_path else get_containerd_folder()
+    ctr_path = ctr_path if ctr_path else get_ctr_folder()
     logging.info("Building containerd binaries")
     cmd = ["GOOS=windows", "make"]
 
@@ -115,16 +127,45 @@ def build_containerd_binaries(containerd_path=None):
     if ret != 0:
         logging.error("Failed to build containerd windows binaries with error: %s" % err)
         raise Exception("Failed to build containerd windows binaries with error: %s" % err)
-    
+
     logging.info("Succesfully built containerd binaries.")
+
+    logging.info("Building ctr")
+    cmd = ["GOOS=windows", "make bin/ctr.exe"]
+
+    _, err, ret = run_cmd(cmd, stderr=True, cwd=ctr_path, shell=True)
+
+    if ret != 0:
+        logging.error("Failed to build ctr windows binary with error: %s" % err)
+        raise Exception("Failed to build ctr windows binary with error: %s" % err)
+
+    logging.info("Succesfully built ctr binary.")
     logging.info("Copying built bins to central location")
+
     containerd_bins_location = os.path.join(containerd_path, constants.CONTAINERD_BINS_LOCATION)
     for path in glob.glob("%s/*" % containerd_bins_location):
         shutil.copy(path, get_bins_path())
 
-def build_containerd_shim(containerd_shim_path=None):
+    shutil.copy(os.path.join(ctr_path, constants.CONTAINERD_CTR_LOCATION), get_bins_path())
+
+def build_containerd_shim(containerd_shim_path=None, fromVendor=False):
     containerd_shim_path = containerd_shim_path if containerd_shim_path else get_containerd_shim_folder()
     logging.info("Building containerd shim")
+
+    if fromVendor:
+        vendoring_path = get_containerd_folder()
+        cmd = ["go", "get", "github.com/LK4D4/vndr"]
+        _, err, ret = run_cmd(cmd, stderr=True, shell=True)
+        if ret != 0:
+            logging.error("Failed to install vndr with error: %s" % err)
+            raise Exception("Failed to install vndr with error: %s" % err)
+
+        cmd = ["vndr", "-whitelist", "hcsshim", "github.com/Microsoft/hcsshim"]
+        _, err, ret = run_cmd(cmd, stderr=True, cwd=vendoring_path, shell=True)
+        if ret != 0:
+            logging.error("Failed to install vndr with error: %s" % err)
+            raise Exception("Failed to install vndr with error: %s" % err)
+
     cmd = ["GOOS=windows", "go", "build", "-o", constants.CONTAINERD_SHIM_BIN, constants.CONTAINERD_SHIM_DIR]
 
     _, err, ret = run_cmd(cmd, stderr=True, cwd=containerd_shim_path, shell=True)

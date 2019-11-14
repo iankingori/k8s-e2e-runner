@@ -33,8 +33,10 @@ def parse_args():
     p.add('--k8s-branch', default="master")
     p.add('--containerd-repo', default="http://github.com/jterry75/cri")
     p.add('--containerd-branch', default="windows_port")
-    p.add('--containerd-shim-repo', default="https://github.com/Microsoft/hcsshim")
+    p.add('--containerd-shim-repo', default=None)
     p.add('--containerd-shim-branch', default="master")
+    p.add('--ctr-repo', default="https://github.com/containerd/containerd")
+    p.add('--ctr-branch', default="master")
     p.add('--sdn-repo', default="http://github.com/microsoft/windows-container-networking")
     p.add('--sdn-branch', default="master")
     p.add('--hold', type=str2bool, default=False, help='Useful for debugging while running in containerd. \
@@ -53,6 +55,12 @@ def main():
         utils.mkdir_p(opts.log_path)
         ci = ci_factory.get_ci(opts.ci)
         success = 0
+
+        if "containerdshim" in opts.build and \
+                opts.containerd_shim_repo is None and \
+                "containerdbins" not in opts.build:
+            logging.error("Building containerdshim from vendoring repo without building containerd is not supported")
+            sys.exit(1)
 
         if opts.build is not None:
             ci.build(opts.build)
