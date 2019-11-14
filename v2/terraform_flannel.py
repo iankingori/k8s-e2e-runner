@@ -130,7 +130,7 @@ class Terraform_Flannel(ci.CI):
 
         # Creating hosts_vars for hosts
         for vm_name in windows_minions_hostnames:
-            vm_username = self.deployer.get_win_vm_username(vm_name) # TO DO: Have this configurable trough opts
+            vm_username = self.deployer.get_win_vm_username()
             vm_pass = self.deployer.get_win_vm_password()
             hosts_var_content = self.ansible_host_var_windows_template.replace("USERNAME_PLACEHOLDER", vm_username).replace("PASS_PLACEHOLDER", vm_pass)
             filepath = os.path.join(self.ansible_host_var_dir, vm_name)
@@ -172,8 +172,8 @@ class Terraform_Flannel(ci.CI):
     def _add_ssh_key(self):
         self.logging.info("Adding SSH key.")
         vms = self.deployer.get_cluster_win_minion_vms_names()
-        self._runRemoteCmd(("mkdir C:\\\\Users\\\\azureuser\\\\.ssh"), vms, self.opts.remoteCmdRetries, windows=True)
-        self._copyTo(self.opts.ssh_public_key_path, "C:\\\\Users\\\\azureuser\\\\.ssh\\\\authorized_keys", vms, windows=True)
+        self._runRemoteCmd(("mkdir C:\\\\Users\\\\%s\\\\.ssh" % constants.WINDOWS_ADMIN_USER), vms, self.opts.remoteCmdRetries, windows=True)
+        self._copyTo(self.opts.ssh_public_key_path, ("C:\\\\Users\\\\%s\\\\.ssh\\\\authorized_keys" % constants.WINDOWS_ADMIN_USER), vms, windows=True)
 
     def _install_patches(self):
         self.logging.info("Installing patches.")
@@ -289,7 +289,7 @@ class Terraform_Flannel(ci.CI):
 
                 if root:
                     cmd.append("--become-method=runas")
-                    cmd.append("--become-user=azureuser")
+                    cmd.append("--become-user=%s" % constants.WINDOWS_ADMIN_USER)
             else:
                 task = "shell"
                 cmd.append("--key-file=%s" % self.opts.ssh_private_key_path)

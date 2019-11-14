@@ -1,4 +1,5 @@
 import configargparse
+import constants
 import deployer
 import log
 import utils
@@ -139,11 +140,11 @@ class TerraformProvisioner(deployer.NoopDeployer):
 
         return self.win_minion_password
 
-    def get_win_vm_username(self, vm_name):
-        return "azureuser"
+    def get_win_vm_username(self):
+        return constants.WINDOWS_ADMIN_USER
 
     def get_master_username(self):
-        return "azureuser"
+        return constants.WINDOWS_ADMIN_USER
 
     def _is_url(self, image):
         return urlparse.urlparse(image).scheme in ("http","https")  
@@ -199,6 +200,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
             f.write(out_format % ("win_minion_count", self.get_cluster_win_minion_vm_count()))
             f.write(out_format % ("win_minion_vm_size", self.get_cluster_win_minion_vm_size()))
             f.write(out_format % ("win_minion_vm_name_prefix", self.get_cluster_win_minion_vm_prefix()))
+            f.write(out_format % ("win_minion_vm_username", self.get_win_vm_username()))
             f.write(out_format % ("win_minion_vm_password", self.get_win_vm_password()))
             f.write(out_format % ("ssh_key_data", ssh_public_key))
             f.write(extra_args)
