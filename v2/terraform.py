@@ -265,7 +265,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
             vm_name = vm_name + " kubernetes"
             vm_public_ip = self.get_cluster_master_public_ip()
             hosts_entry=("%s %s\n" % (vm_public_ip, vm_name))
-            self.logging.info("Adding entry %s to hosts file." % hosts_entry)
+            self.logging.info("Adding entry '%s' to hosts file." % hosts_entry.rstrip("\n"))
             f.write(hosts_entry)
 
             for vm in self.get_cluster_win_minion_vms():
@@ -274,7 +274,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
                 if vm_name.find("master") > 0:
                     vm_name = vm_name + " kubernetes"
                 hosts_entry=("%s %s\n" % (vm_public_ip, vm_name))
-                self.logging.info("Adding entry %s to hosts file." % hosts_entry)
+                self.logging.info("Adding entry '%s' to hosts file." % hosts_entry.rstrip("\n"))
                 f.write(hosts_entry)
 
     def up(self):
