@@ -56,7 +56,8 @@ def main():
         ci = ci_factory.get_ci(opts.ci)
         success = 0
 
-        if "containerdshim" in opts.build and \
+        if opts.build is not None and \
+                "containerdshim" in opts.build and \
                 opts.containerd_shim_repo is None and \
                 "containerdbins" not in opts.build:
             logging.error("Building containerdshim from vendoring repo without building containerd is not supported")
