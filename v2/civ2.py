@@ -9,6 +9,7 @@ p = configargparse.get_argument_parser()
 
 logging = log.getLogger("civ2")
 
+
 def parse_args():
 
     def str2bool(v):
@@ -68,11 +69,11 @@ def main():
         if opts.install_patch is not None:
             ci.set_patches(" ".join(opts.install_patch))
 
-        if opts.up == True:
-            if opts.down == True:
+        if opts.up is True:
+            if opts.down is True:
                 ci.down()
             ci.up()
-        if opts.test == True:
+        if opts.test is True:
             success = ci.test()
         if success != 0:
             raise Exception
@@ -83,8 +84,9 @@ def main():
     finally:
         ci.collectWindowsLogs()
         ci.collectLinuxLogs()
-        if opts.down == True:
+        if opts.down is True:
             ci.down()
+
 
 if __name__ == "__main__":
     main()
