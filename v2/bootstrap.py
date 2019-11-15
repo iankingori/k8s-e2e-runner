@@ -16,6 +16,7 @@ logger = logging.getLogger("bootstrap")
 JOB_REPO_CLONE_DST = os.path.join(tempfile.gettempdir(), "k8s-ovn-ovs")
 DEFAULT_JOB_CONFIG_PATH = os.path.join(tempfile.gettempdir(), "job_config.txt")
 
+
 def call(popenargs, stdout_log_level=logging.INFO, stderr_log_level=logging.ERROR, **kwargs):
 
     def read_all(source, log_level):
@@ -25,9 +26,9 @@ def call(popenargs, stdout_log_level=logging.INFO, stderr_log_level=logging.ERRO
                 # Read everything
                 return True
             logger.log(log_level, line.rstrip('\n'))
-            more = select.select([source],[],[],0.1)
+            more = select.select([source], [], [], 0.1)
             if not more[0]:
-                return False # Buffer empty but not the end
+                return False  # Buffer empty but not the end
 
     child = subprocess.Popen(popenargs, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, **kwargs)
@@ -47,6 +48,7 @@ def call(popenargs, stdout_log_level=logging.INFO, stderr_log_level=logging.ERRO
     check_io()  # check again to catch anything after the process exits
 
     return child.wait()
+
 
 def parse_args():
 
@@ -77,22 +79,25 @@ def gcloud_login(service_account):
     cmd = cmd.split()
 
     try:
-       call(cmd)
+        call(cmd)
     except Exception as e:
         logger.info("Failed to login to gcloud.")
         raise Exception("Failed to login to gcloud.")
 
+
 def get_job_config_file(job_config):
-    if job_config == None:
+    if job_config is None:
         return None
     if os.path.isfile(job_config):
         return os.path.abspath(job_config)
     download_file(job_config, DEFAULT_JOB_CONFIG_PATH)
     return DEFAULT_JOB_CONFIG_PATH
 
+
 def get_cluster_name():
     # The cluster name is composed of the first 8 chars of the prowjob in case it exists
-    return os.getenv("PROW_JOB_ID","0000-0000-0000-0000")[:7]    
+    return os.getenv("PROW_JOB_ID", "0000-0000-0000-0000")[:7]
+
 
 def setup_logging(log_out_file):
     level = logging.DEBUG
@@ -109,6 +114,7 @@ def setup_logging(log_out_file):
     logger.addHandler(stream)
     logger.addHandler(fileLog)
 
+
 def clone_repo(repo, branch="master", dest_path=None):
     cmd = ["git", "clone", "-q", "--single-branch", "--branch", branch, repo]
     if dest_path:
@@ -118,13 +124,15 @@ def clone_repo(repo, branch="master", dest_path=None):
     if ret != 0:
         raise Exception("Git Clone Failed with.")
     logger.info("Succesfully cloned git repo.")
- 
+
+
 def mkdir_p(dir_path):
     try:
         os.mkdir(dir_path)
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
+
 
 def download_file(url, dst):
     cmd = ["wget", "-q", url, "-O", dst]
@@ -133,9 +141,10 @@ def download_file(url, dst):
     if ret != 0:
         logger.error("Failed to download file: %s" % url)
 
+
 def create_log_paths(log_path, remote_base):
     # TO DO:Since we upload to gcloud we should make sure the user specifies an empty path
-    
+
     mkdir_p(log_path)
     artifacts_path = os.path.join(log_path, "artifacts")
     mkdir_p(artifacts_path)
@@ -159,20 +168,24 @@ def create_log_paths(log_path, remote_base):
     }
     return paths
 
+
 def upload_file(local, remote):
     cmd = "gsutil -q cp %s %s" % (local, remote)
     cmd = cmd.split()
     call(cmd)
+
 
 def upload_artifacts(local, remote):
     cmd = "gsutil -q cp -r %s %s" % (local, remote)
     cmd = cmd.split()
     call(cmd)
 
+
 def create_latest_build(path):
     latest_build = os.environ.get("BUILD_ID", "0000-0000-0000-0000")
     with open(path, "w") as f:
         f.write(latest_build)
+
 
 def create_started(path):
     data = {
@@ -181,6 +194,7 @@ def create_started(path):
     }
     with open(path, "w") as f:
         json.dump(data, f)
+
 
 def create_finished(path, success=True, meta=None):
     data = {
@@ -222,7 +236,7 @@ def main():
         clone_repo(opts.job_repo, opts.job_branch, JOB_REPO_CLONE_DST)
         job_config_file = get_job_config_file(opts.job_config)
         logger.info("Using job config file: %s" % job_config_file)
-        cluster_name=get_cluster_name()
+        cluster_name = get_cluster_name()
 
         # Reset logging format before running civ2
         for handler in logger.handlers:
@@ -233,7 +247,7 @@ def main():
         cmd.append("--cluster-name=%s" % cluster_name)
         cmd.append("--log-path=%s" % log_paths["artifacts"])
 
-        ret = call(cmd, cwd=os.path.join(JOB_REPO_CLONE_DST,"v2"))
+        ret = call(cmd, cwd=os.path.join(JOB_REPO_CLONE_DST, "v2"))
         success = not int(ret)
     except:
         success = False
@@ -243,6 +257,7 @@ def main():
         upload_file(log_paths["build_log"], log_paths["remote_build_log"])
         upload_artifacts(log_paths["artifacts"], log_paths["remote_artifacts_path"])
         upload_file(log_paths["latest_build"], log_paths["remote_latest_build"])
-    
+
+
 if __name__ == "__main__":
     main()
