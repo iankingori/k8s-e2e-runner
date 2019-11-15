@@ -1,8 +1,10 @@
 import configargparse
+import constants
 import deployer
 import log
 import utils
 import os
+import random
 import subprocess
 import json
 import urlparse
@@ -11,7 +13,7 @@ from azure.mgmt.resource import ResourceManagementClient
 
 p = configargparse.get_argument_parser()
 
-p.add("--location", default="eastus", help="Resource group location.")
+p.add("--location", default=None, help="Resource group location.")
 p.add("--rg_name", help="resource group name.")
 p.add("--master-vm-name", help="Name of master vm.")
 p.add("--master-vm-size", default="Standard_D2s_v3", help="Size of master vm")
@@ -30,9 +32,12 @@ class TerraformProvisioner(deployer.NoopDeployer):
 
     CUSTOM_VHD = "custom_vhd"
     AZURE_IMAGE_URN = "image_urn"
- 
+
     def __init__(self):
         self.opts = p.parse_known_args()[0]
+        if self.opts.location is None:
+            self.opts.location = random.choice(constants.AZURE_LOCATIONS)
+
         self.cluster = self._generate_cluster()
         self.terraform_config_url = self.opts.terraform_config
 
