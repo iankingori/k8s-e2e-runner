@@ -96,7 +96,7 @@ function Get-KubernetesLogs {
     New-Item -ItemType directory -Path $path | Out-Null
 
     Get-ServiceLogs -Services $flannelServices -Destination $path
-    Get-Servicelogs -Services $containerd -Destination $path
+    Get-Servicelogs -Services $containerdServices -Destination $path
 }
 
 function Main {

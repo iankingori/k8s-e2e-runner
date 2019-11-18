@@ -5,20 +5,20 @@ import log
 
 class Flannel_CI(ci.CI):
 
-    DEFAULT_ANSIBLE_PATH="/tmp/flannel-kubernetes"
-    ANSIBLE_PLAYBOOK="kubernetes-cluster.yml"
-    ANSIBLE_PLAYBOOK_ROOT=DEFAULT_ANSIBLE_PATH
-    ANSIBLE_HOSTS_TEMPLATE=("[kube-master]\nKUBE_MASTER_PLACEHOLDER\n\n[kube-minions-linux]\nKUBE_MINIONS_LINUX_PLACEHOLDER\n\n"
-                            "[kube-minions-windows]\nKUBE_MINIONS_WINDOWS_PLACEHOLDER\n")
-    ANSIBLE_HOSTS_PATH="%s/inventory/hosts" % ANSIBLE_PLAYBOOK_ROOT
-    DEFAULT_ANSIBLE_WINDOWS_ADMIN="Admin"
-    DEFAULT_ANSIBLE_HOST_VAR_WINDOWS_TEMPLATE="ansible_user: USERNAME_PLACEHOLDER\nansible_password: PASS_PLACEHOLDER\n"
-    DEFAULT_ANSIBLE_HOST_VAR_DIR="%s/inventory/host_vars" % ANSIBLE_PLAYBOOK_ROOT
-    HOSTS_FILE="/etc/hosts"
-    ANSIBLE_CONFIG_FILE="%s/ansible.cfg" % ANSIBLE_PLAYBOOK_ROOT
+    DEFAULT_ANSIBLE_PATH = "/tmp/flannel-kubernetes"
+    ANSIBLE_PLAYBOOK = "kubernetes-cluster.yml"
+    ANSIBLE_PLAYBOOK_ROOT = DEFAULT_ANSIBLE_PATH
+    ANSIBLE_HOSTS_TEMPLATE = ("[kube-master]\nKUBE_MASTER_PLACEHOLDER\n\n[kube-minions-linux]\nKUBE_MINIONS_LINUX_PLACEHOLDER\n\n"
+                              "[kube-minions-windows]\nKUBE_MINIONS_WINDOWS_PLACEHOLDER\n")
+    ANSIBLE_HOSTS_PATH = "%s/inventory/hosts" % ANSIBLE_PLAYBOOK_ROOT
+    DEFAULT_ANSIBLE_WINDOWS_ADMIN = "Admin"
+    DEFAULT_ANSIBLE_HOST_VAR_WINDOWS_TEMPLATE = "ansible_user: USERNAME_PLACEHOLDER\nansible_password: PASS_PLACEHOLDER\n"
+    DEFAULT_ANSIBLE_HOST_VAR_DIR = "%s/inventory/host_vars" % ANSIBLE_PLAYBOOK_ROOT
+    HOSTS_FILE = "/etc/hosts"
+    ANSIBLE_CONFIG_FILE = "%s/ansible.cfg" % ANSIBLE_PLAYBOOK_ROOT
 
-    KUBE_CONFIG_PATH="/root/.kube/config"
-    KUBE_TLS_SRC_PATH="/etc/kubernetes/tls/"
+    KUBE_CONFIG_PATH = "/root/.kube/config"
+    KUBE_TLS_SRC_PATH = "/etc/kubernetes/tls/"
 
     def __init__(self):
         super(Flannel_CI, self).__init__()

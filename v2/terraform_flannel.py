@@ -17,30 +17,31 @@ p.add("--flannelMode", default="overlay", help="Option: overlay or host-gw")
 p.add("--containerRuntime", default="docker", help="Container runtime to set in ansible: docker / containerd.")
 p.add("--remoteCmdRetries", type=int, default=5, help="Number of retries Ansible adhoc command should do.")
 
+
 class Terraform_Flannel(ci.CI):
 
-    DEFAULT_ANSIBLE_PATH="/tmp/flannel-kubernetes"
-    ANSIBLE_PLAYBOOK="kubernetes-cluster.yml"
-    ANSIBLE_PLAYBOOK_ROOT=DEFAULT_ANSIBLE_PATH
-    ANSIBLE_HOSTS_TEMPLATE=("[kube-master]\nKUBE_MASTER_PLACEHOLDER\n\n"
-                            "[kube-minions-windows]\nKUBE_MINIONS_WINDOWS_PLACEHOLDER\n")
-    ANSIBLE_HOSTS_PATH="%s/inventory/hosts" % ANSIBLE_PLAYBOOK_ROOT
-    DEFAULT_ANSIBLE_WINDOWS_ADMIN="Admin"
-    DEFAULT_ANSIBLE_HOST_VAR_WINDOWS_TEMPLATE='ansible_user: "USERNAME_PLACEHOLDER"\nansible_password: "PASS_PLACEHOLDER"\nansible_winrm_read_timeout_sec: 240\n'
-    DEFAULT_ANSIBLE_HOST_VAR_DIR="%s/inventory/host_vars" % ANSIBLE_PLAYBOOK_ROOT
-    DEFAULT_GROUP_VARS_PATH="%s/inventory/group_vars/all" % ANSIBLE_PLAYBOOK_ROOT
-    HOSTS_FILE="/etc/hosts"
-    ANSIBLE_CONFIG_FILE="%s/ansible.cfg" % ANSIBLE_PLAYBOOK_ROOT
+    DEFAULT_ANSIBLE_PATH = "/tmp/flannel-kubernetes"
+    ANSIBLE_PLAYBOOK = "kubernetes-cluster.yml"
+    ANSIBLE_PLAYBOOK_ROOT = DEFAULT_ANSIBLE_PATH
+    ANSIBLE_HOSTS_TEMPLATE = ("[kube-master]\nKUBE_MASTER_PLACEHOLDER\n\n"
+                              "[kube-minions-windows]\nKUBE_MINIONS_WINDOWS_PLACEHOLDER\n")
+    ANSIBLE_HOSTS_PATH = "%s/inventory/hosts" % ANSIBLE_PLAYBOOK_ROOT
+    DEFAULT_ANSIBLE_WINDOWS_ADMIN = "Admin"
+    DEFAULT_ANSIBLE_HOST_VAR_WINDOWS_TEMPLATE = 'ansible_user: "USERNAME_PLACEHOLDER"\nansible_password: "PASS_PLACEHOLDER"\nansible_winrm_read_timeout_sec: 240\n'
+    DEFAULT_ANSIBLE_HOST_VAR_DIR = "%s/inventory/host_vars" % ANSIBLE_PLAYBOOK_ROOT
+    DEFAULT_GROUP_VARS_PATH = "%s/inventory/group_vars/all" % ANSIBLE_PLAYBOOK_ROOT
+    HOSTS_FILE = "/etc/hosts"
+    ANSIBLE_CONFIG_FILE = "%s/ansible.cfg" % ANSIBLE_PLAYBOOK_ROOT
 
-    KUBE_CONFIG_PATH="/root/.kube/config"
-    KUBE_TLS_SRC_PATH="/etc/kubernetes/tls/"
+    KUBE_CONFIG_PATH = "/root/.kube/config"
+    KUBE_TLS_SRC_PATH = "/etc/kubernetes/tls/"
 
     FLANNEL_MODE_OVERLAY = "overlay"
     FLANNEL_MODE_L2BRIDGE = "host-gw"
 
     AZURE_CCM_LOCAL_PATH = "/tmp/azure.json"
     AZURE_CONFIG_TEMPALTE = {
-        "cloud":"AzurePublicCloud",
+        "cloud": "AzurePublicCloud",
         "tenantId": "",
         "subscriptionId": "",
         "aadClientId": "",
@@ -107,7 +108,6 @@ class Terraform_Flannel(ci.CI):
         with open(Terraform_Flannel.AZURE_CCM_LOCAL_PATH, "w") as f:
             f.write(json.dumps(azure_config))
 
-
     def _prepare_ansible(self):
         utils.clone_repo(self.opts.ansibleRepo, self.opts.ansibleBranch, self.default_ansible_path)
 
@@ -116,7 +116,7 @@ class Terraform_Flannel(ci.CI):
         windows_minions_hostnames = self.deployer.get_cluster_win_minion_vms_names()
 
         hosts_file_content = self.ansible_hosts_template.replace("KUBE_MASTER_PLACEHOLDER", linux_master_hostname)
-        hosts_file_content = hosts_file_content.replace("KUBE_MINIONS_WINDOWS_PLACEHOLDER","\n".join(windows_minions_hostnames))
+        hosts_file_content = hosts_file_content.replace("KUBE_MINIONS_WINDOWS_PLACEHOLDER", "\n".join(windows_minions_hostnames))
 
         self.logging.info("Writing hosts file for ansible inventory.")
         with open(self.ansible_hosts_path, "w") as f:
@@ -126,7 +126,6 @@ class Terraform_Flannel(ci.CI):
         win_hosts_extra_vars = "\nCONTAINER_RUNTIME: \"%s\"" % self.opts.containerRuntime
         if self.opts.containerRuntime == "containerd":
             win_hosts_extra_vars += "\nCNIBINS: \"sdnms\""
-
 
         # Creating hosts_vars for hosts
         for vm_name in windows_minions_hostnames:
@@ -144,7 +143,7 @@ class Terraform_Flannel(ci.CI):
             log_config = "log_path=%s\n" % log_file
             json_output = "stdout_callback = json\nbin_ansible_callbacks = True"
             # This probably goes better in /etc/ansible.cfg (set in dockerfile )
-            ansible_config="\n\n[ssh_connection]\nssh_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\n"
+            ansible_config = "\n\n[ssh_connection]\nssh_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\n"
             f.write(log_config)
             f.write(json_output)
             f.write(ansible_config)
@@ -161,7 +160,6 @@ class Terraform_Flannel(ci.CI):
         if self.opts.flannelMode == Terraform_Flannel.FLANNEL_MODE_L2BRIDGE:
             self._generate_azure_config()
             azure_ccm = "true"
-
 
         # Set flannel mode in group vars
         with open(self.ansible_group_vars_file, "a") as f:
@@ -194,13 +192,12 @@ class Terraform_Flannel(ci.CI):
         cmd = cmd.split()
         cmd.append("--key-file=%s" % self.opts.ssh_private_key_path)
 
-        out, _ ,ret = utils.run_cmd(cmd, stdout=True, cwd=self.ansible_playbook_root)
+        out, _, ret = utils.run_cmd(cmd, stdout=True, cwd=self.ansible_playbook_root)
 
         if ret != 0:
             self.logging.error("Failed to deploy ansible-playbook with error: %s" % out)
             raise Exception("Failed to deploy ansible-playbook with error: %s" % out)
         self.logging.info("Succesfully deployed ansible-playbook.")
-
 
     def _waitForConnection(self, machines, windows):
         self.logging.info("Waiting for connection to %s." % machines)
@@ -281,7 +278,7 @@ class Terraform_Flannel(ci.CI):
         self.logging.info("Running cmd %s on remote machines %s." % (command, machines))
 
         def _runRemoteAnsible(command, machines, windows=False, root=False):
-            cmd=["ansible"]
+            cmd = ["ansible"]
             if root:
                 cmd.append("--become")
             if windows:
@@ -305,7 +302,7 @@ class Terraform_Flannel(ci.CI):
             return ret, out
 
         ret, out = _runRemoteAnsible(command, machines, windows, root)
-        while retries !=0 and ret != 0:
+        while retries != 0 and ret != 0:
             self.logging.info("Ansible failed to run command %s. Retrying." % command)
             retries -= 1
             ret, out = _runRemoteAnsible(command, machines=self._parseAnsibleOutput(out), windows=windows, root=root)
@@ -315,10 +312,9 @@ class Terraform_Flannel(ci.CI):
             self.logging.error("Ansible failed to run command %s on machines %s with error: %s" % (command, machines, out))
             raise Exception("Ansible failed to run command %s on machines %s with error: %s" % (command, machines, out))
 
-
     def _prepullImages(self, runtime):
         # TO DO: This path should be passed as param
-        prepull_script=os.path.join(os.getcwd(), "prepull.ps1")
+        prepull_script = os.path.join(os.getcwd(), "prepull.ps1")
         self.logging.info("Copying prepull script to all windows nodes.")
         vms = self.deployer.get_cluster_win_minion_vms_names()
         self._copyTo(prepull_script, "c:\\", vms, windows=True)
@@ -331,10 +327,10 @@ class Terraform_Flannel(ci.CI):
         linux_master = self.deployer.get_cluster_master_vm_name()
 
         self.logging.info("Copying kubeconfig from master")
-        self._copyFrom("/root/.kube/config","/tmp/kubeconfig", linux_master, root=True)
-        self._copyFrom("/etc/kubernetes/tls/ca.pem","/etc/kubernetes/tls/ca.pem", linux_master, root=True)
-        self._copyFrom("/etc/kubernetes/tls/admin.pem","/etc/kubernetes/tls/admin.pem", linux_master, root=True)
-        self._copyFrom("/etc/kubernetes/tls/admin-key.pem","/etc/kubernetes/tls/admin-key.pem", linux_master, root=True)
+        self._copyFrom("/root/.kube/config", "/tmp/kubeconfig", linux_master, root=True)
+        self._copyFrom("/etc/kubernetes/tls/ca.pem", "/etc/kubernetes/tls/ca.pem", linux_master, root=True)
+        self._copyFrom("/etc/kubernetes/tls/admin.pem", "/etc/kubernetes/tls/admin.pem", linux_master, root=True)
+        self._copyFrom("/etc/kubernetes/tls/admin-key.pem", "/etc/kubernetes/tls/admin-key.pem", linux_master, root=True)
 
         with open("/tmp/kubeconfig") as f:
             content = yaml.full_load(f)
@@ -386,9 +382,10 @@ class Terraform_Flannel(ci.CI):
             "containerdshim": self._build_containerd_shim,
             "sdnbins": self._build_sdn_binaries
         }
+
         def noop_func():
             pass
-        
+
         for bins in binsToBuild:
             self.logging.info("Building %s binaries." % bins)
             builder_mapping.get(bins, noop_func)()
