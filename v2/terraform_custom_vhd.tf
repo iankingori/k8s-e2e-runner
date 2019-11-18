@@ -5,6 +5,8 @@ variable master_vm_size {}
 variable win_minion_count {}
 variable win_minion_vm_size {}
 variable win_minion_vm_name_prefix {}
+variable win_minion_vm_username {}
+variable win_minion_vm_password {}
 variable ssh_key_data {}
 variable win_img_uri {}
 variable win_img_storage_account {}
@@ -123,6 +125,7 @@ resource "azurerm_virtual_machine" "masterVM" {
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Premium_LRS"
+    disk_size_gb      = "100"
   }
 
   storage_image_reference {
@@ -207,9 +210,9 @@ resource "azurerm_network_interface" "winMinNic" {
   }
 }
 
-resource "azurerm_virtual_machine_extension" "powershell_winrm" {
+resource "azurerm_virtual_machine_extension" "powershell_winservices" {
   count                = "${var.win_minion_count}"
-  name                 = "EnableWinRM"
+  name                 = "EnableWinServices"
   location             = "${var.location}"
   resource_group_name  = "${azurerm_resource_group.clusterRg.name}"
   virtual_machine_name = "${element(azurerm_virtual_machine.winMinionVM.*.name, count.index)}"
@@ -219,8 +222,8 @@ resource "azurerm_virtual_machine_extension" "powershell_winrm" {
 
   settings = <<SETTINGS
     {
-        "fileUris": ["https://raw.githubusercontent.com/adelina-t/k8s-ovn-ovs/terraform_flannel/v2/enableWinrm.ps1"],
-        "commandToExecute": "powershell -ExecutionPolicy Unrestricted -File enableWinrm.ps1"
+        "fileUris": ["https://raw.githubusercontent.com/e2e-win/k8s-ovn-ovs/master/v2/enableWinServices.ps1"],
+        "commandToExecute": "powershell -ExecutionPolicy Unrestricted -File enableWinServices.ps1 *> C:\\enableWinServices.log"
     }
 SETTINGS
 }
@@ -245,8 +248,8 @@ resource "azurerm_virtual_machine" "winMinionVM" {
 
   os_profile {
     computer_name  = "${var.win_minion_vm_name_prefix}${count.index}"
-    admin_username = "azureuser"
-    admin_password = "Passw0rd1234"
+    admin_username = "${var.win_minion_vm_username}"
+    admin_password = "${var.win_minion_vm_password}"
   }
 
   os_profile_windows_config {
