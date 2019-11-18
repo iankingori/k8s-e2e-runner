@@ -1,6 +1,5 @@
 [terraform]
 
-location = westeurope
 rg_name = test-deployment
 
 master-vm-name = test-master
