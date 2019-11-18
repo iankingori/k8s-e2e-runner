@@ -11,12 +11,13 @@ TESTINFRA_REPO_URL = "https://github.com/kubernetes/test-infra"
 p = configargparse.get_argument_parser()
 
 p.add("--repo-list", default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list",
-                     help="Repo list with registries for test images.")
+      help="Repo list with registries for test images.")
 p.add("--parallel-test-nodes", default=1)
 p.add("--test-dry-run", default="False")
 p.add("--test-focus-regex", default="\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]")
 p.add("--test-skip-regex", default="\\[LinuxOnly\\]")
 p.add("--kubetest-link", default="")
+
 
 class CI(object):
 
@@ -26,14 +27,14 @@ class CI(object):
         self.deployer = deployer.NoopDeployer()
 
     def up(self):
-        #pass
+        # pass
         self.logging.info("UP: Default NOOP")
 
     def build(self):
         self.logging.info("BUILD: Default NOOP")
 
     def down(self):
-       #pass
+        # pass
         self.logging.info("DOWN: Default NOOP")
 
     def _prepareTestEnv(self):
@@ -47,7 +48,7 @@ class CI(object):
         # KUBE_MASTER_URL=https://$KUBE_MASTER_IP
         # KUBECONFIG=/path/to/kube/config
         # KUBE_TEST_REPO_LIST= will be set in _prepareTests
-        #pass
+        # pass
         self.logging.info("PREPARE TEST ENV: Default NOOP")
 
     def _getKubetest(self):
@@ -72,7 +73,7 @@ class CI(object):
         # Builds tests
         # Taints linux nodes so that no pods will be scheduled there.
         kubectl = os.environ.get("KUBECTL_PATH") if os.environ.get("KUBECTL_PATH") else os.path.join(utils.get_k8s_folder(), "cluster/kubectl.sh")
-        cmd = [kubectl, "get", "nodes","--selector","beta.kubernetes.io/os=linux","--no-headers", "-o", "custom-columns=NAME:.metadata.name"]
+        cmd = [kubectl, "get", "nodes", "--selector", "beta.kubernetes.io/os=linux", "--no-headers", "-o", "custom-columns=NAME:.metadata.name"]
 
         out, err, ret = utils.run_cmd(cmd, stdout=True, stderr=True)
         if ret != 0:
@@ -80,17 +81,16 @@ class CI(object):
             raise Exception("Failed to get kubernetes nodes: %s." % err)
         linux_nodes = out.strip().split("\n")
         for node in linux_nodes:
-            taint_cmd=[kubectl, "taint", "nodes", node, "node-role.kubernetes.io/master=:NoSchedule"]
-            label_cmd=[kubectl, "label", "nodes", node, "node-role.kubernetes.io/master=NoSchedule"]
+            taint_cmd = [kubectl, "taint", "nodes", node, "node-role.kubernetes.io/master=:NoSchedule"]
+            label_cmd = [kubectl, "label", "nodes", node, "node-role.kubernetes.io/master=NoSchedule"]
             _, err, ret = utils.run_cmd(taint_cmd, stderr=True)
             if ret != 0:
-                self.logging.info("Failed to taint node %s with error %s." %(node, err))
-                raise Exception("Failed to taint node %s with error %s." %(node, err))
+                self.logging.info("Failed to taint node %s with error %s." % (node, err))
+                raise Exception("Failed to taint node %s with error %s." % (node, err))
             _, err, ret = utils.run_cmd(label_cmd, stderr=True)
             if ret != 0:
-                self.logging.info("Failed to label node %s with error %s." %(node, err))
-                raise Exception("Failed to label node %s with error %s." %(node, err))
-
+                self.logging.info("Failed to label node %s with error %s." % (node, err))
+                raise Exception("Failed to label node %s with error %s." % (node, err))
 
         self.logging.info("Downloading repo-list.")
         utils.download_file(self.opts.repo_list, "/tmp/repo-list")
@@ -124,17 +124,17 @@ class CI(object):
         cmd.append("--test")
         cmd.append("--dump=%s" % self.opts.log_path)
         cmd.append('--test_args=--ginkgo.flakeAttempts=1 --num-nodes=2 --ginkgo.noColor --ginkgo.dryRun=%(dryRun)s --node-os-distro=windows --ginkgo.focus=%(focus)s --ginkgo.skip=%(skip)s' % {
-                                                                                                "dryRun": self.opts.test_dry_run,
-                                                                                                "focus": self.opts.test_focus_regex,
-                                                                                                "skip": self.opts.test_skip_regex
-                                                                                             })
+                   "dryRun": self.opts.test_dry_run,
+                   "focus": self.opts.test_focus_regex,
+                   "skip": self.opts.test_skip_regex
+                   })
         return subprocess.call(cmd, cwd=utils.get_k8s_folder())
 
     def test(self):
         self._prepareTestEnv()
         self._prepareTests()
         # Only for debugging in a container. Will speep so user can run tests on a prepared env.
-        if self.opts.hold == True:
+        if self.opts.hold is True:
             import time
             time.sleep(1000000)
         ret = self._runTests()
