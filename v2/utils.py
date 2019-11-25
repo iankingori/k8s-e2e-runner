@@ -48,7 +48,7 @@ def run_cmd(cmd, timeout=50000, env=None, stdout=False,
 
 
 def clone_repo(repo, branch="master", dest_path=None):
-    cmd = ["git", "clone", "--depth=1", "--single-branch", "--branch", branch, repo]
+    cmd = ["git", "clone", "--single-branch", "--branch", branch, repo]
     if dest_path:
         cmd.append(dest_path)
     logging.info("Cloning git repo %s on branch %s in location %s" % (repo, branch, dest_path if not None else os.getcwd()))
