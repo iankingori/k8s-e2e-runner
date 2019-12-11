@@ -186,6 +186,21 @@ class Terraform_Flannel(ci.CI):
             self.logging.error("No connection to machines. Error: %s" % out)
             raise Exception("No connection to machines. Error: %s" % out)
 
+    def install_lanfix(self):
+        utils.mkdir_p("/tmp/lanfix")
+        fix_files = ["vfpext.sys", "vfpext.sys.signinfo", "sfpcopy.exe"]
+        vms = self.deployer.get_cluster_win_minion_vms_names()
+
+        for file in fix_files:
+            self.logging.info("Downloading file: %s" % file)
+            utils.download_file(("http://10.0.10.187/%s" % file), ("/tmp/lanfix/%s" % file))
+            self._copyTo(("/tmp/lanfix/%s" % file), "c:\\", vms, windows=True)
+
+        self._runRemoteCmd(("bcdedit /set testsigning on"), vms, self.opts.remoteCmdRetries, windows=True)
+        self._runRemoteCmd(("C:\\sfpcopy.exe C:\\vfpext.sys C:\\Windows\\System32\\drivers\\vfpext.sys"), vms, self.opts.remoteCmdRetries, windows=True)
+        self._runRemoteCmd(("Restart-Computer"), vms, self.opts.remoteCmdRetries, windows=True)
+        self._waitForConnection(vms, windows=True)
+
     def _deploy_ansible(self):
         self.logging.info("Starting Ansible deployment.")
         cmd = "ansible-playbook %s -v" % self.ansible_playbook

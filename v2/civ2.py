@@ -29,6 +29,7 @@ def parse_args():
     p.add('--log-path', default="/tmp/civ2_logs", help='Path to place all artifacts')
     p.add('--ci', help="OVN-OVS, Flannel")
     p.add('--install-patch', action="append", help="URLs of KBs to install on Windows nodes")
+    p.add('--install-lanfix', type=str2bool, default=False)
     p.add('--cluster-name', help="Name of cluster.")
     p.add('--k8s-repo', default="http://github.com/kubernetes/kubernetes")
     p.add('--k8s-branch', default="master")
@@ -74,6 +75,8 @@ def main():
             if opts.down is True:
                 ci.down()
             ci.up()
+        if opts.install_lanfix is True:
+            ci.install_lanfix()
         if opts.test is True:
             success = ci.test()
         if success != 0:
