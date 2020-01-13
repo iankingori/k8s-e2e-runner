@@ -175,7 +175,7 @@ class Terraform_Flannel(ci.CI):
 
     def _install_patches(self):
         self.logging.info("Installing patches.")
-        installer_script = os.path.join("/tmp/k8s-ovn-ovs/v2/installPatches.ps1")
+        installer_script = os.path.join("/tmp/k8s-e2e-runner/v2/installPatches.ps1")
         vms = self.deployer.get_cluster_win_minion_vms_names()
 
         self._copyTo(installer_script, "c:\\", vms, windows=True)

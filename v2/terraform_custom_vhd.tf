@@ -222,7 +222,7 @@ resource "azurerm_virtual_machine_extension" "powershell_winservices" {
 
   settings = <<SETTINGS
     {
-        "fileUris": ["https://raw.githubusercontent.com/e2e-win/k8s-ovn-ovs/master/v2/enableWinServices.ps1"],
+        "fileUris": ["https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/master/v2/enableWinServices.ps1"],
         "commandToExecute": "powershell -ExecutionPolicy Unrestricted -File enableWinServices.ps1 *> C:\\enableWinServices.log"
     }
 SETTINGS

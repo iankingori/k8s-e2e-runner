@@ -13,7 +13,7 @@ import json
 p = configargparse.get_argument_parser()
 logger = logging.getLogger("bootstrap")
 
-JOB_REPO_CLONE_DST = os.path.join(tempfile.gettempdir(), "k8s-ovn-ovs")
+JOB_REPO_CLONE_DST = os.path.join(tempfile.gettempdir(), "k8s-e2e-runner")
 DEFAULT_JOB_CONFIG_PATH = os.path.join(tempfile.gettempdir(), "job_config.txt")
 
 
@@ -61,7 +61,7 @@ def parse_args():
             raise configargparse.ArgumentTypeError('Boolean value expected')
 
     p.add('--job-config', help='Configuration for job to be ran. URL or file.')
-    p.add('--job-repo', default="http://github.com/adelina-t/k8s-ovn-ovs", help='Respository for job runner.')
+    p.add('--job-repo', default="http://github.com/e2e-win/k8s-e2e-runner", help='Respository for job runner.')
     p.add('--job-branch', default="master", help='Branch for job runner.')
     p.add('--service-account', help='Service account for gcloud login.')
     p.add('--log-path', default="/tmp/civ2_logs")
