@@ -15,17 +15,12 @@ function Get-WindowsErrors {
                    | Select-Object -Property TimeCreated, Id, LevelDisplayName, Message
     $crashes = Get-WinEvent -FilterHashtable @{logname='Application'; ProviderName='Windows Error Reporting'} -ErrorAction SilentlyContinue `
                    | Select-Object -Property TimeCreated, Id, LevelDisplayName, Message
-    $hyperVOperational = Get-WinEvent -LogName Microsoft-Windows-Hyper-V-Compute-Operational `
-                             | Select-Object -Property TimeCreated, Id, LevelDisplayName, Message `
-                             | Sort-Object TimeCreated
 
     $rebootsPath = Join-Path -Path $path -ChildPath "reboots.txt"
     $crashesPath = Join-Path -Path $path -ChildPath "crashes.txt"
-    $hyperVOperationalPath = Join-Path -Path $path -ChildPath "hyperv-operational.txt"
 
     $reboots | Out-File -FilePath $rebootsPath
     $crashes | Out-File -FilePath $crashesPath
-    $hyperVOperational | Out-File -FilePath $hyperVOperationalPath
 }
 
 function Get-DockerLogs {
@@ -36,17 +31,13 @@ function Get-DockerLogs {
     $path = Join-Path -Path $Destination -ChildPath "docker-logs"
     New-Item -ItemType directory -Path $path | Out-Null
 
-    Copy-Item -Path "C:\Program Files\Docker\dockerd.log" -Destination $path
-    Copy-Item -Path "C:\Program Files\Docker\dockerd-servicewrapper-config.ini" -Destination $path
+    if (Test-Path "C:\Program Files\Docker\dockerd.log*") {
+        Copy-Item -Path "C:\Program Files\Docker\dockerd.log*" -Destination $path
+    }
 
-    $dockerContainers = $(docker ps -a)
-    $dockerImages = $(docker images -a)
-
-    $dockerContainersPath = Join-Path -Path $path -ChildPath "docker-containers.txt"
-    $dockerImagesPath = Join-Path -Path $path -ChildPath "docker-images.txt"
-
-    $dockerContainers | Out-File -FilePath $dockerContainersPath
-    $dockerImages | Out-File -FilePath $dockerImagesPath
+    if (Test-Path "C:\Program Files\Docker\dockerd-servicewrapper-config.ini") {
+        Copy-Item -Path "C:\Program Files\Docker\dockerd-servicewrapper-config.ini" -Destination $path
+    }
 }
 
 # Creates a WindowsLogs folder at the required destination
@@ -69,15 +60,16 @@ function Get-ServiceLogs {
     )
 
     foreach ($service in $Services) {
-        if (-not (Get-Service -Name $service -ErrorAction SilentlyContinue)) {
-            continue
-        }
-
         $path = Join-Path -Path $Destination -ChildPath "$service-logs"
         New-Item -ItemType directory -Path $path | Out-Null
 
-        Copy-Item -Path "C:\k\$service-servicewrapper-config.ini" -Destination $path
-        Copy-Item -Path "C:\k\$service*.log" -Destination $path
+        if (Test-Path "C:\k\$service-servicewrapper-config.ini") {
+            Copy-Item -Path "C:\k\$service-servicewrapper-config.ini" -Destination $path
+        }
+
+        if (Test-Path "C:\k\$service*.log") {
+            Copy-Item -Path "C:\k\$service*.log" -Destination $path
+        }
     }
 }
 
@@ -108,9 +100,12 @@ function Main {
     Get-WindowsLogs -Destination $path
     Get-KubernetesLogs -Destination  $path
     
-    Compress-Archive -Path $path -CompressionLevel Optimal -DestinationPath $ArchivePath
+    Compress-Archive -Path $path -CompressionLevel Optimal -DestinationPath $ArchivePath -Force
 
     Remove-Item -Recurse -Force -Path $path
 }
 
 Main
+Write-Host "Archive created."
+New-Item -ItemType file C:\k\collect-logs.done -Force
+Start-Sleep -Seconds 3600

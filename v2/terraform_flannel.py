@@ -4,6 +4,7 @@ import constants
 import utils
 import os
 import terraform
+import time
 import shutil
 import yaml
 import json
@@ -214,6 +215,28 @@ class Terraform_Flannel(ci.CI):
             raise Exception("Failed to deploy ansible-playbook with error: %s" % out)
         self.logging.info("Succesfully deployed ansible-playbook.")
 
+    def _setup_kubeconfig(self):
+        self.logging.info("Setting up kubeconfig.")
+
+        ansible_tmp_path = os.path.join(self.ansible_playbook_root, "tmp")
+        kubeconfig_path = os.path.join(ansible_tmp_path, "kubeconfig.yaml")
+
+        utils.mkdir_p("/etc/kubernetes")
+        utils.mkdir_p("/etc/kubernetes/tls")
+        shutil.copy(os.path.join(ansible_tmp_path, "k8s_ca.pem"), "/etc/kubernetes/tls/ca.pem")
+        shutil.copy(os.path.join(ansible_tmp_path, "k8s_admin.pem"), "/etc/kubernetes/tls/admin.pem")
+        shutil.copy(os.path.join(ansible_tmp_path, "k8s_admin-key.pem"), "/etc/kubernetes/tls/admin-key.pem")
+        shutil.copy(os.path.join(ansible_tmp_path, "k8s_node.pem"), "/etc/kubernetes/tls/node.pem")
+        shutil.copy(os.path.join(ansible_tmp_path, "k8s_node-key.pem"), "/etc/kubernetes/tls/node-key.pem")
+
+        with open(kubeconfig_path) as f:
+            content = yaml.full_load(f)
+        for cluster in content["clusters"]:
+            cluster["cluster"]["server"] = "https://kubernetes"
+        with open(kubeconfig_path, "w") as f:
+            yaml.dump(content, f)
+        os.environ["KUBECONFIG"] = kubeconfig_path
+
     def _waitForConnection(self, machines, windows):
         self.logging.info("Waiting for connection to %s." % machines)
         cmd = ["ansible"]
@@ -336,27 +359,9 @@ class Terraform_Flannel(ci.CI):
         self._runRemoteCmd(("c:\\prepull.ps1 -runtime %s" % runtime), vms, self.opts.remoteCmdRetries, windows=True)
 
     def _prepareTestEnv(self):
-        # For Ansible based CIs: copy config file from .kube folder of the master node
-        # Replace Server in config with dns-name for the machine
-        # Export appropriate env vars
-        linux_master = self.deployer.get_cluster_master_vm_name()
-
-        self.logging.info("Copying kubeconfig from master")
-        self._copyFrom("/root/.kube/config", "/tmp/kubeconfig", linux_master, root=True)
-        self._copyFrom("/etc/kubernetes/tls/ca.pem", "/etc/kubernetes/tls/ca.pem", linux_master, root=True)
-        self._copyFrom("/etc/kubernetes/tls/admin.pem", "/etc/kubernetes/tls/admin.pem", linux_master, root=True)
-        self._copyFrom("/etc/kubernetes/tls/admin-key.pem", "/etc/kubernetes/tls/admin-key.pem", linux_master, root=True)
-
-        with open("/tmp/kubeconfig") as f:
-            content = yaml.full_load(f)
-        for cluster in content["clusters"]:
-            cluster["cluster"]["server"] = "https://kubernetes"
-        with open("/tmp/kubeconfig", "w") as f:
-            yaml.dump(content, f)
         os.environ["KUBE_MASTER"] = "local"
         os.environ["KUBE_MASTER_IP"] = "kubernetes"
         os.environ["KUBE_MASTER_URL"] = "https://kubernetes"
-        os.environ["KUBECONFIG"] = "/tmp/kubeconfig"
 
         self._prepullImages(self.opts.containerRuntime)
 
@@ -414,6 +419,7 @@ class Terraform_Flannel(ci.CI):
             if self.patches is not None:
                 self._install_patches()
             self._deploy_ansible()
+            self._setup_kubeconfig()
         except Exception as e:
             raise e
 
@@ -424,32 +430,72 @@ class Terraform_Flannel(ci.CI):
         except Exception as e:
             raise e
 
+    def _collect_logs(self, daemonset_yaml, script_url, operating_system):
+        if "KUBECONFIG" not in os.environ:
+            self.logging.info("Skipping collection of %s logs, because KUBECONFIG is not set.", operating_system)
+            return
+
+        self.logging.info("Collecting %s logs.", operating_system)
+        daemonset_name = "collect-logs-%s" % operating_system
+
+        utils.mkdir_p("/tmp/collect-logs")
+        daemonset_yaml_file = "/tmp/collect-logs/collect-logs-%s.yaml" % operating_system
+        utils.download_file(daemonset_yaml, daemonset_yaml_file)
+        utils.sed_inplace(daemonset_yaml_file, "{{SCRIPT_URL}}", script_url)
+
+        kubectl = utils.get_kubectl_bin()
+        cmd = [kubectl, "create", "-f", daemonset_yaml_file]
+        out, err, ret = utils.run_cmd(cmd, stdout=True, stderr=True, shell=True)
+
+        if ret != 0:
+            self.logging.error("Failed to start daemonset: %s" % err)
+            raise Exception("Failed to start daemonset: %s" % err)
+
+        cmd = [kubectl, "get", "pods", "--selector=name=%s" % daemonset_name, "--output=custom-columns=NAME:.metadata.name", "--no-headers"]
+        out, err, ret = utils.run_cmd(cmd, stdout=True, stderr=True, shell=True)
+
+        if ret != 0:
+            self.logging.error("Failed to get collect-logs pods: %s" % err)
+            raise Exception("Failed to get collect-logs pods: %s" % err)
+
+        log_pods = out.splitlines()
+        for pod in log_pods:
+            if not utils.wait_for_ready_pod(pod):
+                self.logging.error("Timed out waiting for pod to be ready: %s", pod)
+                raise Exception("Timed out waiting for pod to be ready: %s", pod)
+
+            cmd = [kubectl, "get", "pod", pod, "--output=custom-columns=NODE:.spec.nodeName", "--no-headers"]
+            vm_name, err, ret = utils.run_cmd(cmd, stdout=True, stderr=True, shell=True)
+
+            if ret != 0:
+                self.logging.error("Failed to get VM name: %s" % err)
+                raise Exception("Failed to get VM name: %s" % err)
+
+            vm_name = vm_name.strip()
+            self.logging.info("Copying logs from: %s" % vm_name)
+
+            logs_vm_path = os.path.join(self.opts.log_path, "%s.zip" % vm_name)
+
+            if (operating_system == "linux"):
+                src_path = "%s:/tmp/k8s-logs.tar.gz" % pod
+            else:
+                src_path = "%s:k/logs.zip" % pod
+
+            cmd = [kubectl, "cp", src_path, logs_vm_path]
+            out, err, ret = utils.run_cmd(cmd, stdout=True, stderr=True, shell=True)
+
+            if ret != 0:
+                self.logging.error("Failed to copy logs: %s" % err)
+                raise Exception("Failed to copy logs: %s" % err)
+
+        if not utils.daemonset_cleanup(daemonset_yaml_file, daemonset_name):
+            self.logging.error("Timed out waiting for daemonset cleanup: %s", daemonset_name)
+            raise Exception("Timed out waiting for daemonset cleanup: %s", daemonset_name)
+
+        self.logging.info("Finished collecting %s logs.", operating_system)
+
     def collectWindowsLogs(self):
-        self.logging.info("Collecting Windows logs.")
-        collect_logs_script = os.path.join(os.getcwd(), "collect-logs.ps1")
-        try:
-            self.logging.info("Copying collect-logs script to windows nodes.")
-            vms = self.deployer.get_cluster_win_minion_vms_names()
-            self._copyTo(collect_logs_script, "c:\\", vms, windows=True)
-            self._runRemoteCmd(("c:\\collect-logs.ps1 -ArchivePath C:\\k\\logs.zip"), vms, self.opts.remoteCmdRetries, windows=True)
-            for vm_name in vms:
-                logs_vm_path = os.path.join(self.opts.log_path, "%s.zip" % vm_name)
-                self._copyFrom("C:\\k\\logs.zip", logs_vm_path, vm_name, windows=True)
-        except Exception as e:
-            self.logging.info("Collecting logs on windows nodes failed.")
-            self.logging.error(e)
+        self._collect_logs(self.opts.collect_logs_windows_yaml, self.opts.collect_logs_windows_script, "windows")
 
     def collectLinuxLogs(self):
-        self.logging.info("Collecting Linux logs.")
-        collect_logs_script = os.path.join(os.getcwd(), "collect-logs.sh")
-        linux_master = self.deployer.get_cluster_master_vm_name()
-        logs_vm_path = os.path.join(self.opts.log_path, "linux-master-logs.tar.gz")
-        try:
-            self.logging.info("Copying collect-logs script to linux master node.")
-            self._copyTo(collect_logs_script, "/home/ubuntu", [linux_master], root=True)
-            self._runRemoteCmd(("chmod +x /home/ubuntu/collect-logs.sh"), [linux_master], self.opts.remoteCmdRetries, root=True)
-            self._runRemoteCmd(("/home/ubuntu/./collect-logs.sh"), [linux_master], self.opts.remoteCmdRetries, root=True)
-            self._copyFrom("/home/ubuntu/k8s-logs.tar.gz", logs_vm_path, linux_master, root=True)
-        except Exception as e:
-            self.logging.info("Collecting logs on master node failed.")
-            self.logging.error(e)
+        self._collect_logs(self.opts.collect_logs_linux_yaml, self.opts.collect_logs_linux_script, "linux")
