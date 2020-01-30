@@ -1,5 +1,8 @@
 variable rg_name {}
 variable location {}
+variable rg_build_id {}
+variable rg_creation_timestamp {}
+variable rg_job_name {}
 variable master_vm_name {}
 variable master_vm_size {}
 variable win_minion_count {}
@@ -30,6 +33,11 @@ provider "azurerm" {
 resource "azurerm_resource_group" "clusterRg" {
   name     = "${var.rg_name}"
   location = "${var.location}"
+  tags = {
+    buildID = "${var.rg_build_id}"
+    creationTimestamp = "${var.rg_creation_timestamp}"
+    jobName = "${var.rg_job_name}"
+  }
 }
 
 # Create virtual network
