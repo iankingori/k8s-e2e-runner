@@ -1,9 +1,7 @@
 #!/bin/bash
 
-CurrentDir=`pwd`
-
 # Create logs directory
-LogDir='/var/log/k8s-logs'
+LogDir=$(mktemp -d /tmp/k8s-logs-XXXXXXXX)
 if [ ! -z $LogDir ]; then
   mkdir -p $LogDir
 fi
@@ -22,10 +20,6 @@ docker-data() {
  if [ ! -z "docker-data" ]; then
    mkdir docker-data
  fi
-
- docker info > docker-data/docker-info
- docker ps -a > docker-data/docker-containers
- docker images -a > docker-data/docker-images
 
  get-service-logs docker.service docker-data
 }
@@ -91,5 +85,7 @@ system-logs
 k8s-data
 
 # Archive logs
-tar '-czf' k8s-logs.tar.gz -C $LogDir .
-mv k8s-logs.tar.gz $CurrentDir
+tar -czvf /tmp/k8s-logs.tar.gz -C $LogDir .
+
+touch /tmp/collect-logs.done
+sleep 3600

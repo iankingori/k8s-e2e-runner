@@ -4,8 +4,11 @@ import log
 from threading import Timer
 import errno
 import random
+import re
 import shutil
 import string
+import tempfile
+import time
 import glob
 import constants
 from Crypto.PublicKey import RSA
@@ -258,3 +261,78 @@ def download_file(url, dst):
 
 def run_ssh_cmd(cmd, user, host,):
     cmd = ["ssh", "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"]
+
+
+def sed_inplace(filename, pattern, repl):
+    pattern_compiled = re.compile(pattern)
+
+    with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp_file:
+        with open(filename) as src_file:
+            for line in src_file:
+                tmp_file.write(pattern_compiled.sub(repl, line))
+
+    shutil.copystat(filename, tmp_file.name)
+    shutil.move(tmp_file.name, filename)
+
+
+def get_kubectl_bin():
+    if os.environ.get("KUBECTL_PATH"):
+        return os.environ.get("KUBECTL_PATH")
+    else:
+        return os.path.join(get_k8s_folder(), "cluster/kubectl.sh")
+
+
+def wait_for_ready_pod(pod_name, timeout=300):
+    logging.info("Waiting up to %d seconds for pod %s to be ready.", timeout, pod_name)
+
+    kubectl = get_kubectl_bin()
+    start = time.time()
+    cmd = [kubectl, "get", "pods", "--output=custom-columns=READY:.status.containerStatuses[].ready", "--no-headers", pod_name]
+
+    while True:
+        elapsed = time.time() - start
+        if (elapsed > timeout):
+            return False
+
+        out, err, ret = run_cmd(cmd, stdout=True, stderr=True, shell=True, sensitive=True)
+
+        if ret != 0:
+            self.logging.error("Failed to get pod ready status: %s" % err)
+            raise Exception("Failed to get pod ready status: %s" % err)
+
+        pod_ready = out.strip()
+        if (pod_ready == "true"):
+            return True
+
+        time.sleep(5)
+
+
+def daemonset_cleanup(daemonset_yaml, daemonset_name, timeout=300):
+    logging.info("Cleaning up daemonset: %s", daemonset_name)
+
+    kubectl = get_kubectl_bin()
+    start = time.time()
+    cmd = [kubectl, "delete", "-f", daemonset_yaml]
+    out, err, ret = run_cmd(cmd, stdout=True, stderr=True, shell=True)
+
+    if ret != 0:
+            self.logging.error("Failed to delete daemonset: %s" % err)
+            raise Exception("Failed to delete daemonset: %s" % err)
+
+    cmd = [kubectl, "get", "pods", "--selector=name=%s" % daemonset_name, "--no-headers", "--ignore-not-found"]
+
+    while True:
+        elapsed = time.time() - start
+        if (elapsed > timeout):
+            return False
+
+        out, err, ret = run_cmd(cmd, stdout=True, stderr=True, shell=True, sensitive=True)
+
+        if ret != 0:
+            self.logging.error("Failed to get daemonset: %s" % err)
+            raise Exception("Failed to get daemonset: %s" % err)
+
+        if (out.strip() == ""):
+            return True
+
+        time.sleep(5)

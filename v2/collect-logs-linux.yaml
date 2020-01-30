@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: collect-logs-linux
+spec:
+  selector:
+    matchLabels:
+      name: collect-logs-linux
+  template:
+    metadata:
+      labels:
+        name: collect-logs-linux
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Equal
+        value: "true"
+      - effect: NoExecute
+        operator: Exists
+      - effect: NoSchedule
+        operator: Exists
+      containers:
+      - image: fedora
+        name: collect-logs-linux
+        volumeMounts:
+        - name: kubectlbin
+          mountPath: /usr/bin/kubectl
+        - name: kubeconfig
+          mountPath: /root/.kube/config
+        - name: runlog
+          mountPath: /run/log
+        - name: varlog
+          mountPath: "/var/log"
+        - name: etckubernetes
+          mountPath: "/etc/kubernetes"
+        command: ["bash", "-c", "curl -fsSL {{SCRIPT_URL}} | bash"]
+        readinessProbe:
+          exec:
+            command: ["cat", "/tmp/collect-logs.done"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+      volumes:
+      - name: kubectlbin
+        hostPath:
+          path: /usr/bin/kubectl
+      - name: kubeconfig
+        hostPath:
+          path: /root/.kube/config
+      - name: runlog
+        hostPath:
+          path: /run/log
+      - name: varlog
+        hostPath:
+          path: "/var/log"
+      - name: etckubernetes
+        hostPath:
+          path: "/etc/kubernetes"

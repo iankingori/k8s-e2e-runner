@@ -72,7 +72,7 @@ class CI(object):
         # Sets KUBE_TEST_REPO_LIST
         # Builds tests
         # Taints linux nodes so that no pods will be scheduled there.
-        kubectl = os.environ.get("KUBECTL_PATH") if os.environ.get("KUBECTL_PATH") else os.path.join(utils.get_k8s_folder(), "cluster/kubectl.sh")
+        kubectl = utils.get_kubectl_bin()
         cmd = [kubectl, "get", "nodes", "--selector", "beta.kubernetes.io/os=linux", "--no-headers", "-o", "custom-columns=NAME:.metadata.name"]
 
         out, err, ret = utils.run_cmd(cmd, stdout=True, stderr=True)
