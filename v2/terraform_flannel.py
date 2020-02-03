@@ -350,20 +350,42 @@ class Terraform_Flannel(ci.CI):
             self.logging.error("Ansible failed to run command %s on machines %s with error: %s" % (command, machines, out))
             raise Exception("Ansible failed to run command %s on machines %s with error: %s" % (command, machines, out))
 
-    def _prepullImages(self, runtime):
+    def _applySettings(self):
         # TO DO: This path should be passed as param
-        prepull_script = os.path.join(os.getcwd(), "prepull.ps1")
-        self.logging.info("Copying prepull script to all windows nodes.")
+        settings_script = os.path.join(os.getcwd(), "settings.ps1")
+        self.logging.info("Copying settings script to all windows nodes.")
         vms = self.deployer.get_cluster_win_minion_vms_names()
-        self._copyTo(prepull_script, "c:\\", vms, windows=True)
-        self._runRemoteCmd(("c:\\prepull.ps1 -runtime %s" % runtime), vms, self.opts.remoteCmdRetries, windows=True)
+        self._copyTo(settings_script, "c:\\", vms, windows=True)
+        self._runRemoteCmd(("c:\\settings.ps1"), vms, self.opts.remoteCmdRetries, windows=True)
+
+    def _prepullImages(self):
+        self.logging.info("Starting image prepull.")
+
+        daemonset_name = "prepull"
+        kubectl = utils.get_kubectl_bin()
+        cmd = [kubectl, "create", "-f", self.opts.prepull_yaml]
+        out, _, ret = utils.run_cmd(cmd, stdout=True)
+
+        if ret != 0:
+            self.logging.error("Failed to start daemonset: %s" % out)
+            raise Exception("Failed to start daemonset: %s" % out)
+
+        # Sleep for 15 minutes
+        time.sleep(900)
+
+        if not utils.daemonset_cleanup(self.opts.prepull_yaml, daemonset_name):
+            self.logging.error("Timed out waiting for daemonset cleanup: %s", daemonset_name)
+            raise Exception("Timed out waiting for daemonset cleanup: %s", daemonset_name)
+
+        self.logging.info("Succesfully prepulled images.")
 
     def _prepareTestEnv(self):
         os.environ["KUBE_MASTER"] = "local"
         os.environ["KUBE_MASTER_IP"] = "kubernetes"
         os.environ["KUBE_MASTER_URL"] = "https://kubernetes"
 
-        self._prepullImages(self.opts.containerRuntime)
+        self._applySettings()
+        self._prepullImages()
 
     def _build_k8s_binaries(self):
         k8s_path = utils.get_k8s_folder()
