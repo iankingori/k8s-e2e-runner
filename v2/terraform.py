@@ -1,5 +1,6 @@
 import configargparse
 import constants
+import datetime
 import deployer
 import log
 import utils
@@ -72,6 +73,15 @@ class TerraformProvisioner(deployer.NoopDeployer):
 
     def get_cluster_rg_name(self):
         return self.cluster["resource_group"]
+
+    def get_cluster_rg_build_id(self):
+        return os.getenv("BUILD_ID").strip()
+
+    def get_cluster_rg_creation_timestamp(self):
+        return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+    def get_cluster_rg_job_name(self):
+        return os.getenv("JOB_NAME").strip()
 
     def get_cluster_master_vm_name(self):
         return self.cluster["master_vm"]["vm_name"]
@@ -199,6 +209,9 @@ class TerraformProvisioner(deployer.NoopDeployer):
         with open(self.terraform_vars_file, "w") as f:
             f.write(out_format % ("location", self.get_cluster_location()))
             f.write(out_format % ("rg_name", self.get_cluster_rg_name()))
+            f.write(out_format % ("rg_build_id", self.get_cluster_rg_build_id()))
+            f.write(out_format % ("rg_creation_timestamp", self.get_cluster_rg_creation_timestamp()))
+            f.write(out_format % ("rg_job_name", self.get_cluster_rg_job_name()))
             f.write(out_format % ("master_vm_name", self.get_cluster_master_vm_name()))
             f.write(out_format % ("master_vm_size", self.get_cluster_master_vm_size()))
             f.write(out_format % ("win_minion_count", self.get_cluster_win_minion_vm_count()))
