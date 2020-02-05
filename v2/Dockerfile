@@ -1,24 +1,44 @@
-FROM ubuntu:xenial
+FROM ubuntu:bionic
 
-RUN apt-get update &&  apt-get install -y software-properties-common python python-pip \
-    git make curl build-essential libssl-dev libffi-dev python-dev python-openssl wget unzip
+ENV GO_VERSION=1.13.7
 
-RUN pip install --upgrade setuptools && \
-    pip install python-openstackclient && \
-    pip install python-novaclient && \
-    pip install crudini
+RUN apt-get update && \
+	apt-get install -y \
+		build-essential \
+		curl \
+		git \
+		libffi-dev \
+		libssl-dev \
+		software-properties-common \
+		python \
+		python-dev \
+		python-openssl \
+		python-pip \
+		python3-pip \
+		rsync \
+		unzip \
+		wget
+
+RUN pip install --upgrade \
+	crudini \
+	pip \
+	python-novaclient \
+	python-openstackclient \
+	setuptools
 
 # Install Ansible
-RUN apt-add-repository ppa:ansible/ansible -y && apt-get update && apt-get install ansible -y
+RUN apt-add-repository ppa:ansible/ansible -y && \
+	apt-get update && \
+	apt-get install ansible -y
 RUN pip install pywinrm
 
 # Install Golang
 
-RUN curl -O https://dl.google.com/go/go1.12.4.linux-amd64.tar.gz
-RUN tar -xvf go1.12.4.linux-amd64.tar.gz
+RUN curl -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz
+RUN tar -xf go${GO_VERSION}.linux-amd64.tar.gz
 RUN mv go /usr/local
 RUN rm -rf go
-RUN rm go1.12.4.linux-amd64.tar.gz
+RUN rm go${GO_VERSION}.linux-amd64.tar.gz
 ENV GOPATH "/go"
 ENV PATH "$PATH:/usr/local/go/bin:$GOPATH/bin"
 RUN mkdir -p /go/src
