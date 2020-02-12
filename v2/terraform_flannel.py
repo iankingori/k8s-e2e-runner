@@ -483,8 +483,8 @@ class Terraform_Flannel(ci.CI):
         log_pods = out.splitlines()
         for pod in log_pods:
             if not utils.wait_for_ready_pod(pod):
-                self.logging.error("Timed out waiting for pod to be ready: %s", pod)
-                raise Exception("Timed out waiting for pod to be ready: %s", pod)
+                self.logging.warning("Timed out waiting for pod to be ready: %s", pod)
+                continue
 
             cmd = [kubectl, "get", "pod", pod, "--output=custom-columns=NODE:.spec.nodeName", "--no-headers"]
             vm_name, err, ret = utils.run_cmd(cmd, stdout=True, stderr=True, shell=True)

@@ -307,7 +307,7 @@ def wait_for_ready_pod(pod_name, timeout=300):
         time.sleep(5)
 
 
-def daemonset_cleanup(daemonset_yaml, daemonset_name, timeout=300):
+def daemonset_cleanup(daemonset_yaml, daemonset_name, timeout=600):
     logging.info("Cleaning up daemonset: %s", daemonset_name)
 
     kubectl = get_kubectl_bin()
