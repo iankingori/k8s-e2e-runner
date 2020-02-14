@@ -258,6 +258,8 @@ def download_file(url, dst):
     if ret != 0:
         logging.error("Failed to download file: %s" % url)
 
+    return ret
+
 
 def run_ssh_cmd(cmd, user, host,):
     cmd = ["ssh", "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"]

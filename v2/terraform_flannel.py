@@ -194,7 +194,9 @@ class Terraform_Flannel(ci.CI):
 
         for file in fix_files:
             self.logging.info("Downloading file: %s" % file)
-            utils.download_file(("http://10.0.10.187/%s" % file), ("/tmp/lanfix/%s" % file))
+            ret = utils.download_file(("http://10.0.10.187/%s" % file), ("/tmp/lanfix/%s" % file))
+            if ret != 0:
+                raise Exception("Failed to download file: %s", file)
             self._copyTo(("/tmp/lanfix/%s" % file), "c:\\", vms, windows=True)
 
         self._runRemoteCmd(("bcdedit /set testsigning on"), vms, self.opts.remoteCmdRetries, windows=True)
