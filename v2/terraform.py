@@ -23,7 +23,7 @@ p.add("--win-minion-count", type=int, default=2, help="Number of windows minions
 p.add("--win-minion-name-prefix", default="winvm", help="Prefix for win minion vm names.")
 p.add("--win-minion-size", default="Standard_D2s_v3", help="Size of minion vm")
 p.add("--win-minion-password", default=None, help="Password for win minion vm")
-p.add("--win-minion-image", default="MicrosoftWindowsServer:WindowsServer:Datacenter-Core-1809-with-Containers-smalldisk:17763.914.1912042330", help="Windows image SKU or custom vhd path")
+p.add("--win-minion-image", default="MicrosoftWindowsServer:WindowsServer:Datacenter-Core-1809-with-Containers-smalldisk:17763.973.2001110547", help="Windows image SKU or custom vhd path")
 p.add("--terraform-config")
 p.add("--ssh-public-key-path", default=os.path.join(os.path.join(os.getenv("HOME"), ".ssh", "id_rsa.pub")))
 p.add("--ssh-private-key-path", default=os.path.join(os.path.join(os.getenv("HOME"), ".ssh", "id_rsa")))
