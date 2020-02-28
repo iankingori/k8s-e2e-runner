@@ -26,8 +26,8 @@ if [ -z "${BACKUP_SECRETS}" ]; then
 	log_msg "BACKUP_SECRETS is empty. Not backing up any secrets."
 else
 	for secret in ${BACKUP_SECRETS//,/ }; do
-		SECRET_NAME=$(echo "${secret}" | cut -d/ -f1)
-		SECRET_NAMESPACE=$(echo "${secret}" | cut -d/ -f2)
+		SECRET_NAMESPACE=$(echo "${secret}" | cut -d/ -f1)
+		SECRET_NAME=$(echo "${secret}" | cut -d/ -f2)
 		log_msg "Backing up secret '${SECRET_NAME}' from namespace '${SECRET_NAMESPACE}'..."
 		kubectl get secret "${SECRET_NAME}" -n "${SECRET_NAMESPACE}" -o yaml > "${BACKUP_DIR}/secrets/${SECRET_NAMESPACE}_${SECRET_NAME}.yaml"
 	done
@@ -58,10 +58,15 @@ else
 	rm "/tmp/${ARCHIVE_NAME}.key"
 fi
 
+# Trim whitespace from env vars
+AZURE_STORAGE_ACCOUNT="${AZURE_STORAGE_ACCOUNT//[[:space:]]/}"
+AZURE_STORAGE_ACCOUNT_KEY="${AZURE_STORAGE_ACCOUNT_KEY//[[:space:]]/}"
+AZURE_STORAGE_CONTAINER_PROW_BKP="${AZURE_STORAGE_CONTAINER_PROW_BKP//[[:space:]]/}"
+
 # Upload backup archive
 for file in "${ARCHIVE_NAME}.tar.gz.enc" "${ARCHIVE_NAME}.key.enc"; do
 	log_msg "Uploading file ${file}..."
-	az storage blob upload --container-name "${AZURE_STORAGE_CONTAINER_PROW_BKP}" \
+	az storage blob upload --no-progress --container-name "${AZURE_STORAGE_CONTAINER_PROW_BKP}" \
 		--account-key "${AZURE_STORAGE_ACCOUNT_KEY}" --file "/tmp/${file}" --name "${file}"
 done
 
