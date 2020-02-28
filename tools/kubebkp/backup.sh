@@ -26,8 +26,10 @@ if [ -z "${BACKUP_SECRETS}" ]; then
 	log_msg "BACKUP_SECRETS is empty. Not backing up any secrets."
 else
 	for secret in ${BACKUP_SECRETS//,/ }; do
-		log_msg "Backing up secret '${secret}'..."
-		kubectl get secret "${secret}" -o yaml > "${BACKUP_DIR}/secrets/${secret}.yaml"
+		SECRET_NAME=$(echo "${secret}" | cut -d/ -f1)
+		SECRET_NAMESPACE=$(echo "${secret}" | cut -d/ -f2)
+		log_msg "Backing up secret '${SECRET_NAME}' from namespace '${SECRET_NAMESPACE}'..."
+		kubectl get secret "${SECRET_NAME}" -n "${SECRET_NAMESPACE}" -o yaml > "${BACKUP_DIR}/secrets/${SECRET_NAMESPACE}_${SECRET_NAME}.yaml"
 	done
 fi
 
