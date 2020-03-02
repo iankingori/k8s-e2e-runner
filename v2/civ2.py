@@ -45,8 +45,7 @@ def parse_args():
     p.add('--collect-logs-linux-yaml', default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/master/v2/collect-logs-linux.yaml")
     p.add('--collect-logs-linux-script', default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/master/v2/collect-logs.sh")
     p.add('--prepull-yaml', default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/gce/prepull.yaml")
-    p.add('--hold', type=str2bool, default=False, help='Useful for debugging while running in containerd. \
-                                                        Sleeps the process after setting the env for testing so user can manually exec from container.')
+    p.add('--hold', default="", help='Useful for debugging. Sleeps the process either right before or right after running the tests.')
 
     opts = p.parse_known_args()
 
