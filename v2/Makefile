@@ -1,4 +1,4 @@
-IMG = e2eteam/k8s-ovn-ovs-ci
+IMG = e2eteam/k8s-e2e-runner
 TAG = dev-terraform
 
 all: build
