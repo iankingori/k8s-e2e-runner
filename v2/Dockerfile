@@ -1,6 +1,7 @@
 FROM ubuntu:bionic
 
 ENV GO_VERSION=1.13.7
+ENV TF_VERSION=0.12.24
 
 RUN apt-get update && \
 	apt-get install -y \
@@ -61,9 +62,9 @@ RUN wget -q https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.ta
     gcloud components install alpha beta && \
     gcloud info | tee /gcloud-info.txt
 
-RUN wget -q https://releases.hashicorp.com/terraform/0.11.13/terraform_0.11.13_linux_amd64.zip && \
-    unzip terraform_0.11.13_linux_amd64.zip && \
-    rm terraform_0.11.13_linux_amd64.zip && \
+RUN wget -q https://releases.hashicorp.com/terraform/0.12.24/terraform_${TF_VERSION}_linux_amd64.zip && \
+    unzip terraform_${TF_VERSION}_linux_amd64.zip && \
+    rm terraform_${TF_VERSION}_linux_amd64.zip && \
     mv terraform /usr/local/bin
 
 RUN pip install azure

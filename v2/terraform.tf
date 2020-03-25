@@ -27,6 +27,8 @@ provider "azurerm" {
   client_id       = "${var.azure_client_id}"
   client_secret   = "${var.azure_client_secret}"
   tenant_id       = "${var.azure_tenant_id}"
+  version         = "2.0.0"
+  features {}
 }
 
 # Create a resource group if it doesn’t exist
@@ -49,7 +51,6 @@ resource "azurerm_virtual_network" "clusterNet" {
 }
 
 # Create routeTable
-
 resource "azurerm_route_table" "routeTable" {
   name                = "routeTable"
   resource_group_name = "${azurerm_resource_group.clusterRg.name}"
@@ -62,8 +63,13 @@ resource "azurerm_subnet" "clusterSubnet" {
   resource_group_name  = "${azurerm_resource_group.clusterRg.name}"
   virtual_network_name = "${azurerm_virtual_network.clusterNet.name}"
   address_prefix       = "192.168.168.0/24"
-  route_table_id       = "${azurerm_route_table.routeTable.id}"
   depends_on           = ["azurerm_route_table.routeTable"]
+}
+
+# Route table association
+resource "azurerm_subnet_route_table_association" "clusterRouteTable" {
+  subnet_id      = "${azurerm_subnet.clusterSubnet.id}"
+  route_table_id = "${azurerm_route_table.routeTable.id}"
 }
 
 # Master VM Definition
@@ -111,7 +117,6 @@ resource "azurerm_network_interface" "masterNic" {
   name                      = "masterNic"
   location                  = "${var.location}"
   resource_group_name       = "${azurerm_resource_group.clusterRg.name}"
-  network_security_group_id = "${azurerm_network_security_group.masterNSG.id}"
   enable_ip_forwarding      = true
 
   ip_configuration {
@@ -120,6 +125,12 @@ resource "azurerm_network_interface" "masterNic" {
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = "${azurerm_public_ip.masterPublicIP.id}"
   }
+}
+
+# Security group association
+resource "azurerm_network_interface_security_group_association" "securityGroupMaster" {
+  network_interface_id      = "${azurerm_network_interface.masterNic.id}"
+  network_security_group_id = "${azurerm_network_security_group.masterNSG.id}"
 }
 
 # Create virtual machine
@@ -209,7 +220,6 @@ resource "azurerm_network_interface" "winMinNic" {
   name                      = "winMinNic-${count.index}"
   location                  = "${var.location}"
   resource_group_name       = "${azurerm_resource_group.clusterRg.name}"
-  network_security_group_id = "${azurerm_network_security_group.winNSG.id}"
   enable_ip_forwarding      = true
 
   ip_configuration {
@@ -220,12 +230,17 @@ resource "azurerm_network_interface" "winMinNic" {
   }
 }
 
+# Security group association
+resource "azurerm_network_interface_security_group_association" "securityGroupMin" {
+  count                     = "${var.win_minion_count}"
+  network_interface_id      = "${element(azurerm_network_interface.winMinNic.*.id, count.index)}"
+  network_security_group_id = "${azurerm_network_security_group.winNSG.id}"
+}
+
 resource "azurerm_virtual_machine_extension" "powershell_winservices" {
+  virtual_machine_id   = "${element(azurerm_virtual_machine.winMinionVM.*.id, count.index)}"
   count                = "${var.win_minion_count}"
   name                 = "EnableWinServices"
-  location             = "${var.location}"
-  resource_group_name  = "${azurerm_resource_group.clusterRg.name}"
-  virtual_machine_name = "${element(azurerm_virtual_machine.winMinionVM.*.name, count.index)}"
   publisher            = "Microsoft.Compute"
   type                 = "CustomScriptExtension"
   type_handler_version = "1.7"
