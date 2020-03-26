@@ -62,7 +62,7 @@ RUN wget -q https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.ta
     gcloud components install alpha beta && \
     gcloud info | tee /gcloud-info.txt
 
-RUN wget -q https://releases.hashicorp.com/terraform/0.12.24/terraform_${TF_VERSION}_linux_amd64.zip && \
+RUN wget -q https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip && \
     unzip terraform_${TF_VERSION}_linux_amd64.zip && \
     rm terraform_${TF_VERSION}_linux_amd64.zip && \
     mv terraform /usr/local/bin
