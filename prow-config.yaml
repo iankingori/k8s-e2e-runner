@@ -81,6 +81,8 @@ data:
     - labels:
         preset-kube-backup: "true"
       env:
+      - name: BACKUP_KEEP_DAYS
+        value: "90"
       - name: BACKUP_CONFIGMAPS
         value: "config,plugins"
       - name: BACKUP_SECRETS
