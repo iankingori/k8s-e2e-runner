@@ -301,6 +301,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
         self._get_terraform_config()
         self._create_terraform_vars_file()
         terraform_output = self._deploy_cluster()
+        self.logging.info("Terraform output: '%s'" % terraform_output)
         self._parse_terraform_output(terraform_output)
         self._populate_hosts_file()
 
