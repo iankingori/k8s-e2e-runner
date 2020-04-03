@@ -78,6 +78,9 @@ def main():
             if opts.down is True:
                 ci.down()
             ci.up()
+        else:
+            ci.reclaim()
+
         if opts.install_lanfix is True:
             ci.install_lanfix()
         if opts.test is True:

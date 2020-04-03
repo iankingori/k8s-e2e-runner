@@ -30,6 +30,9 @@ class CI(object):
         # pass
         self.logging.info("UP: Default NOOP")
 
+    def reclaim(self):
+        self.logging.info("RECLAIM: Default NOOP")
+
     def build(self):
         self.logging.info("BUILD: Default NOOP")
 
@@ -81,8 +84,8 @@ class CI(object):
             raise Exception("Failed to get kubernetes nodes: %s." % err)
         linux_nodes = out.strip().split("\n")
         for node in linux_nodes:
-            taint_cmd = [kubectl, "taint", "nodes", node, "node-role.kubernetes.io/master=:NoSchedule"]
-            label_cmd = [kubectl, "label", "nodes", node, "node-role.kubernetes.io/master=NoSchedule"]
+            taint_cmd = [kubectl, "taint", "nodes", "--overwrite", node, "node-role.kubernetes.io/master=:NoSchedule"]
+            label_cmd = [kubectl, "label", "nodes", "--overwrite", node, "node-role.kubernetes.io/master=NoSchedule"]
             _, err, ret = utils.run_cmd(taint_cmd, stderr=True)
             if ret != 0:
                 self.logging.info("Failed to taint node %s with error %s." % (node, err))
@@ -118,6 +121,7 @@ class CI(object):
         # invokes kubetest
         self.logging.info("Running tests on env.")
         cmd = ["kubetest"]
+        cmd.append("--check-version-skew=false")
         cmd.append("--ginkgo-parallel=%s" % self.opts.parallel_test_nodes)
         cmd.append("--verbose-commands=true")
         cmd.append("--provider=skeleton")

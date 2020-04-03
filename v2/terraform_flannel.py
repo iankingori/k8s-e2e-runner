@@ -1,3 +1,4 @@
+import ast
 import ci
 import configargparse
 import constants
@@ -17,6 +18,7 @@ p.add("--ansibleBranch", default="master", help="Ansible Repository branch for o
 p.add("--flannelMode", default="overlay", help="Option: overlay or host-gw")
 p.add("--containerRuntime", default="docker", help="Container runtime to set in ansible: docker / containerd.")
 p.add("--remoteCmdRetries", type=int, default=5, help="Number of retries Ansible adhoc command should do.")
+p.add("--terraformData", default="", help="Data from terraform cluster.")
 
 
 class Terraform_Flannel(ci.CI):
@@ -386,7 +388,6 @@ class Terraform_Flannel(ci.CI):
         os.environ["KUBE_MASTER_IP"] = "kubernetes"
         os.environ["KUBE_MASTER_URL"] = "https://kubernetes"
 
-        self._applySettings()
         self._prepullImages()
 
     def _build_k8s_binaries(self):
@@ -443,6 +444,26 @@ class Terraform_Flannel(ci.CI):
             if self.patches is not None:
                 self._install_patches()
             self._deploy_ansible()
+            self._setup_kubeconfig()
+            self._applySettings()
+        except Exception as e:
+            raise e
+
+    def reclaim(self):
+        self.logging.info("Reclaiming cluster.")
+        try:
+            with open(self.opts.terraformData, 'r') as file:
+                data = file.read().replace('\n', '')
+            terraform_data = ast.literal_eval(data)
+            self.deployer._parse_terraform_output(terraform_data)
+            self.deployer._populate_hosts_file()
+            master = self.deployer.get_cluster_master_vm_name()
+
+            self._prepare_ansible()
+            for file in ["ca.pem", "ca-key.pem", "admin.pem", "admin-key.pem", "node.pem", "node-key.pem"]:
+                dest = os.path.join(self.ansible_playbook_root, "tmp", "k8s_%s" % file)
+                self._copyFrom("/etc/kubernetes/tls/%s" % file, dest, master, root=True)
+            self._copyFrom("/etc/kubernetes/kubeconfig.yaml", os.path.join(self.ansible_playbook_root, "tmp", "kubeconfig.yaml"), master, root=True)
             self._setup_kubeconfig()
         except Exception as e:
             raise e
