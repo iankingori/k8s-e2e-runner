@@ -6,9 +6,9 @@ import log
 import utils
 import os
 import random
-import subprocess
 import json
-import urlparse
+
+from urllib.parse import urlparse
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.mgmt.resource import ResourceManagementClient
 
@@ -19,14 +19,25 @@ p.add("--rg_name", help="resource group name.")
 p.add("--master-vm-name", help="Name of master vm.")
 p.add("--master-vm-size", default="Standard_D2s_v3", help="Size of master vm")
 
-p.add("--win-minion-count", type=int, default=2, help="Number of windows minions for the deployment.")
-p.add("--win-minion-name-prefix", default="winvm", help="Prefix for win minion vm names.")
+p.add("--win-minion-count",
+      type=int,
+      default=2,
+      help="Number of windows minions for the deployment.")
+p.add("--win-minion-name-prefix",
+      default="winvm",
+      help="Prefix for win minion vm names.")
 p.add("--win-minion-size", default="Standard_D2s_v3", help="Size of minion vm")
 p.add("--win-minion-password", default=None, help="Password for win minion vm")
-p.add("--win-minion-image", default="MicrosoftWindowsServer:WindowsServer:Datacenter-Core-1903-with-Containers-smalldisk:18362.836.2005071659", help="Windows image SKU or custom vhd path")
+p.add("--win-minion-image",
+      default="MicrosoftWindowsServer:WindowsServer:"
+      "Datacenter-Core-1903-with-Containers-smalldisk:18362.836.2005071659",
+      help="Windows image SKU or custom vhd path")
 p.add("--terraform-config")
-p.add("--ssh-public-key-path", default=os.path.join(os.path.join(os.getenv("HOME"), ".ssh", "id_rsa.pub")))
-p.add("--ssh-private-key-path", default=os.path.join(os.path.join(os.getenv("HOME"), ".ssh", "id_rsa")))
+p.add("--ssh-public-key-path",
+      default=os.path.join(
+          os.path.join(os.getenv("HOME"), ".ssh", "id_rsa.pub")))
+p.add("--ssh-private-key-path",
+      default=os.path.join(os.path.join(os.getenv("HOME"), ".ssh", "id_rsa")))
 
 
 class TerraformProvisioner(deployer.NoopDeployer):
@@ -43,8 +54,10 @@ class TerraformProvisioner(deployer.NoopDeployer):
         self.terraform_config_url = self.opts.terraform_config
 
         self.terraform_root = "/tmp/terraform_root"
-        self.terraform_config_path = os.path.join(self.terraform_root, "terraform.tf")
-        self.terraform_vars_file = os.path.join(self.terraform_root, "terraform.tfvars")
+        self.terraform_config_path = os.path.join(self.terraform_root,
+                                                  "terraform.tf")
+        self.terraform_vars_file = os.path.join(self.terraform_root,
+                                                "terraform.tfvars")
         self.win_minion_password = None
 
         self.logging = log.getLogger(__name__)
@@ -57,14 +70,18 @@ class TerraformProvisioner(deployer.NoopDeployer):
 
         cluster["location"] = self.opts.location
         cluster["resource_group"] = self.opts.rg_name
-        cluster["master_vm"] = dict(vm_name=self.opts.master_vm_name, vm_size=self.opts.master_vm_size, public_ip=None)
-        cluster["win_vms"] = dict(win_vm_name_prefix=self.opts.win_minion_name_prefix,
-                                  win_vm_count=self.opts.win_minion_count,
-                                  win_vm_size=self.opts.win_minion_size,
-                                  vms=[])
+        cluster["master_vm"] = dict(vm_name=self.opts.master_vm_name,
+                                    vm_size=self.opts.master_vm_size,
+                                    public_ip=None)
+        cluster["win_vms"] = dict(
+            win_vm_name_prefix=self.opts.win_minion_name_prefix,
+            win_vm_count=self.opts.win_minion_count,
+            win_vm_size=self.opts.win_minion_size,
+            vms=[])
         for index in range(cluster["win_vms"]["win_vm_count"]):
             vm_name = self.opts.win_minion_name_prefix + str(index)
-            cluster["win_vms"]["vms"].append(dict(vm_name=vm_name, public_ip=None))
+            cluster["win_vms"]["vms"].append(
+                dict(vm_name=vm_name, public_ip=None))
 
         return cluster
 
@@ -78,7 +95,8 @@ class TerraformProvisioner(deployer.NoopDeployer):
         return os.getenv("BUILD_ID").strip()
 
     def get_cluster_rg_creation_timestamp(self):
-        return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+        return datetime.datetime.utcnow().replace(
+            microsecond=0).isoformat() + "Z"
 
     def get_cluster_rg_job_name(self):
         return os.getenv("JOB_NAME").strip()
@@ -131,11 +149,13 @@ class TerraformProvisioner(deployer.NoopDeployer):
 
     def _get_terraform_config(self):
         self.logging.info("Downloading terraform config.")
-        utils.download_file(self.terraform_config_url, self.terraform_config_path)
+        utils.download_file(self.terraform_config_url,
+                            self.terraform_config_path)
 
     def _get_ssh_public_key(self, key_file):
         if not os.path.exists(key_file):
-            msg = ("Unable to find ssh key %s. No such path exists." % key_file)
+            msg = ("Unable to find ssh key %s. No such path exists." %
+                   key_file)
             self.logging.error(msg)
             raise Exception(msg)
 
@@ -147,8 +167,10 @@ class TerraformProvisioner(deployer.NoopDeployer):
     def get_win_vm_password(self):
         if self.opts.win_minion_password is None:
             if self.win_minion_password is None:
-                ssh_public_key = self._get_ssh_public_key(self.opts.ssh_public_key_path)
-                self.win_minion_password = utils.generate_random_password(key=ssh_public_key)
+                ssh_public_key = self._get_ssh_public_key(
+                    self.opts.ssh_public_key_path)
+                self.win_minion_password = utils.generate_random_password(
+                    key=ssh_public_key)
         else:
             self.win_minion_password = self.opts.win_minion_password
 
@@ -161,13 +183,13 @@ class TerraformProvisioner(deployer.NoopDeployer):
         return constants.WINDOWS_ADMIN_USER
 
     def _is_url(self, image):
-        return urlparse.urlparse(image).scheme in ("http", "https")
+        return urlparse(image).scheme in ("http", "https")
 
     def _is_azure_image_urn(self, image):
         return len(image.split(":")) == 4
 
     def _parse_azure_storage_account(self, image_url):
-        return urlparse.urlparse(image_url).netloc.split(".")[0]
+        return urlparse(image_url).netloc.split(".")[0]
 
     def _parse_azure_image_urn(self, image_urn):
         image = {}
@@ -188,9 +210,11 @@ class TerraformProvisioner(deployer.NoopDeployer):
     def _create_terraform_vars_file(self):
         self.logging.info("Creating terraform vars file.")
         out_format = '%s = "%s"\n'
-        ssh_public_key = self._get_ssh_public_key(self.opts.ssh_public_key_path)
+        ssh_public_key = self._get_ssh_public_key(
+            self.opts.ssh_public_key_path)
 
-        win_min_image_type = self._get_win_minion_image_type(self.opts.win_minion_image)
+        win_min_image_type = self._get_win_minion_image_type(
+            self.opts.win_minion_image)
 
         if win_min_image_type is None:
             msg = "Unrecognized image string: %s" % self.opts.win_minion_image
@@ -199,8 +223,12 @@ class TerraformProvisioner(deployer.NoopDeployer):
 
         extra_args = ""
         if win_min_image_type == TerraformProvisioner.CUSTOM_VHD:
-            extra_args = extra_args + (out_format % ("win_img_uri", self.opts.win_minion_image))
-            extra_args = extra_args + (out_format % ("win_img_storage_account", self._parse_azure_storage_account(self.opts.win_minion_image)))
+            extra_args = extra_args + (
+                out_format % ("win_img_uri", self.opts.win_minion_image))
+            extra_args = extra_args + (out_format %
+                                       ("win_img_storage_account",
+                                        self._parse_azure_storage_account(
+                                            self.opts.win_minion_image)))
         if win_min_image_type == TerraformProvisioner.AZURE_IMAGE_URN:
             image = self._parse_azure_image_urn(self.opts.win_minion_image)
             for key in image.keys():
@@ -209,24 +237,42 @@ class TerraformProvisioner(deployer.NoopDeployer):
         with open(self.terraform_vars_file, "w") as f:
             f.write(out_format % ("location", self.get_cluster_location()))
             f.write(out_format % ("rg_name", self.get_cluster_rg_name()))
-            f.write(out_format % ("rg_build_id", self.get_cluster_rg_build_id()))
-            f.write(out_format % ("rg_creation_timestamp", self.get_cluster_rg_creation_timestamp()))
-            f.write(out_format % ("rg_job_name", self.get_cluster_rg_job_name()))
-            f.write(out_format % ("master_vm_name", self.get_cluster_master_vm_name()))
-            f.write(out_format % ("master_vm_size", self.get_cluster_master_vm_size()))
-            f.write(out_format % ("win_minion_count", self.get_cluster_win_minion_vm_count()))
-            f.write(out_format % ("win_minion_vm_size", self.get_cluster_win_minion_vm_size()))
-            f.write(out_format % ("win_minion_vm_name_prefix", self.get_cluster_win_minion_vm_prefix()))
-            f.write(out_format % ("win_minion_vm_username", self.get_win_vm_username()))
-            f.write(out_format % ("win_minion_vm_password", self.get_win_vm_password()))
+            f.write(out_format %
+                    ("rg_build_id", self.get_cluster_rg_build_id()))
+            f.write(out_format % ("rg_creation_timestamp",
+                                  self.get_cluster_rg_creation_timestamp()))
+            f.write(out_format %
+                    ("rg_job_name", self.get_cluster_rg_job_name()))
+            f.write(out_format %
+                    ("master_vm_name", self.get_cluster_master_vm_name()))
+            f.write(out_format %
+                    ("master_vm_size", self.get_cluster_master_vm_size()))
+            f.write(
+                out_format %
+                ("win_minion_count", self.get_cluster_win_minion_vm_count()))
+            f.write(
+                out_format %
+                ("win_minion_vm_size", self.get_cluster_win_minion_vm_size()))
+            f.write(out_format % ("win_minion_vm_name_prefix",
+                                  self.get_cluster_win_minion_vm_prefix()))
+            f.write(out_format %
+                    ("win_minion_vm_username", self.get_win_vm_username()))
+            f.write(out_format %
+                    ("win_minion_vm_password", self.get_win_vm_password()))
             f.write(out_format % ("ssh_key_data", ssh_public_key))
             f.write(extra_args)
 
     def _get_terraform_vars_azure(self):
         cmd = []
         msg = "Env var %s not set."
-        env_vars = ["AZURE_SUB_ID", "AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID"]
-        terraform_vars = ["azure_sub_id", "azure_client_id", "azure_client_secret", "azure_tenant_id"]
+        env_vars = [
+            "AZURE_SUB_ID", "AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET",
+            "AZURE_TENANT_ID"
+        ]
+        terraform_vars = [
+            "azure_sub_id", "azure_client_id", "azure_client_secret",
+            "azure_tenant_id"
+        ]
 
         for terraform_var, env_var in zip(terraform_vars, env_vars):
             if not os.getenv(env_var):
@@ -259,24 +305,33 @@ class TerraformProvisioner(deployer.NoopDeployer):
             raise Exception(msg)
 
         cmd = self._get_terraform_apply_cmd()
-        out, err, ret = utils.run_cmd(cmd, stdout=True, stderr=True, cwd=self.terraform_root, shell=True, sensitive=True)
+        out, err, ret = utils.run_cmd(cmd,
+                                      stdout=True,
+                                      stderr=True,
+                                      cwd=self.terraform_root,
+                                      shell=True,
+                                      sensitive=True)
         if ret != 0:
             msg = "Failed to apply terraform config with error: %s" % err
             self.logging.error(msg)
             raise Exception(msg)
 
         cmd = ["terraform", "output", "-json"]
-        out, err, ret = utils.run_cmd(cmd, stdout=True, stderr=True, cwd=self.terraform_root)
+        out, err, ret = utils.run_cmd(cmd,
+                                      stdout=True,
+                                      stderr=True,
+                                      cwd=self.terraform_root)
 
         return json.loads(out)
 
     def _parse_terraform_output(self, output):
-        master_ip = output["master"]["value"][self.get_cluster_master_vm_name()]
+        master_ip = output["master"]["value"][
+            self.get_cluster_master_vm_name()]
         self._set_cluster_master_vm_public_ip(master_ip)
         for vm_name, vm_pub_ip in output["winMinions"]["value"].items():
             self._set_cluster_win_min_public_ip(vm_name, vm_pub_ip)
 
-        print json.dumps(self.cluster)
+        print(json.dumps(self.cluster))
 
     def _populate_hosts_file(self):
         with open("/etc/hosts", "a") as f:
@@ -284,7 +339,8 @@ class TerraformProvisioner(deployer.NoopDeployer):
             vm_name = vm_name + " kubernetes"
             vm_public_ip = self.get_cluster_master_public_ip()
             hosts_entry = ("%s %s\n" % (vm_public_ip, vm_name))
-            self.logging.info("Adding entry '%s' to hosts file." % hosts_entry.rstrip("\n"))
+            self.logging.info("Adding entry '%s' to hosts file." %
+                              hosts_entry.rstrip("\n"))
             f.write(hosts_entry)
 
             for vm in self.get_cluster_win_minion_vms():
@@ -293,7 +349,8 @@ class TerraformProvisioner(deployer.NoopDeployer):
                 if vm_name.find("master") > 0:
                     vm_name = vm_name + " kubernetes"
                 hosts_entry = ("%s %s\n" % (vm_public_ip, vm_name))
-                self.logging.info("Adding entry '%s' to hosts file." % hosts_entry.rstrip("\n"))
+                self.logging.info("Adding entry '%s' to hosts file." %
+                                  hosts_entry.rstrip("\n"))
                 f.write(hosts_entry)
 
     def up(self):
@@ -314,14 +371,13 @@ class TerraformProvisioner(deployer.NoopDeployer):
             credentials = ServicePrincipalCredentials(
                 client_id=os.environ['AZURE_CLIENT_ID'].strip(),
                 secret=os.environ['AZURE_CLIENT_SECRET'].strip(),
-                tenant=os.environ['AZURE_TENANT_ID'].strip()
-            )
+                tenant=os.environ['AZURE_TENANT_ID'].strip())
             subscription_id = os.environ.get(
                 'AZURE_SUB_ID',
-                '11111111-1111-1111-1111-111111111111'
-            ).strip()
+                '11111111-1111-1111-1111-111111111111').strip()
             client = ResourceManagementClient(credentials, subscription_id)
-            delete_async_operation = client.resource_groups.delete(self.opts.rg_name)
+            delete_async_operation = client.resource_groups.delete(
+                self.opts.rg_name)
             delete_async_operation.wait()
         except Exception as e:
             # Should find specific exception for when RG is not found

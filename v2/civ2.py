@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import configargparse
 import ci_factory
 import log
@@ -10,7 +12,6 @@ logging = log.getLogger("civ2")
 
 
 def parse_args():
-
     def str2bool(v):
         if v.lower() == "true":
             return True
@@ -21,13 +22,25 @@ def parse_args():
 
     p.add('-c', '--configfile', is_config_file=True, help='Config file path.')
     p.add('--up', type=str2bool, default=False, help='Deploy test cluster.')
-    p.add('--down', type=str2bool, default=False, help='Destroy cluster on finish.')
-    p.add('--build', action="append", help='Build k8s binaries. Values: k8sbins, containerdbins, containerdshim, sdnbins')
+    p.add('--down',
+          type=str2bool,
+          default=False,
+          help='Destroy cluster on finish.')
+    p.add('--build',
+          action="append",
+          help='Build k8s binaries. Values: '
+          'k8sbins, containerdbins, containerdshim, sdnbins')
     p.add('--test', type=str2bool, default=False, help='Run tests.')
-    p.add('--admin-openrc', default=False, help='Openrc file for OpenStack cluster')
-    p.add('--log-path', default="/tmp/civ2_logs", help='Path to place all artifacts')
-    p.add('--ci', help="OVN-OVS, Flannel")
-    p.add('--install-patch', action="append", help="URLs of KBs to install on Windows nodes")
+    p.add('--admin-openrc',
+          default=False,
+          help='Openrc file for OpenStack cluster')
+    p.add('--log-path',
+          default="/tmp/civ2_logs",
+          help='Path to place all artifacts')
+    p.add('--ci', help="flannel, terraform_flannel")
+    p.add('--install-patch',
+          action="append",
+          help="URLs of KBs to install on Windows nodes")
     p.add('--install-lanfix', type=str2bool, default=False)
     p.add('--cluster-name', help="Name of cluster.")
     p.add('--k8s-repo', default="http://github.com/kubernetes/kubernetes")
@@ -38,14 +51,28 @@ def parse_args():
     p.add('--containerd-shim-branch', default="master")
     p.add('--ctr-repo', default="https://github.com/containerd/containerd")
     p.add('--ctr-branch', default="master")
-    p.add('--sdn-repo', default="http://github.com/microsoft/windows-container-networking")
+    p.add('--sdn-repo',
+          default="http://github.com/microsoft/windows-container-networking")
     p.add('--sdn-branch', default="master")
-    p.add('--collect-logs-windows-yaml', default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/master/v2/collect-logs-windows.yaml")
-    p.add('--collect-logs-windows-script', default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/master/v2/collect-logs.ps1")
-    p.add('--collect-logs-linux-yaml', default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/master/v2/collect-logs-linux.yaml")
-    p.add('--collect-logs-linux-script', default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/master/v2/collect-logs.sh")
-    p.add('--prepull-yaml', default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/gce/prepull.yaml")
-    p.add('--hold', default="", help='Useful for debugging. Sleeps the process either right before or right after running the tests.')
+    p.add('--collect-logs-windows-yaml',
+          default="https://raw.githubusercontent.com/e2e-win/"
+          "k8s-e2e-runner/master/v2/collect-logs-windows.yaml")
+    p.add('--collect-logs-windows-script',
+          default="https://raw.githubusercontent.com/e2e-win/"
+          "k8s-e2e-runner/master/v2/collect-logs.ps1")
+    p.add('--collect-logs-linux-yaml',
+          default="https://raw.githubusercontent.com/e2e-win/"
+          "k8s-e2e-runner/master/v2/collect-logs-linux.yaml")
+    p.add('--collect-logs-linux-script',
+          default="https://raw.githubusercontent.com/e2e-win/"
+          "k8s-e2e-runner/master/v2/collect-logs.sh")
+    p.add('--prepull-yaml',
+          default="https://raw.githubusercontent.com/kubernetes-sigs/"
+          "windows-testing/master/gce/prepull.yaml")
+    p.add('--hold',
+          default="",
+          help='Useful for debugging. Sleeps the process either '
+          'right before or right after running the tests.')
 
     opts = p.parse_known_args()
 
@@ -62,10 +89,12 @@ def main():
         success = 0
 
         if opts.build is not None and \
-                "containerdshim" in opts.build and \
-                opts.containerd_shim_repo is None and \
-                "containerdbins" not in opts.build:
-            logging.error("Building containerdshim from vendoring repo without building containerd is not supported")
+           "containerdshim" in opts.build and \
+           opts.containerd_shim_repo is None and \
+           "containerdbins" not in opts.build:
+            logging.error(
+                "Building containerdshim from vendoring repo without "
+                "building containerd is not supported")
             sys.exit(1)
 
         if opts.build is not None:

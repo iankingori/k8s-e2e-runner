@@ -1,14 +1,15 @@
-#!/usr/bin/python
-import configargparse
-import logging
-import tempfile
-import time
-import os
-import subprocess
-import select
-import socket
+#!/usr/bin/env python3
+
 import errno
+import logging
 import json
+import tempfile
+import os
+import socket
+import time
+
+import configargparse
+import sh
 
 p = configargparse.get_argument_parser()
 logger = logging.getLogger("bootstrap")
@@ -17,56 +18,33 @@ JOB_REPO_CLONE_DST = os.path.join(tempfile.gettempdir(), "k8s-e2e-runner")
 DEFAULT_JOB_CONFIG_PATH = os.path.join(tempfile.gettempdir(), "job_config.txt")
 
 
-def call(popenargs, stdout_log_level=logging.INFO, stderr_log_level=logging.ERROR, **kwargs):
+def call(cmd, args):
+    def process_stdout(line):
+        logger.info(line.strip())
 
-    def read_all(source, log_level):
-        while True:
-            line = source.readline()
-            if not line:
-                # Read everything
-                return True
-            logger.log(log_level, line.rstrip('\n'))
-            more = select.select([source], [], [], 0.1)
-            if not more[0]:
-                return False  # Buffer empty but not the end
+    def process_stderr(line):
+        logger.warning(line.strip())
 
-    child = subprocess.Popen(popenargs, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, **kwargs)
-
-    log_level = {child.stdout: stdout_log_level,
-                 child.stderr: stderr_log_level}
-
-    def check_io():
-        ready_to_read = select.select([child.stdout, child.stderr], [], [], 10)[0]
-        for io in ready_to_read:
-            read_all(io, log_level[io])
-
-    # keep checking stdout/stderr until the child exits
-    while child.poll() is None:
-        check_io()
-
-    check_io()  # check again to catch anything after the process exits
-
-    return child.wait()
+    proc = cmd(args,
+               _out=process_stdout,
+               _err=process_stderr,
+               _bg=True,
+               _bg_exc=False)
+    proc.wait()
 
 
 def parse_args():
-
-    def str2bool(v):
-        if v.lower() == "true":
-            return True
-        elif v.lower() == "false":
-            return False
-        else:
-            raise configargparse.ArgumentTypeError('Boolean value expected')
-
-    p.add('--job-config', help='Configuration for job to be ran. URL or file.')
-    p.add('--job-repo', default="http://github.com/e2e-win/k8s-e2e-runner", help='Respository for job runner.')
-    p.add('--job-branch', default="master", help='Branch for job runner.')
-    p.add('--service-account', help='Service account for gcloud login.')
-    p.add('--log-path', default="/tmp/civ2_logs")
-    p.add('--gs', help='Log bucket')
-    p.add('job_args', nargs=configargparse.REMAINDER)
+    p.add("--job-config", help="Configuration for job to be ran. URL or file.")
+    p.add(
+        "--job-repo",
+        default="http://github.com/e2e-win/k8s-e2e-runner",
+        help="Respository for job runner.",
+    )
+    p.add("--job-branch", default="master", help="Branch for job runner.")
+    p.add("--service-account", help="Service account for gcloud login.")
+    p.add("--log-path", default="/tmp/civ2_logs", help="Local logs path")
+    p.add("--gs", help="Log Google bucket")
+    p.add("job_args", nargs=configargparse.REMAINDER)
 
     opts = p.parse_known_args()
 
@@ -75,14 +53,11 @@ def parse_args():
 
 def gcloud_login(service_account):
     logger.info("Logging in to gcloud.")
-    cmd = "gcloud auth activate-service-account --no-user-output-enabled --key-file=%s" % service_account
-    cmd = cmd.split()
-
-    try:
-        call(cmd)
-    except Exception as e:
-        logger.info("Failed to login to gcloud.")
-        raise Exception("Failed to login to gcloud.")
+    cmd_args = [
+        "auth", "activate-service-account", "--no-user-output-enabled",
+        "--key-file=%s" % service_account
+    ]
+    call(sh.gcloud, cmd_args)
 
 
 def get_job_config_file(job_config):
@@ -95,34 +70,37 @@ def get_job_config_file(job_config):
 
 
 def get_cluster_name():
-    # The cluster name is composed of the first 8 chars of the prowjob in case it exists
+    # The cluster name is composed of the first 8 chars of the prowjob in case
+    # it exists
     return os.getenv("PROW_JOB_ID", "0000-0000-0000-0000")[:7]
 
 
 def setup_logging(log_out_file):
     level = logging.DEBUG
     logger.setLevel(level)
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s : %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s : %(message)s",
+        datefmt="%m/%d/%Y %I:%M:%S %p",
+    )
     stream = logging.StreamHandler()
     stream.setLevel(level)
     stream.setFormatter(formatter)
 
-    fileLog = logging.FileHandler(log_out_file)
-    fileLog.setLevel(level)
-    fileLog.setFormatter(formatter)
+    file_log = logging.FileHandler(log_out_file)
+    file_log.setLevel(level)
+    file_log.setFormatter(formatter)
 
     logger.addHandler(stream)
-    logger.addHandler(fileLog)
+    logger.addHandler(file_log)
 
 
 def clone_repo(repo, branch="master", dest_path=None):
-    cmd = ["git", "clone", "-q", "--single-branch", "--branch", branch, repo]
+    cmd_args = ["clone", "-q", "--single-branch", "--branch", branch, repo]
     if dest_path:
-        cmd.append(dest_path)
-    logger.info("Cloning git repo %s on branch %s in location %s" % (repo, branch, dest_path if not None else os.getcwd()))
-    ret = call(cmd)
-    if ret != 0:
-        raise Exception("Git Clone Failed with.")
+        cmd_args.append(dest_path)
+    logger.info("Cloning git repo %s on branch %s in location %s", repo,
+                branch, dest_path if not None else os.getcwd())
+    call(sh.git, cmd_args)
     logger.info("Succesfully cloned git repo.")
 
 
@@ -135,15 +113,12 @@ def mkdir_p(dir_path):
 
 
 def download_file(url, dst):
-    cmd = ["wget", "-q", url, "-O", dst]
-    ret = call(cmd)
-
-    if ret != 0:
-        logger.error("Failed to download file: %s" % url)
+    call(sh.wget, ["-q", url, "-O", dst])
 
 
 def create_log_paths(log_path, remote_base):
-    # TO DO:Since we upload to gcloud we should make sure the user specifies an empty path
+    # TODO: Since we upload to gcloud we should make sure the user specifies
+    # an empty path
 
     mkdir_p(log_path)
     artifacts_path = os.path.join(log_path, "artifacts")
@@ -162,23 +137,21 @@ def create_log_paths(log_path, remote_base):
         "remote_build_path": remote_build_path,
         "remote_started": os.path.join(remote_build_path, "started.json"),
         "remote_finished": os.path.join(remote_build_path, "finished.json"),
-        "remote_latest_build": os.path.join(remote_job_path, "latest-build.txt"),
-        "latest_build": os.path.join("/tmp", "latest-build.txt")
-
+        "remote_latest_build": os.path.join(remote_job_path,
+                                            "latest-build.txt"),
+        "latest_build": os.path.join("/tmp", "latest-build.txt"),
     }
     return paths
 
 
 def upload_file(local, remote):
-    cmd = "gsutil -q cp %s %s" % (local, remote)
-    cmd = cmd.split()
-    call(cmd)
+    if os.path.exists(local):
+        call(sh.gsutil, ["-q", "cp", local, remote])
 
 
 def upload_artifacts(local, remote):
-    cmd = "gsutil -q cp -r %s %s" % (local, remote)
-    cmd = cmd.split()
-    call(cmd)
+    if os.path.exists(local):
+        call(sh.gsutil, ["-q", "cp", "-r", local, remote])
 
 
 def create_latest_build(path):
@@ -208,12 +181,9 @@ def create_finished(path, success=True, meta=None):
 
 
 def main():
-
-    success = True
     opts = parse_args()[0]
     log_paths = create_log_paths(opts.log_path, opts.gs)
-    logger.info("Log paths: %s" % log_paths)
-    # setup logging
+    logger.info("Log paths: %s", log_paths)
     setup_logging(os.path.join(log_paths["build_log"]))
 
     logger.info("Waiting for DNS")
@@ -224,6 +194,7 @@ def main():
         except socket.error:
             time.sleep(3)
 
+    success = False
     try:
         gcloud_login(opts.service_account)
 
@@ -232,31 +203,38 @@ def main():
 
         create_latest_build(log_paths["latest_build"])
 
-        logger.info("Clonning job repo: %s on branch %s." % (opts.job_repo, opts.job_branch))
+        logger.info("Clonning job repo: %s on branch %s.", opts.job_repo,
+                    opts.job_branch)
         clone_repo(opts.job_repo, opts.job_branch, JOB_REPO_CLONE_DST)
         job_config_file = get_job_config_file(opts.job_config)
-        logger.info("Using job config file: %s" % job_config_file)
+        logger.info("Using job config file: %s", job_config_file)
         cluster_name = get_cluster_name()
 
         # Reset logging format before running civ2
         for handler in logger.handlers:
-            handler.setFormatter(logging.Formatter('%(message)s'))
+            handler.setFormatter(logging.Formatter("%(message)s"))
 
-        cmd = ["python", "civ2.py"] + opts.job_args[1:]
-        cmd.append("--configfile=%s" % job_config_file)
-        cmd.append("--cluster-name=%s" % cluster_name)
-        cmd.append("--log-path=%s" % log_paths["artifacts"])
+        cmd_args = [
+            "civ2.py",
+            "--configfile=%s" % job_config_file,
+            "--cluster-name=%s" % cluster_name,
+            "--log-path=%s" % log_paths["artifacts"]
+        ]
+        if len(opts.job_args) > 1:
+            cmd_args += opts.job_args[1:]
 
-        ret = call(cmd, cwd=os.path.join(JOB_REPO_CLONE_DST, "v2"))
-        success = not int(ret)
-    except:
-        success = False
+        os.chdir(os.path.join(JOB_REPO_CLONE_DST, "v2"))
+        call(sh.python3, cmd_args)
+
+        success = True
     finally:
         create_finished(log_paths["finished"], success)
         upload_file(log_paths["finished"], log_paths["remote_finished"])
         upload_file(log_paths["build_log"], log_paths["remote_build_log"])
-        upload_artifacts(log_paths["artifacts"], log_paths["remote_artifacts_path"])
-        upload_file(log_paths["latest_build"], log_paths["remote_latest_build"])
+        upload_artifacts(log_paths["artifacts"],
+                         log_paths["remote_artifacts_path"])
+        upload_file(log_paths["latest_build"],
+                    log_paths["remote_latest_build"])
 
 
 if __name__ == "__main__":

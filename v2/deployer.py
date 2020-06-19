@@ -2,7 +2,6 @@ import log
 
 
 class NoopDeployer(object):
-
     def __init__(self):
         self.logging = log.getLogger(__name__)
 
