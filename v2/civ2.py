@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+import sys
+
 import configargparse
 import ci_factory
 import log
 import utils
-import sys
 
 p = configargparse.get_argument_parser()
 
@@ -37,7 +38,7 @@ def parse_args():
     p.add('--log-path',
           default="/tmp/civ2_logs",
           help='Path to place all artifacts')
-    p.add('--ci', help="flannel, terraform_flannel")
+    p.add('--ci', help="flannel, terraform_flannel, capz_flannel")
     p.add('--install-patch',
           action="append",
           help="URLs of KBs to install on Windows nodes")
@@ -80,14 +81,13 @@ def parse_args():
 
 
 def main():
-    try:
-        opts = parse_args()[0]
-        logging.info("Starting with CI: %s" % opts.ci)
-        logging.info("Creating log dir: %s." % opts.log_path)
-        utils.mkdir_p(opts.log_path)
-        ci = ci_factory.get_ci(opts.ci)
-        success = 0
+    opts = parse_args()[0]
+    logging.info("Starting with CI: %s.", opts.ci)
+    logging.info("Creating log dir: %s.", opts.log_path)
+    utils.mkdir_p(opts.log_path)
+    ci = ci_factory.get_ci(opts.ci)
 
+    try:
         if opts.build is not None and \
            "containerdshim" in opts.build and \
            opts.containerd_shim_repo is None and \

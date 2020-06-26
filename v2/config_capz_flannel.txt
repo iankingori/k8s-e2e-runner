@@ -1,0 +1,3 @@
+ci = capz_flannel
+build = k8sbins
+win-minion-count = 2

@@ -35,7 +35,7 @@ class CI(object):
     def reclaim(self):
         self.logging.info("RECLAIM: Default NOOP")
 
-    def build(self):
+    def build(self, binsToBuild):
         self.logging.info("BUILD: Default NOOP")
 
     def down(self):
@@ -166,7 +166,7 @@ class CI(object):
                  "dryRun": self.opts.test_dry_run,
                  "focus": self.opts.test_focus_regex,
                  "skip": self.opts.test_skip_regex
-             })
+            })
         return subprocess.call(cmd, cwd=utils.get_k8s_folder())
 
     def test(self):

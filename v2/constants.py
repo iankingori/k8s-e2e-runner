@@ -3,6 +3,7 @@ WINDOWS_ADMIN_USER = "azureuser"
 
 KUBERNETES_LINUX_BINS_LOCATION = "_output/local/bin/linux/amd64/"
 KUBERNETES_WINDOWS_BINS_LOCATION = "_output/local/bin/windows/amd64"
+KUBERNETES_IMAGES_LOCATION = "_output/release-images/amd64"
 
 SDN_BINS_LOCATION = "out"
 CONTAINERD_BINS_LOCATION = "_output"

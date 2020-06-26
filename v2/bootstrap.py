@@ -25,11 +25,7 @@ def call(cmd, args):
     def process_stderr(line):
         logger.warning(line.strip())
 
-    proc = cmd(args,
-               _out=process_stdout,
-               _err=process_stderr,
-               _bg=True,
-               _bg_exc=False)
+    proc = cmd(args, _out=process_stdout, _err=process_stderr, _bg=True)
     proc.wait()
 
 

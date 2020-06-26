@@ -1,6 +1,7 @@
 import subprocess
 import os
 import log
+import functools
 import errno
 import random
 import re
@@ -10,8 +11,12 @@ import tempfile
 import time
 import glob
 import constants
+import traceback
+import socket
+import six
 
 from base64 import b64encode
+from jinja2 import Template
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS1_v1_5
 from threading import Timer
@@ -422,3 +427,71 @@ def daemonset_cleanup(daemonset_yaml, daemonset_name, timeout=600):
             return True
 
         time.sleep(5)
+
+
+def get_exception_details():
+    return traceback.format_exc()
+
+
+def retry_on_error(max_attempts=5, sleep_seconds=0, terminal_exceptions=[]):
+    def _retry_on_error(func):
+        @functools.wraps(func)
+        def _exec_retry(*args, **kwargs):
+            i = 0
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except KeyboardInterrupt:
+                    logging.debug("Got a KeyboardInterrupt, skip retrying")
+                    raise
+                except Exception as ex:
+                    found_terminal_exceptions = [
+                        isinstance(ex, tex) for tex in terminal_exceptions
+                    ]
+                    if any(found_terminal_exceptions):
+                        raise
+                    i += 1
+                    if i < max_attempts:
+                        logging.warning(
+                            "Exception occurred, retrying (%d/%d):\n%s", i,
+                            max_attempts, get_exception_details())
+                        time.sleep(sleep_seconds)
+                    else:
+                        raise
+
+        return _exec_retry
+
+    return _retry_on_error
+
+
+def render_template(template_file, output_file, context={}):
+    with open(template_file) as f:
+        t = Template(f.read())
+
+    with open(output_file, 'w') as f:
+        f.write(t.render(context))
+
+
+def _check_port_open(host, port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.settimeout(1)
+        s.connect((host, port))
+        return True
+    except (six.moves.builtins.ConnectionRefusedError,
+            socket.timeout,
+            OSError):
+        return False
+    finally:
+        s.close()
+
+
+def wait_for_port_connectivity(address, port, max_wait=300):
+    i = 0
+    while not _check_port_open(address, port) and i < max_wait:
+        time.sleep(1)
+        i += 1
+    if i == max_wait:
+        err_msg = "Connection failed on port %s" % port
+        logging.error(err_msg)
+        raise Exception(err_msg)

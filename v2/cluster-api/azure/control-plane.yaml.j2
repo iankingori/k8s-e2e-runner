@@ -1,0 +1,106 @@
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+kind: KubeadmControlPlane
+metadata:
+  name: {{ cluster_name }}-control-plane
+  namespace: default
+spec:
+  version: {{ ci_version }}
+  replicas: 1
+  infrastructureTemplate:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+    kind: AzureMachineTemplate
+    name: {{ cluster_name }}-control-plane
+  kubeadmConfigSpec:
+    clusterConfiguration:
+      kubernetesVersion: {{ ci_version }}
+      apiServer:
+        extraArgs:
+          cloud-config: /etc/kubernetes/azure.json
+          cloud-provider: azure
+        extraVolumes:
+        - hostPath: /etc/kubernetes/azure.json
+          mountPath: /etc/kubernetes/azure.json
+          name: cloud-config
+          readOnly: true
+        timeoutForControlPlane: 20m
+      controllerManager:
+        extraArgs:
+          allocate-node-cidrs: "true"
+          cloud-config: /etc/kubernetes/azure.json
+          cloud-provider: azure
+        extraVolumes:
+        - hostPath: /etc/kubernetes/azure.json
+          mountPath: /etc/kubernetes/azure.json
+          name: cloud-config
+          readOnly: true
+    files:
+    - content: |
+        {
+          "cloud": "AzurePublicCloud",
+          "tenantId": "{{ azure_tenant_id }}",
+          "subscriptionId": "{{ azure_subscription_id }}",
+          "aadClientId": "{{ azure_client_id }}",
+          "aadClientSecret": "{{ azure_client_secret }}",
+          "resourceGroup": "{{ cluster_name }}",
+          "securityGroupName": "{{ cluster_name }}-node-nsg",
+          "location": "{{ azure_location }}",
+          "vmType": "standard",
+          "vnetName": "{{ cluster_name }}-vnet",
+          "vnetResourceGroup": "{{ cluster_name }}",
+          "subnetName": "{{ cluster_name }}-node-subnet",
+          "routeTableName": "{{ cluster_name }}-node-routetable",
+          "userAssignedID": "{{ cluster_name }}",
+          "loadBalancerSku": "standard",
+          "maximumLoadBalancerRuleCount": 250,
+          "useManagedIdentityExtension": false,
+          "useInstanceMetadata": true
+        }
+      owner: root:root
+      path: /etc/kubernetes/azure.json
+      permissions: "0644"
+    initConfiguration:
+      nodeRegistration:
+        kubeletExtraArgs:
+          cloud-config: /etc/kubernetes/azure.json
+          cloud-provider: azure
+{%- raw %}
+        name: '{{ ds.meta_data["local_hostname"] }}'
+{%- endraw %}
+    joinConfiguration:
+      nodeRegistration:
+        kubeletExtraArgs:
+          cloud-config: /etc/kubernetes/azure.json
+          cloud-provider: azure
+{%- raw %}
+        name: '{{ ds.meta_data["local_hostname"] }}'
+{%- endraw %}
+    preKubeadmCommands:
+    - curl -Lo /tmp/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.sh
+    - bash /tmp/kubeadm-bootstrap.sh {{ ci_version }} http://{{ bootstrap_vm_address }}
+    - curl -Lo /tmp/set-nics-mtu.sh http://{{ bootstrap_vm_address }}/scripts/set-nics-mtu.sh
+    - bash /tmp/set-nics-mtu.sh
+    useExperimentalRetryJoin: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+kind: AzureMachineTemplate
+metadata:
+  name: {{ cluster_name }}-control-plane
+  namespace: default
+spec:
+  template:
+    spec:
+      location: {{ azure_location }}
+      osDisk:
+        diskSizeGB: 128
+        managedDisk:
+          storageAccountType: Premium_LRS
+        osType: Linux
+      sshPublicKey: {{ azure_ssh_public_key_b64 }}
+      vmSize: {{ master_vm_size }}
+      image:
+        marketplace:
+          publisher: cncf-upstream
+          offer: capi
+          sku: k8s-1dot18dot3-ubuntu-1804
+          version: "2020.05.20"
