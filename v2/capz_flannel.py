@@ -25,6 +25,7 @@ class CapzFlannelCI(ci.CI):
 
         self.logging = log.getLogger(__name__)
         self.kubectl = utils.get_kubectl_bin()
+        self.patches = None
 
         # set after k8sbins build
         self.ci_version = None
@@ -45,11 +46,16 @@ class CapzFlannelCI(ci.CI):
         start = time.time()
 
         self.deployer.up()
+        self.deployer.wait_for_agents(check_nodes_ready=False)
+
+        if self.patches is not None:
+            self._install_patches()
+
         self._setup_kubeconfig()
         self._add_flannel_cni()
         self._add_kube_proxy_windows_daemonset()
 
-        self.deployer.wait_for_agents()
+        self.deployer.wait_for_agents(check_nodes_ready=True)
         self._wait_for_ready_pods()
 
         self.logging.info("The cluster provisioned in %.2f minutes",
@@ -89,6 +95,22 @@ class CapzFlannelCI(ci.CI):
             self._collect_logs(
                 node_address, local_script_path, remote_script_path,
                 remote_cmd, remote_logs_archive)
+
+    def set_patches(self, patches=None):
+        self.patches = patches
+
+    def _install_patches(self):
+        self.logging.info("Installing patches")
+
+        local_script_path = os.path.join(os.getcwd(), "installPatches.ps1")
+        node_addresses = self.deployer.windows_private_addresses
+
+        self._upload_to(local_script_path,
+                        "/tmp/installPatches.ps1",
+                        node_addresses)
+        self._run_remote_cmd("/tmp/installPatches.ps1 %s" % self.patches,
+                             node_addresses)
+        self._wait_for_connection(node_addresses)
 
     def _upload_to(self, local_path, remote_path, node_addresses):
         for node_address in node_addresses:

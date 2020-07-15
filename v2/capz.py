@@ -155,8 +155,9 @@ class CAPZProvisioner(deployer.NoopDeployer):
     def reclaim(self):
         self._setup_capz_kubeconfig()
 
-    def wait_for_agents(self, timeout=3600):
-        self._wait_for_windows_agents(timeout=timeout)
+    def wait_for_agents(self, check_nodes_ready=True, timeout=3600):
+        self._wait_for_windows_agents(check_nodes_ready=check_nodes_ready,
+                                      timeout=timeout)
 
     def upload_to_bootstrap_vm(self, local_path):
         self.logging.info("Uploading %s to bootstrap VM", local_path)
@@ -458,7 +459,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
         return vm
 
-    def _wait_for_windows_agents(self, timeout=3600):
+    def _wait_for_windows_agents(self, check_nodes_ready=True, timeout=3600):
         self.logging.info("Waiting up to %.2f minutes for the Windows agents",
                           timeout / 60.0)
 
@@ -504,6 +505,9 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
                 if status_phase != "Running":
                     all_ready = False
+                    continue
+
+                if not check_nodes_ready:
                     continue
 
                 cmd = [
