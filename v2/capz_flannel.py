@@ -193,12 +193,22 @@ class CapzFlannelCI(ci.CI):
         for node in nodes["items"]:
             node_name = node["metadata"]["name"]
             node_info = node["status"]["nodeInfo"]
+            node_os = node["metadata"]["labels"]["kubernetes.io/os"]
 
             if node_info["kubeletVersion"] != self.ci_version:
                 raise Exception(
                     "Wrong kubelet version on node %s. "
                     "Expected %s, but found %s" %
                     (node_name, self.ci_version, node_info["kubeletVersion"]))
+
+            # Skip kube-proxy version validation for Windows nodes, if
+            # DSR patch is applied.
+            if self.opts.install_dsr and node_os == "windows":
+                self.logging.warning(
+                    "Skipping kube-proxy version check for node %s. The "
+                    "node version is %s.", node_name,
+                    node_info["kubeProxyVersion"])
+                continue
 
             if node_info["kubeProxyVersion"] != self.ci_version:
                 raise Exception(
@@ -248,7 +258,7 @@ class CapzFlannelCI(ci.CI):
             os.getcwd(), "cluster-api/kube-proxy/daemonset-windows.yaml.j2")
         context = {
             "ci_image_tag": self.ci_version.replace("+", "_"),
-            "enable_win_dsr": "false"
+            "enable_win_dsr": str(self.opts.install_dsr).lower()
         }
         output_file = "/tmp/kube-proxy-daemonset-windows.yaml"
         utils.render_template(template_file, output_file, context)
@@ -370,6 +380,15 @@ class CapzFlannelCI(ci.CI):
             ci_artifacts_dir, self.ci_version)
         ci_artifacts_images_dir = "%s/%s/images" % (
             ci_artifacts_dir, self.ci_version)
+
+        if self.opts.install_dsr:
+            ret = utils.retry_on_error()(utils.download_file)(
+                "http://10.0.173.212/kube-proxy.exe",
+                "%s/%s/kube-proxy.exe" % (
+                    k8s_path, constants.KUBERNETES_WINDOWS_BINS_LOCATION))
+            if ret != 0:
+                raise Exception("Failed to download kube-proxy.exe with "
+                                "DSR patch")
 
         os.makedirs(ci_artifacts_linux_bin_dir, exist_ok=True)
         os.makedirs(ci_artifacts_windows_bin_dir, exist_ok=True)
