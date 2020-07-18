@@ -1,6 +1,9 @@
 AZURE_LOCATIONS = ["eastus2", "westeurope", "westus2", "southcentralus"]
 WINDOWS_ADMIN_USER = "azureuser"
 
+FLANNEL_MODE_OVERLAY = "overlay"
+FLANNEL_MODE_L2BRIDGE = "host-gw"
+
 KUBERNETES_LINUX_BINS_LOCATION = "_output/local/bin/linux/amd64/"
 KUBERNETES_WINDOWS_BINS_LOCATION = "_output/local/bin/windows/amd64"
 KUBERNETES_IMAGES_LOCATION = "_output/release-images/amd64"

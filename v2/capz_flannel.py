@@ -13,6 +13,10 @@ import utils
 
 p = configargparse.get_argument_parser()
 
+p.add("--flannel-mode", default="overlay",
+      choices=[constants.FLANNEL_MODE_OVERLAY,
+               constants.FLANNEL_MODE_L2BRIDGE],
+      help="Flannel mode used by the CI.")
 p.add("--base-container-image-tag",
       default="1809", choices=["1809", "2004"],
       help="The base container image used for the kube-proxy / flannel CNI. "
@@ -30,7 +34,8 @@ class CapzFlannelCI(ci.CI):
         # set after k8sbins build
         self.ci_version = None
 
-        self.deployer = capz.CAPZProvisioner()
+        self.deployer = capz.CAPZProvisioner(
+            flannel_mode=self.opts.flannel_mode)
 
     def build(self, binsToBuild):
         builder_mapping = {"k8sbins": self._build_k8s_artifacts}
@@ -308,11 +313,26 @@ class CapzFlannelCI(ci.CI):
         cmd = [self.kubectl, "apply", "-f", output_file]
         utils.retry_on_error()(self._run_cmd)(cmd)
 
+    def _set_vxlan_devices_mtu(self):
+        self.logging.info(
+            "Set the proper MTU for the k8s master vxlan devices")
+        ssh_key_path = (os.environ.get("SSH_KEY")
+                        or os.path.join(os.environ.get("HOME"), ".ssh/id_rsa"))
+        utils.retry_on_error()(self._run_cmd)([
+            "ssh", "-o", "StrictHostKeyChecking=no", "-o",
+            "UserKnownHostsFile=/dev/null", "-i", ssh_key_path,
+            "capi@%s" % self.deployer.master_public_address,
+            "'sudo bash -s' < %s" % os.path.join(
+                os.getcwd(),
+                "cluster-api/scripts/set-vxlan-devices-mtu.sh")
+        ])
+
     def _add_flannel_cni(self):
         template_file = os.path.join(
             os.getcwd(), "cluster-api/flannel/daemonset-linux.yaml.j2")
         context = {
-            "cluster_network_subnet": self.deployer.cluster_network_subnet
+            "cluster_network_subnet": self.deployer.cluster_network_subnet,
+            "flannel_mode": self.opts.flannel_mode
         }
         flannel_daemonset_linux = "/tmp/flannel-daemonset-linux.yaml"
         utils.render_template(template_file, flannel_daemonset_linux, context)
@@ -324,7 +344,13 @@ class CapzFlannelCI(ci.CI):
             os.getcwd(), "cluster-api/flannel/daemonset-windows.yaml.j2")
         server_core_tag = "windowsservercore-%s" % (
             self.opts.base_container_image_tag)
-        context = {"server_core_tag": server_core_tag}
+        mode = "overlay"
+        if self.opts.flannel_mode == "host-gw":
+            mode = "l2bridge"
+        context = {
+            "server_core_tag": server_core_tag,
+            "mode": mode
+        }
         flannel_daemonset_windows = "/tmp/flannel-daemonset-windows.yaml"
         utils.render_template(
             template_file, flannel_daemonset_windows, context)
@@ -338,19 +364,8 @@ class CapzFlannelCI(ci.CI):
         cmd = [self.kubectl, "apply", "-f", flannel_daemonset_windows]
         utils.retry_on_error()(self._run_cmd)(cmd)
 
-        # TODO: run the MTU change only when vxlan overlay is used
-        self.logging.info(
-            "Set the proper MTU for the k8s master vxlan devices")
-        ssh_key_path = (os.environ.get("SSH_KEY")
-                        or os.path.join(os.environ.get("HOME"), ".ssh/id_rsa"))
-        utils.retry_on_error()(self._run_cmd)([
-            "ssh", "-o", "StrictHostKeyChecking=no", "-o",
-            "UserKnownHostsFile=/dev/null", "-i", ssh_key_path,
-            "capi@%s" % self.deployer.master_public_address,
-            "'sudo bash -s' < %s" % os.path.join(
-                os.getcwd(),
-                "cluster-api/scripts/set-vxlan-devices-mtu.sh")
-        ])
+        if self.opts.flannel_mode == constants.FLANNEL_MODE_OVERLAY:
+            self._set_vxlan_devices_mtu()
 
     def _setup_kubeconfig(self):
         os.environ["KUBECONFIG"] = self.deployer.capz_kubeconfig_path

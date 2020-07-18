@@ -10,7 +10,11 @@ metadata:
 data:
   cni-conf.json: |
     {
+{%- if flannel_mode == "overlay" %}
+      "name": "vxlan0",
+{%- elif flannel_mode == "host-gw" %}
       "name": "cbr0",
+{%- endif %}
       "cniVersion": "0.3.1",
       "plugins": [
         {
@@ -31,11 +35,18 @@ data:
   net-conf.json: |
     {
       "Network": "{{ cluster_network_subnet }}",
+{%- if flannel_mode == "overlay" %}
       "Backend": {
+        "Name": "vxlan0",
         "Type": "vxlan",
         "VNI": 4096,
         "Port": 4789
       }
+{%- elif flannel_mode == "host-gw" %}
+      "Backend": {
+        "Type": "host-gw"
+      }
+{%- endif %}
     }
 ---
 apiVersion: apps/v1

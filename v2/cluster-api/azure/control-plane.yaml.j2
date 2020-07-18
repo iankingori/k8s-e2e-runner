@@ -78,8 +78,10 @@ spec:
     preKubeadmCommands:
     - curl -Lo /tmp/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.sh
     - bash /tmp/kubeadm-bootstrap.sh {{ ci_version }} http://{{ bootstrap_vm_address }}
+{%- if flannel_mode == "overlay" %}
     - curl -Lo /tmp/set-nics-mtu.sh http://{{ bootstrap_vm_address }}/scripts/set-nics-mtu.sh
     - bash /tmp/set-nics-mtu.sh
+{%- endif %}
     useExperimentalRetryJoin: true
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3

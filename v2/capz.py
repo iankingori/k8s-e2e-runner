@@ -48,11 +48,12 @@ p.add("--win-minion-gallery-image",
 
 
 class CAPZProvisioner(deployer.NoopDeployer):
-    def __init__(self):
+    def __init__(self, flannel_mode="overlay"):
         super(CAPZProvisioner, self).__init__()
 
         self.logging = log.getLogger(__name__)
         self.kubectl = utils.get_kubectl_bin()
+        self.flannel_mode = flannel_mode
 
         opts = p.parse_known_args()[0]
         self.cluster_name = opts.cluster_name
@@ -555,7 +556,12 @@ class CAPZProvisioner(deployer.NoopDeployer):
                               node_name)
             return False
 
-        if not strtobool(ready_condition[0]["status"]):
+        try:
+            is_ready = strtobool(ready_condition[0]["status"])
+        except ValueError:
+            is_ready = False
+
+        if not is_ready:
             self.logging.info("Node %s is not ready yet", node_name)
             return False
 
@@ -580,6 +586,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             "win_minion_image_definition": self.win_minion_image_definition,
             "win_minion_image_version": self.win_minion_image_version,
             "ci_version": self.ci_version,
+            "flannel_mode": self.flannel_mode,
         }
 
         self.logging.info("Create CAPZ cluster")
