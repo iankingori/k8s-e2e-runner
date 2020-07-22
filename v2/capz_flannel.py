@@ -71,6 +71,11 @@ class CapzFlannelCI(ci.CI):
         self._setup_kubeconfig()
 
     def collectWindowsLogs(self):
+        if "KUBECONFIG" not in os.environ:
+            self.logging.info("Skipping logs collection, because KUBECONFIG "
+                              "is not set.")
+            return
+
         local_script_path = os.path.join(
             os.getcwd(), "cluster-api/scripts/collect-logs.ps1")
         remote_script_path = os.path.join(
@@ -79,11 +84,21 @@ class CapzFlannelCI(ci.CI):
         remote_logs_archive = "/tmp/logs.zip"
 
         for node_address in self.deployer.windows_private_addresses:
-            self._collect_logs(
-                node_address, local_script_path, remote_script_path,
-                remote_cmd, remote_logs_archive)
+            try:
+                self._collect_logs(
+                    node_address, local_script_path, remote_script_path,
+                    remote_cmd, remote_logs_archive)
+            except Exception as ex:
+                self.logging.warning(
+                    "Cannot collect logs from node %s. Exception details: "
+                    "%s. Skipping", node_address, ex)
 
     def collectLinuxLogs(self):
+        if "KUBECONFIG" not in os.environ:
+            self.logging.info("Skipping logs collection, because KUBECONFIG "
+                              "is not set.")
+            return
+
         local_script_path = os.path.join(
             os.getcwd(), "cluster-api/scripts/collect-logs.sh")
         remote_script_path = os.path.join(
@@ -92,9 +107,14 @@ class CapzFlannelCI(ci.CI):
         remote_logs_archive = "/tmp/logs.tar.gz"
 
         for node_address in self.deployer.linux_private_addresses:
-            self._collect_logs(
-                node_address, local_script_path, remote_script_path,
-                remote_cmd, remote_logs_archive)
+            try:
+                self._collect_logs(
+                    node_address, local_script_path, remote_script_path,
+                    remote_cmd, remote_logs_archive)
+            except Exception as ex:
+                self.logging.warning(
+                    "Cannot collect logs from node %s. Exception details: "
+                    "%s. Skipping", node_address, ex)
 
     def set_patches(self, patches=None):
         self.patches = patches

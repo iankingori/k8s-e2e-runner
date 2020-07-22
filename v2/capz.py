@@ -179,28 +179,30 @@ class CAPZProvisioner(deployer.NoopDeployer):
             "capi@%s" % node_address,
             "'%s'" % cmd])
 
-    def download_from_k8s_node(self, remote_path, local_path, node_address):
+    def download_from_k8s_node(self, remote_path, local_path,
+                               node_address, timeout="10m"):
         self.logging.info("Downloading %s to %s from node %s",
                           remote_path, local_path, node_address)
         self._run_cmd([
-            "scp", "-i", os.environ["SSH_KEY"],
+            "timeout", timeout, "scp", "-i", os.environ["SSH_KEY"],
             "-o", "StrictHostKeyChecking=no",
             "-o", "UserKnownHostsFile=/dev/null",
             "-o", "ProxyCommand='%s'" % self._get_k8s_master_ssh_proxy_cmd(),
             "-r", "capi@%s:%s" % (node_address, remote_path), local_path])
 
-    def upload_to_k8s_node(self, local_path, remote_path, node_address):
+    def upload_to_k8s_node(self, local_path, remote_path,
+                           node_address, timeout="10m"):
         self.logging.info("Uploading %s to %s on node %s",
                           local_path, remote_path, node_address)
         self._run_cmd([
-            "scp", "-i", os.environ["SSH_KEY"],
+            "timeout", timeout, "scp", "-i", os.environ["SSH_KEY"],
             "-o", "StrictHostKeyChecking=no",
             "-o", "UserKnownHostsFile=/dev/null",
             "-o", "ProxyCommand='%s'" % self._get_k8s_master_ssh_proxy_cmd(),
             "-r", local_path, "capi@%s:%s" % (node_address, remote_path)])
 
-    def check_k8s_node_connection(self, node_address):
-        cmd = ["ssh", "-i", os.environ["SSH_KEY"],
+    def check_k8s_node_connection(self, node_address, timeout="1m"):
+        cmd = ["timeout", timeout, "ssh", "-i", os.environ["SSH_KEY"],
                "-o", "StrictHostKeyChecking=no",
                "-o", "UserKnownHostsFile=/dev/null",
                "capi@%s" % self.master_public_address,
