@@ -60,6 +60,8 @@ for CI_IMAGE in "${CI_IMAGES[@]}"; do
     crictl rmi "k8s.gcr.io/${CI_IMAGE}:v1.18.3"
 done
 
+sysctl -w net.bridge.bridge-nf-call-iptables=1
+
 echo "* checking binary versions"
 echo "ctr version: $(ctr version)"
 echo "kubeadm version: $(kubeadm version -o=short)"

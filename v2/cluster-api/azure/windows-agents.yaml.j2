@@ -33,7 +33,7 @@ spec:
     spec:
       location: {{ azure_location }}
       osDisk:
-        diskSizeGB: 50
+        diskSizeGB: 80
         managedDisk:
           storageAccountType: Premium_LRS
         osType: Windows
@@ -89,6 +89,6 @@ spec:
 {%- endraw %}
       preKubeadmCommands:
       - curl.exe -Lo /tmp/ssh-setup.ps1 http://{{ bootstrap_vm_address }}/scripts/ssh-setup.ps1
-      - powershell -C "/tmp/ssh-setup.ps1 -SSHPublicKey '{{ azure_ssh_public_key }}'"
+      - powershell -C "/tmp/ssh-setup.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -SSHPublicKey '{{ azure_ssh_public_key }}'"
       - curl.exe -Lo /tmp/kubeadm-bootstrap.ps1 http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.ps1
-      - powershell -C "/tmp/kubeadm-bootstrap.ps1 -CIVersion {{ ci_version }} -CIPackagesBaseURL http://{{ bootstrap_vm_address }}"
+      - powershell -C "/tmp/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -CIVersion {{ ci_version }}"

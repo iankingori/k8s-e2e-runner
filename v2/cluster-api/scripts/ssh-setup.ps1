@@ -1,46 +1,14 @@
 Param(
+    [parameter(Mandatory=$true)]
+    [string]$CIPackagesBaseURL,
     [string]$SSHPublicKey
 )
 
 $ErrorActionPreference = "Stop"
 
-function Start-ExecuteWithRetry {
-    Param(
-        [Parameter(Mandatory=$true)]
-        [ScriptBlock]$ScriptBlock,
-        [int]$MaxRetryCount=10,
-        [int]$RetryInterval=3,
-        [string]$RetryMessage,
-        [array]$ArgumentList=@()
-    )
-    $currentErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
-    $retryCount = 0
-    while ($true) {
-        Write-Output "Start-ExecuteWithRetry attempt $retryCount"
-        try {
-            $res = Invoke-Command -ScriptBlock $ScriptBlock `
-                                  -ArgumentList $ArgumentList
-            $ErrorActionPreference = $currentErrorActionPreference
-            Write-Output "Start-ExecuteWithRetry terminated"
-            return $res
-        } catch [System.Exception] {
-            $retryCount++
-            if ($retryCount -gt $MaxRetryCount) {
-                $ErrorActionPreference = $currentErrorActionPreference
-                Write-Output "Start-ExecuteWithRetry exception thrown"
-                throw
-            } else {
-                if($RetryMessage) {
-                    Write-Output "Start-ExecuteWithRetry RetryMessage: $RetryMessage"
-                } elseif($_) {
-                    Write-Output "Start-ExecuteWithRetry Retry: $_.ToString()"
-                }
-                Start-Sleep $RetryInterval
-            }
-        }
-    }
-}
+curl.exe -s -o /tmp/utils.ps1 $CIPackagesBaseURL/scripts/utils.ps1
+. /tmp/utils.ps1
+
 
 function Set-SSHPublicKey {
     if(!$SSHPublicKey) {
@@ -57,7 +25,6 @@ function Set-SSHPublicKey {
     $acl | Set-Acl
 }
 
-
 # Install OpenSSH
 Start-ExecuteWithRetry { Get-WindowsCapability -Online -Name OpenSSH* | Add-WindowsCapability -Online }
 Set-Service -Name sshd -StartupType Automatic
@@ -67,8 +34,5 @@ Start-Service sshd
 Set-SSHPublicKey
 
 # Set PowerShell as defaul shell
-New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" `
-                 -Name DefaultShell `
-                 -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" `
-                 -PropertyType String `
-                 -Force
+New-ItemProperty -Force -Path "HKLM:\SOFTWARE\OpenSSH" -PropertyType String `
+                 -Name DefaultShell -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"

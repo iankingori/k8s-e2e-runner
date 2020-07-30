@@ -1,3 +1,4 @@
+import glob
 import shutil
 import os
 import time
@@ -13,7 +14,10 @@ import utils
 
 p = configargparse.get_argument_parser()
 
-p.add("--flannel-mode", default="overlay",
+p.add("--container-runtime", default="docker",
+      choices=["docker", "containerd"],
+      help="Container runtime used by the Kubernetes agents.")
+p.add("--flannel-mode", default=constants.FLANNEL_MODE_OVERLAY,
       choices=[constants.FLANNEL_MODE_OVERLAY,
                constants.FLANNEL_MODE_L2BRIDGE],
       help="Flannel mode used by the CI.")
@@ -21,6 +25,11 @@ p.add("--base-container-image-tag",
       default="1809", choices=["1809", "2004"],
       help="The base container image used for the kube-proxy / flannel CNI. "
       "This needs to be adjusted depending on the Windows minion Azure image.")
+p.add("--cri-tools-repo",
+      default="https://github.com/kubernetes-sigs/cri-tools",
+      help="The cri-tools repository. It is used to build the crictl tool.")
+p.add("--cri-tools-branch",
+      default="master", help="The cri-tools branch.")
 
 
 class CapzFlannelCI(ci.CI):
@@ -31,14 +40,21 @@ class CapzFlannelCI(ci.CI):
         self.kubectl = utils.get_kubectl_bin()
         self.patches = None
 
+        self.ci_artifacts_dir = os.path.join(
+            os.environ["HOME"], "ci_artifacts")
         # set after k8sbins build
         self.ci_version = None
 
         self.deployer = capz.CAPZProvisioner(
-            flannel_mode=self.opts.flannel_mode)
+            flannel_mode=self.opts.flannel_mode,
+            container_runtime=self.opts.container_runtime)
 
     def build(self, binsToBuild):
-        builder_mapping = {"k8sbins": self._build_k8s_artifacts}
+        builder_mapping = {
+            "k8sbins": self._build_k8s_artifacts,
+            "containerdbins": self._build_containerd_binaries,
+            "containerdshim": self._build_containerd_shim,
+        }
 
         def noop_func():
             pass
@@ -51,21 +67,26 @@ class CapzFlannelCI(ci.CI):
         start = time.time()
 
         self.deployer.up()
-        self.deployer.wait_for_agents(check_nodes_ready=False)
+        self.deployer.wait_for_agents(check_nodes_ready=False, timeout=7200)
+
+        if self.opts.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
+            self.deployer.enable_ip_forwarding()
+
+        self.deployer.setup_ssh_config()
+        self._load_kube_proxy_windows_image()
 
         if self.patches is not None:
             self._install_patches()
 
         self._setup_kubeconfig()
         self._add_flannel_cni()
-        self._add_kube_proxy_windows_daemonset()
-
-        self.deployer.wait_for_agents(check_nodes_ready=True)
         self._wait_for_ready_pods()
+        self._add_kube_proxy_windows()
+        self._wait_for_ready_pods()
+        self.deployer.wait_for_agents(check_nodes_ready=True)
 
         self.logging.info("The cluster provisioned in %.2f minutes",
                           (time.time() - start) / 60.0)
-
         self._validate_cluster()
 
     def down(self):
@@ -77,8 +98,8 @@ class CapzFlannelCI(ci.CI):
 
     def collectWindowsLogs(self):
         if "KUBECONFIG" not in os.environ:
-            self.logging.info("Skipping logs collection, because KUBECONFIG "
-                              "is not set.")
+            self.logging.info("Skipping collection of Windows logs, because "
+                              "KUBECONFIG is not set.")
             return
 
         local_script_path = os.path.join(
@@ -100,8 +121,8 @@ class CapzFlannelCI(ci.CI):
 
     def collectLinuxLogs(self):
         if "KUBECONFIG" not in os.environ:
-            self.logging.info("Skipping logs collection, because KUBECONFIG "
-                              "is not set.")
+            self.logging.info("Skipping collection of Linux logs, because "
+                              "KUBECONFIG is not set.")
             return
 
         local_script_path = os.path.join(
@@ -144,7 +165,8 @@ class CapzFlannelCI(ci.CI):
 
     def _run_remote_cmd(self, cmd, node_addresses):
         for node_address in node_addresses:
-            self.deployer.run_cmd_on_k8s_node(cmd, node_address)
+            utils.retry_on_error()(self.deployer.run_cmd_on_k8s_node)(
+                cmd, node_address)
 
     def _wait_for_connection(self, node_addresses, timeout=600):
         self.logging.info(
@@ -183,14 +205,15 @@ class CapzFlannelCI(ci.CI):
             self.deployer.master_public_port)
 
         self._setup_kubeconfig()
-        self._prepull_images()
+        if self.opts.container_runtime == "docker":
+            self._prepull_images()
 
     def _prepull_images(self, timeout=3600):
         prepull_yaml_path = "/tmp/prepull-windows-images.yaml"
         utils.download_file(self.opts.prepull_yaml, prepull_yaml_path)
 
         self.logging.info("Starting Windows images pre-pull")
-        utils.retry_on_error()(self._run_cmd)(
+        utils.retry_on_error()(utils.run_shell_cmd)(
             [self.kubectl, "apply", "-f", prepull_yaml_path])
 
         self.logging.info(
@@ -207,7 +230,7 @@ class CapzFlannelCI(ci.CI):
                                 "%.2f minutes." % (timeout / 60.0))
 
             output, _ = utils.retry_on_error()(
-                self._run_cmd)(cmd, sensitive=True)
+                utils.run_shell_cmd)(cmd, sensitive=True)
             prepull_daemonset = yaml.safe_load(output.decode("ascii"))
 
             if (prepull_daemonset["status"]["numberReady"] ==
@@ -220,7 +243,7 @@ class CapzFlannelCI(ci.CI):
                           (time.time() - start) / 60.0)
 
         self.logging.info("Cleaning up")
-        self._run_cmd(
+        utils.run_shell_cmd(
             [self.kubectl, "delete", "--wait", "-f", prepull_yaml_path])
 
     def _validate_cluster(self):
@@ -235,27 +258,17 @@ class CapzFlannelCI(ci.CI):
         self.logging.info("Validating K8s API versions")
 
         output, _ = utils.retry_on_error()(
-            self._run_cmd)([self.kubectl, "get", "nodes", "-o", "yaml"])
+            utils.run_shell_cmd)([self.kubectl, "get", "nodes", "-o", "yaml"])
         nodes = yaml.safe_load(output.decode("ascii"))
         for node in nodes["items"]:
             node_name = node["metadata"]["name"]
             node_info = node["status"]["nodeInfo"]
-            node_os = node["metadata"]["labels"]["kubernetes.io/os"]
 
             if node_info["kubeletVersion"] != self.ci_version:
                 raise Exception(
                     "Wrong kubelet version on node %s. "
                     "Expected %s, but found %s" %
                     (node_name, self.ci_version, node_info["kubeletVersion"]))
-
-            # Skip kube-proxy version validation for Windows nodes, if
-            # DSR patch is applied.
-            if self.opts.install_dsr and node_os == "windows":
-                self.logging.warning(
-                    "Skipping kube-proxy version check for node %s. The "
-                    "node version is %s.", node_name,
-                    node_info["kubeProxyVersion"])
-                continue
 
             if node_info["kubeProxyVersion"] != self.ci_version:
                 raise Exception(
@@ -269,7 +282,7 @@ class CapzFlannelCI(ci.CI):
 
         self.logging.info("Validating K8s API container images")
 
-        output, _ = utils.retry_on_error()(self._run_cmd)([
+        output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "get", "nodes", "-o", "yaml", "-l",
             "kubernetes.io/os=linux"
         ])
@@ -295,30 +308,44 @@ class CapzFlannelCI(ci.CI):
 
     def _wait_for_ready_pods(self):
         self.logging.info("Waiting for all the pods to be ready")
-        self._run_cmd([
-            self.kubectl, "wait", "--for=condition=Ready", "--timeout", "20m",
+        utils.run_shell_cmd([
+            self.kubectl, "wait", "--for=condition=Ready", "--timeout", "30m",
             "pods", "--all", "--all-namespaces"
         ])
 
-    def _add_kube_proxy_windows_daemonset(self):
+    def _load_kube_proxy_windows_image(self):
+        self.logging.info(
+            "Loading the kube-proxy container image on the Windows agents")
+        local_script_path = os.path.join(
+            os.getcwd(), "cluster-api/scripts/import-kube-proxy-image.ps1")
+        win_node_addresses = self.deployer.windows_private_addresses
+        self._upload_to(local_script_path, "/tmp/import-kube-proxy-image.ps1",
+                        win_node_addresses)
+        cmd = ("/tmp/import-kube-proxy-image.ps1 "
+               "-CIVersion %s -CIPackagesBaseURL http://%s" % (
+                   self.ci_version, self.deployer.bootstrap_vm_private_ip))
+        self._run_remote_cmd(cmd, win_node_addresses)
+
+    def _add_kube_proxy_windows(self):
         template_file = os.path.join(
-            os.getcwd(), "cluster-api/kube-proxy/daemonset-windows.yaml.j2")
+            os.getcwd(), "cluster-api/kube-proxy/kube-proxy-windows.yaml.j2")
         context = {
             "ci_image_tag": self.ci_version.replace("+", "_"),
-            "enable_win_dsr": str(self.opts.install_dsr).lower()
+            "enable_win_dsr": str(self.opts.install_dsr).lower(),
+            "flannel_mode": self.opts.flannel_mode
         }
-        output_file = "/tmp/kube-proxy-daemonset-windows.yaml"
+        output_file = "/tmp/kube-proxy-kube-proxy-windows.yaml"
         utils.render_template(template_file, output_file, context)
 
         cmd = [self.kubectl, "apply", "-f", output_file]
-        utils.retry_on_error()(self._run_cmd)(cmd)
+        utils.retry_on_error()(utils.run_shell_cmd)(cmd)
 
     def _set_vxlan_devices_mtu(self):
         self.logging.info(
             "Set the proper MTU for the k8s master vxlan devices")
         ssh_key_path = (os.environ.get("SSH_KEY")
                         or os.path.join(os.environ.get("HOME"), ".ssh/id_rsa"))
-        utils.retry_on_error()(self._run_cmd)([
+        utils.retry_on_error()(utils.run_shell_cmd)([
             "ssh", "-o", "StrictHostKeyChecking=no", "-o",
             "UserKnownHostsFile=/dev/null", "-i", ssh_key_path,
             "capi@%s" % self.deployer.master_public_address,
@@ -329,40 +356,34 @@ class CapzFlannelCI(ci.CI):
 
     def _add_flannel_cni(self):
         template_file = os.path.join(
-            os.getcwd(), "cluster-api/flannel/daemonset-linux.yaml.j2")
+            os.getcwd(), "cluster-api/flannel/kube-flannel.yaml.j2")
         context = {
             "cluster_network_subnet": self.deployer.cluster_network_subnet,
             "flannel_mode": self.opts.flannel_mode
         }
-        flannel_daemonset_linux = "/tmp/flannel-daemonset-linux.yaml"
-        utils.render_template(template_file, flannel_daemonset_linux, context)
+        kube_flannel = "/tmp/kube-flannel.yaml"
+        utils.render_template(template_file, kube_flannel, context)
 
-        flannel_addons = os.path.join(os.getcwd(),
-                                      "cluster-api/flannel/addons.yaml")
-
-        template_file = os.path.join(
-            os.getcwd(), "cluster-api/flannel/daemonset-windows.yaml.j2")
         server_core_tag = "windowsservercore-%s" % (
             self.opts.base_container_image_tag)
         mode = "overlay"
-        if self.opts.flannel_mode == "host-gw":
+        if self.opts.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
             mode = "l2bridge"
         context = {
             "server_core_tag": server_core_tag,
+            "container_runtime": self.opts.container_runtime,
             "mode": mode
         }
-        flannel_daemonset_windows = "/tmp/flannel-daemonset-windows.yaml"
-        utils.render_template(
-            template_file, flannel_daemonset_windows, context)
+        kube_flannel_windows = "/tmp/kube-flannel-windows.yaml"
+        searchpath = os.path.join(os.getcwd(), "cluster-api/flannel")
+        utils.render_template("kube-flannel-windows.yaml.j2",
+                              kube_flannel_windows, context, searchpath)
 
-        cmd = [self.kubectl, "apply", "-f", flannel_addons]
-        utils.retry_on_error()(self._run_cmd)(cmd)
+        cmd = [self.kubectl, "apply", "-f", kube_flannel]
+        utils.retry_on_error()(utils.run_shell_cmd)(cmd)
 
-        cmd = [self.kubectl, "apply", "-f", flannel_daemonset_linux]
-        utils.retry_on_error()(self._run_cmd)(cmd)
-
-        cmd = [self.kubectl, "apply", "-f", flannel_daemonset_windows]
-        utils.retry_on_error()(self._run_cmd)(cmd)
+        cmd = [self.kubectl, "apply", "-f", kube_flannel_windows]
+        utils.retry_on_error()(utils.run_shell_cmd)(cmd)
 
         if self.opts.flannel_mode == constants.FLANNEL_MODE_OVERLAY:
             self._set_vxlan_devices_mtu()
@@ -380,14 +401,14 @@ class CapzFlannelCI(ci.CI):
             "docker buildx ls | grep -q docker-buildx", "||",
             "docker buildx create --name docker-buildx"
         ]
-        self._run_cmd(cmd, env=env)
-        self._run_cmd(["docker buildx use docker-buildx"], env=env)
+        utils.run_shell_cmd(cmd, env=env)
+        utils.run_shell_cmd(["docker buildx use docker-buildx"], env=env)
 
         # Cross-build kube-proxy Windows image
         ci_image_tag = self.ci_version.replace("+", "_")
         dockerfile_path = os.path.join(
             os.getcwd(),
-            "cluster-api/kube-proxy/daemonset-windows-buildx.Dockerfile")
+            "cluster-api/kube-proxy/kube-proxy-windows-buildx.Dockerfile")
         base_image_tag = "v1.18.5-windowsservercore-%s" % (
             self.opts.base_container_image_tag)
         cmd = [
@@ -399,7 +420,7 @@ class CapzFlannelCI(ci.CI):
             "%s/%s" % (utils.get_k8s_folder(),
                        constants.KUBERNETES_WINDOWS_BINS_LOCATION)
         ]
-        utils.retry_on_error()(self._run_cmd)(cmd, env=env)
+        utils.retry_on_error()(utils.run_shell_cmd)(cmd, env=env)
 
     def _build_k8s_artifacts(self):
         k8s_path = utils.get_k8s_folder()
@@ -410,7 +431,7 @@ class CapzFlannelCI(ci.CI):
             'make', 'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm"',
             'KUBE_BUILD_PLATFORMS="linux/amd64"'
         ]
-        self._run_cmd(cmd, k8s_path)
+        utils.run_shell_cmd(cmd, k8s_path)
 
         self.logging.info("Building K8s Windows binaries")
         cmd = [
@@ -418,25 +439,25 @@ class CapzFlannelCI(ci.CI):
             'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm cmd/kube-proxy"',
             'KUBE_BUILD_PLATFORMS="windows/amd64"'
         ]
-        self._run_cmd(cmd, k8s_path)
+        utils.run_shell_cmd(cmd, k8s_path)
 
-        self.logging.info("Building K8s Linux DaemonSet Docker images")
+        self.logging.info("Building K8s Linux DaemonSet container images")
         cmd = ['make', 'quick-release-images']
-        utils.retry_on_error()(self._run_cmd)(cmd, k8s_path)
+        utils.retry_on_error()(utils.run_shell_cmd)(cmd, k8s_path)
 
         kubeadm_bin = os.path.join(constants.KUBERNETES_LINUX_BINS_LOCATION,
                                    'kubeadm')
-        out, _ = self._run_cmd([kubeadm_bin, "version", "-o=short"], k8s_path)
+        out, _ = utils.run_shell_cmd(
+            [kubeadm_bin, "version", "-o=short"], k8s_path)
         self.ci_version = out.decode().strip()
         self.deployer.ci_version = self.ci_version
 
-        ci_artifacts_dir = "%s/ci_artifacts" % os.environ["HOME"]
         ci_artifacts_linux_bin_dir = "%s/%s/bin/linux/amd64" % (
-            ci_artifacts_dir, self.ci_version)
+            self.ci_artifacts_dir, self.ci_version)
         ci_artifacts_windows_bin_dir = "%s/%s/bin/windows/amd64" % (
-            ci_artifacts_dir, self.ci_version)
+            self.ci_artifacts_dir, self.ci_version)
         ci_artifacts_images_dir = "%s/%s/images" % (
-            ci_artifacts_dir, self.ci_version)
+            self.ci_artifacts_dir, self.ci_version)
 
         if self.opts.install_dsr:
             ret = utils.retry_on_error()(utils.download_file)(
@@ -474,21 +495,81 @@ class CapzFlannelCI(ci.CI):
             ci_artifacts_images_dir, "kube-proxy-windows.tar")
         self._build_kube_proxy_win_image(kube_proxy_windows_image_file)
 
-        self.deployer.ci_artifacts_dir = ci_artifacts_dir
+        self.deployer.ci_artifacts_dir = self.ci_artifacts_dir
 
-    def _run_cmd(self, cmd, cwd=None, env=None, sensitive=False):
-        out, err, ret = utils.run_cmd(cmd,
-                                      timeout=(3 * 3600),
-                                      stdout=True,
-                                      stderr=True,
-                                      cwd=cwd,
-                                      env=env,
-                                      shell=True,
-                                      sensitive=sensitive)
-        if ret != 0:
-            raise Exception("Failed to execute: %s. Error: %s" %
-                            (' '.join(cmd), err))
-        return (out, err)
+    def _build_containerd_binaries(self):
+        containerd_path = utils.get_containerd_folder()
+        utils.clone_repo(self.opts.containerd_repo,
+                         self.opts.containerd_branch, containerd_path)
+
+        ctr_path = utils.get_ctr_folder()
+        utils.clone_repo(self.opts.ctr_repo, self.opts.ctr_branch, ctr_path)
+
+        gopath = utils.get_go_path()
+        cri_tools_path = os.path.join(
+            gopath, "src", "github.com", "kubernetes-sigs", "cri-tools")
+        utils.clone_repo(self.opts.cri_tools_repo, self.opts.cri_tools_branch,
+                         cri_tools_path)
+
+        self.logging.info("Building containerd with cri plugin")
+        utils.run_shell_cmd(["GOOS=windows", "make"], containerd_path)
+
+        self.logging.info("Building ctr")
+        utils.run_shell_cmd(["GOOS=windows", "make", "bin/ctr.exe"], ctr_path)
+
+        self.logging.info("Building crictl")
+        utils.run_shell_cmd(["GOOS=windows", "make", "crictl"], cri_tools_path)
+
+        self.logging.info("Copying binaries to local artifacts directory")
+        ci_artifacts_containerd_bin_dir = os.path.join(
+            self.ci_artifacts_dir, "containerd/bin")
+        os.makedirs(ci_artifacts_containerd_bin_dir, exist_ok=True)
+
+        containerd_bins_location = os.path.join(
+            containerd_path, constants.CONTAINERD_BINS_LOCATION)
+        for path in glob.glob("%s/*" % containerd_bins_location):
+            shutil.copy(path, ci_artifacts_containerd_bin_dir)
+
+        ctr_bin = os.path.join(ctr_path, constants.CONTAINERD_CTR_LOCATION)
+        shutil.copy(ctr_bin, ci_artifacts_containerd_bin_dir)
+
+        crictl_bin = os.path.join(cri_tools_path, "_output/crictl.exe")
+        shutil.copy(crictl_bin, ci_artifacts_containerd_bin_dir)
+
+    def _build_containerd_shim(self):
+        fromVendor = False
+        if self.opts.containerd_shim_repo is None:
+            fromVendor = True
+
+        containerd_shim_path = utils.get_containerd_shim_folder(fromVendor)
+
+        if fromVendor:
+            utils.run_shell_cmd(["go", "get", "github.com/LK4D4/vndr"])
+
+            cmd = ["vndr", "-whitelist", "hcsshim",
+                   "github.com/Microsoft/hcsshim"]
+            vendoring_path = utils.get_containerd_folder()
+            utils.run_shell_cmd(cmd, vendoring_path)
+        else:
+            utils.clone_repo(self.opts.containerd_shim_repo,
+                             self.opts.containerd_shim_branch,
+                             containerd_shim_path)
+
+        self.logging.info("Building containerd shim")
+        cmd = [
+            "GOOS=windows", "go", "build", "-o", constants.CONTAINERD_SHIM_BIN,
+            constants.CONTAINERD_SHIM_DIR
+        ]
+        utils.run_shell_cmd(cmd, containerd_shim_path)
+
+        self.logging.info("Copying binaries to local artifacts directory")
+        ci_artifacts_containerd_bin_dir = os.path.join(
+            self.ci_artifacts_dir, "containerd/bin")
+        os.makedirs(ci_artifacts_containerd_bin_dir, exist_ok=True)
+
+        containerd_shim_bin = os.path.join(
+            containerd_shim_path, constants.CONTAINERD_SHIM_BIN)
+        shutil.copy(containerd_shim_bin, ci_artifacts_containerd_bin_dir)
 
     def _collect_logs(self, node_address, local_script_path,
                       remote_script_path, remote_cmd, remote_logs_archive):

@@ -1,9 +1,9 @@
 FROM e2eteam/dind-bionic:latest
 
-ARG GO_VERSION=1.14.4
+ARG GO_VERSION=1.15
 ARG TF_VERSION=0.12.24
 ARG KIND_VERSION=v0.8.1
-ARG CAPI_VERSION=v0.3.6
+ARG CAPI_VERSION=v0.3.8
 
 # Install system packages
 RUN apt-get update && \

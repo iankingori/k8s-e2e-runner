@@ -14,9 +14,9 @@ import constants
 import traceback
 import socket
 import six
+import jinja2
 
 from base64 import b64encode
-from jinja2 import Template
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS1_v1_5
 from threading import Timer
@@ -464,12 +464,13 @@ def retry_on_error(max_attempts=5, sleep_seconds=0, terminal_exceptions=[]):
     return _retry_on_error
 
 
-def render_template(template_file, output_file, context={}):
-    with open(template_file) as f:
-        t = Template(f.read())
+def render_template(template_file, output_file, context={}, searchpath="/"):
+    template_loader = jinja2.FileSystemLoader(searchpath=searchpath)
+    template_env = jinja2.Environment(loader=template_loader)
+    template = template_env.get_template(template_file)
 
     with open(output_file, 'w') as f:
-        f.write(t.render(context))
+        f.write(template.render(context))
 
 
 def _check_port_open(host, port):
@@ -495,3 +496,26 @@ def wait_for_port_connectivity(address, port, max_wait=300):
         err_msg = "Connection failed on port %s" % port
         logging.error(err_msg)
         raise Exception(err_msg)
+
+
+def run_shell_cmd(cmd, cwd=None, env=None, sensitive=False):
+    out, err, ret = run_cmd(
+        cmd, timeout=(3 * 3600), stdout=True, stderr=True, shell=True,
+        cwd=cwd, env=env, sensitive=sensitive)
+
+    if ret != 0:
+        raise Exception("Failed to execute: %s. Error: %s" %
+                        (' '.join(cmd), err))
+
+    return (out, err)
+
+
+def run_async_shell_cmd(cmd, args):
+    def process_stdout(line):
+        logging.info(line.strip())
+
+    def process_stderr(line):
+        logging.warning(line.strip())
+
+    proc = cmd(args, _out=process_stdout, _err=process_stderr, _bg=True)
+    return proc

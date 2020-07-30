@@ -8,118 +8,83 @@ metadata:
     tier: node
     app: flannel
 data:
-  run.ps1: |
-    $ErrorActionPreference = "Stop";
+  init.ps1: |
+    $ErrorActionPreference = "Stop"
 
     mkdir -force /host/etc/cni/net.d
     mkdir -force /host/etc/kube-flannel
-    mkdir -force /host/opt/cni/bin
     mkdir -force /host/k/flannel
     mkdir -force /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount
 
     $cniJson = get-content /etc/kube-flannel-windows/cni-conf.json | ConvertFrom-Json
     $serviceSubnet = yq r /etc/kubeadm-config/ClusterConfiguration networking.serviceSubnet
     $podSubnet = yq r /etc/kubeadm-config/ClusterConfiguration networking.podSubnet
-    $networkJson = wins cli net get | convertfrom-json
+    $networkJson = wins cli net get | ConvertFrom-Json
 
-{%- if mode == "overlay" %}
+{%- if container_runtime == "containerd" and mode == "overlay" %}
+    $cniJson.delegate.AdditionalArgs[0].Value.Settings.Exceptions = $serviceSubnet, $podSubnet
+    $cniJson.delegate.AdditionalArgs[1].Value.Settings.DestinationPrefix = $serviceSubnet
+    $cniJson.delegate.AdditionalArgs[2].Value.Settings.ProviderAddress = $networkJson.AddressCIDR.Split('/')[0]
+{%- endif %}
+{%- if container_runtime == "containerd" and mode == "l2bridge" %}
+    $cniJson.delegate.AdditionalArgs[0].Value.Settings.Exceptions = $serviceSubnet, $podSubnet, $networkJson.SubnetCIDR
+    $cniJson.delegate.AdditionalArgs[1].Value.Settings.DestinationPrefix = $serviceSubnet
+    $cniJson.delegate.AdditionalArgs[2].Value.Settings.DestinationPrefix = $networkJson.AddressCIDR
+{%- endif %}
+{%- if container_runtime == "docker" and mode == "overlay" %}
     $cniJson.delegate.policies[0].Value.ExceptionList = $serviceSubnet, $podSubnet
     $cniJson.delegate.policies[1].Value.DestinationPrefix = $serviceSubnet
-{%- elif mode == "l2bridge" %}
+{%- endif %}
+{%- if container_runtime == "docker" and mode == "l2bridge" %}
     $cniJson.delegate.policies[0].Value.ExceptionList = $serviceSubnet, $podSubnet, $networkJson.SubnetCIDR
     $cniJson.delegate.policies[1].Value.DestinationPrefix = $serviceSubnet
     $cniJson.delegate.policies[2].Value.DestinationPrefix = $networkJson.AddressCIDR
 {%- endif %}
-    Set-Content -Path /host/etc/cni/net.d/10-flannel.conf ($cniJson | ConvertTo-Json -depth 100)
+
+    Set-Content -Path /host/etc/cni/net.d/10-flannel.conf `
+                -Value ($cniJson | ConvertTo-Json -depth 100) `
+                -Encoding Ascii
 
     cp -force /etc/kube-flannel/net-conf.json /host/etc/kube-flannel
-    cp -force -recurse /cni/* /host/opt/cni/bin
     cp -force /k/flannel/* /host/k/flannel/
     cp -force /kube-proxy/kubeconfig.conf /host/k/flannel/kubeconfig.yml
     cp -force /var/run/secrets/kubernetes.io/serviceaccount/* /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount/
-    wins cli process run --path /k/flannel/setup.exe --args "--mode={{ mode }} --interface=Ethernet"
-    wins cli route add --addresses 169.254.169.254
-    wins cli process run --path /k/flannel/flanneld.exe --args "--kube-subnet-mgr --kubeconfig-file /k/flannel/kubeconfig.yml" --envs "POD_NAME=$env:POD_NAME POD_NAMESPACE=$env:POD_NAMESPACE"
-{%- if mode == "overlay" %}
-  cni-conf.json: |
-    {
-      "name": "flannel.4096",
-      "cniVersion": "0.3.0",
-      "type": "flannel",
-      "capabilities": {
-        "dns": true
-      },
-      "delegate": {
-        "type": "win-overlay",
-        "policies": [
-          {
-            "Name": "EndpointPolicy",
-            "Value": {
-              "Type": "OutBoundNAT",
-              "ExceptionList": []
-            }
-          },
-          {
-            "Name": "EndpointPolicy",
-            "Value": {
-              "Type": "ROUTE",
-              "DestinationPrefix": "",
-              "NeedEncap": true
-            }
-          }
-        ]
+
+    $result = wins cli hns get-network --name External
+    if($LASTEXITCODE) {
+      if($result.Contains("Network Id  not found")) {
+        wins cli process run --path /k/flannel/setup.exe --args "--mode={{ mode }} --interface=Ethernet"
+      } else {
+        Throw "Failed to get the hns network via wins"
+      }
+    } else {
+      Write-Output "External HNS network is already created"
+      Write-Output $result
+    }
+    $result = wins cli route add --addresses 169.254.169.254
+    if($LASTEXITCODE) {
+      if($result.Contains("The object already exists")) {
+        Write-Output "Route 169.254.169.254 is already added"
+      } else {
+        Write-Output $result
+        Throw "Failed to add route 169.254.169.254"
       }
     }
-{%- elif mode == "l2bridge" %}
-  cni-conf.json: |
-    {
-      "name": "cbr0",
-      "cniVersion": "0.3.0",
-      "type": "flannel",
-      "capabilities": {
-        "dns": true
-      },
-      "delegate": {
-        "type": "win-bridge",
-        "hairpinMode": true,
-        "isDefaultGateway": true,
-        "policies": [
-          {
-            "Name": "EndpointPolicy",
-            "Value": {
-              "Type": "OutBoundNAT",
-              "ExceptionList": []
-            }
-          },
-          {
-            "Name": "EndpointPolicy",
-            "Value": {
-              "Type": "ROUTE",
-              "DestinationPrefix": "",
-              "NeedEncap": true
-            }
-          },
-          {
-            "Name": "EndpointPolicy",
-            "Value": {
-              "Type": "ROUTE",
-              "DestinationPrefix": "",
-              "NeedEncap": true
-            }
-          }
-        ]
-      }
-    }
-{%- endif %}
+
+  run.ps1: |
+    wins cli process run --path /k/flannel/flanneld.exe --args "--kube-subnet-mgr --ip-masq --kubeconfig-file /k/flannel/kubeconfig.yml" --envs "POD_NAME=$env:POD_NAME POD_NAMESPACE=$env:POD_NAMESPACE"
+
+{% include ("cni/" + container_runtime + "-" + mode + "-windows.yaml.j2") %}
+
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: kube-flannel-ds-windows-amd64
+  namespace: kube-system
   labels:
     tier: node
     app: flannel
-  namespace: kube-system
 spec:
   selector:
     matchLabels:
@@ -148,14 +113,15 @@ spec:
       tolerations:
       - operator: Exists
         effect: NoSchedule
-      containers:
-      - name: kube-flannel
+      initContainers:
+      - name: install-cni
         image: e2eteam/flannel-windows:v0.12.0-{{ server_core_tag }}
+        imagePullPolicy: Always
         command:
         - powershell
         args:
         - -file
-        - /etc/kube-flannel-windows/run.ps1
+        - /etc/kube-flannel-windows/init.ps1
         volumeMounts:
         - name: wins
           mountPath: \\.\pipe\rancher_wins
@@ -171,6 +137,20 @@ spec:
           mountPath: /etc/kube-flannel-windows/
         - name: kubeadm-config
           mountPath: /etc/kubeadm-config/
+      containers:
+      - name: kube-flannel
+        image: e2eteam/flannel-windows:v0.12.0-{{ server_core_tag }}
+        imagePullPolicy: Always
+        command:
+        - powershell
+        args:
+        - -file
+        - /etc/kube-flannel-windows/run.ps1
+        volumeMounts:
+        - name: wins
+          mountPath: \\.\pipe\rancher_wins
+        - name: flannel-windows-cfg
+          mountPath: /etc/kube-flannel-windows/
         env:
         - name: POD_NAME
           valueFrom:

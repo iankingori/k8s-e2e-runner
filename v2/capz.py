@@ -9,6 +9,7 @@ import configargparse
 import msrestazure
 import yaml
 
+import sh
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.network import models as net_models
@@ -28,9 +29,11 @@ p.add("--cluster-name",
       help="The cluster name given to the cluster-api manifest. "
       "This value is used for the Azure resource group name as well.")
 p.add("--cluster-network-subnet",
-      default="192.168.0.0/16",
+      default="10.244.0.0/16",
       help="The cluster network subnet given to the cluster-api manifest")
 p.add("--location", help="The Azure location for the spawned resource.")
+p.add("--bootstrap-vm-size", default="Standard_B1ms",
+      help="Size of the bootstrap VM")
 p.add("--master-vm-size",
       default="Standard_D2s_v3",
       help="Size of master virtual machine.")
@@ -48,12 +51,14 @@ p.add("--win-minion-gallery-image",
 
 
 class CAPZProvisioner(deployer.NoopDeployer):
-    def __init__(self, flannel_mode="overlay"):
+    def __init__(self, flannel_mode=constants.FLANNEL_MODE_OVERLAY,
+                 container_runtime="docker"):
         super(CAPZProvisioner, self).__init__()
 
         self.logging = log.getLogger(__name__)
         self.kubectl = utils.get_kubectl_bin()
         self.flannel_mode = flannel_mode
+        self.container_runtime = container_runtime
 
         opts = p.parse_known_args()[0]
         self.cluster_name = opts.cluster_name
@@ -80,6 +85,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
         self.bootstrap_vm_secgroup_name = "k8s-bootstrap-nsg"
         self.bootstrap_vm_nic_name = "k8s-bootstrap-nic"
         self.bootstrap_vm_public_ip_name = "k8s-bootstrap-public-ip"
+        self.bootstrap_vm_size = opts.bootstrap_vm_size
         self.bootstrap_vm_public_ip = None   # set by _create_bootstrap_vm()
         self.bootstrap_vm_private_ip = None  # set by _create_bootstrap_vm()
 
@@ -95,7 +101,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
     @cached_property
     def master_public_address(self):
-        output, _ = utils.retry_on_error()(self._run_cmd)([
+        output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "get", "cluster", "--kubeconfig",
             self.kind_kubeconfig_path, self.cluster_name, "-o",
             "custom-columns=MASTER_ADDRESS:.spec.controlPlaneEndpoint.host",
@@ -105,7 +111,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
     @cached_property
     def master_public_port(self):
-        output, _ = utils.retry_on_error()(self._run_cmd)([
+        output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "get", "cluster", "--kubeconfig",
             self.kind_kubeconfig_path, self.cluster_name, "-o",
             "custom-columns=MASTER_PORT:.spec.controlPlaneEndpoint.port",
@@ -133,11 +139,15 @@ class CAPZProvisioner(deployer.NoopDeployer):
         self._create_kind_cluster()
         self._create_capz_cluster()
         self._wait_for_control_plane()
+
+        if self.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
+            self._connect_control_plane_to_node_subnet()
+
         self._setup_capz_kubeconfig()
 
     def down(self):
         self.logging.info("Deleting kind cluster")
-        self._run_cmd(["kind", "delete", "cluster"])
+        utils.run_shell_cmd(["kind", "delete", "cluster"])
 
         self.logging.info("Deleting Azure resource group")
         client = self.resource_mgmt_client
@@ -156,6 +166,63 @@ class CAPZProvisioner(deployer.NoopDeployer):
     def reclaim(self):
         self._setup_capz_kubeconfig()
 
+    def setup_ssh_config(self):
+        ssh_dir = os.path.join(os.environ["HOME"], ".ssh")
+        os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
+
+        ssh_config = [
+            "Host %s" % self.master_public_address,
+            "HostName %s" % self.master_public_address,
+            "User capi",
+            "StrictHostKeyChecking no",
+            "UserKnownHostsFile /dev/null",
+            "IdentityFile %s" % os.environ["SSH_KEY"],
+            ""
+        ]
+
+        k8s_master_ssh_host = self.master_public_address
+        agents_private_addresses = self.windows_private_addresses + \
+            self.linux_private_addresses
+        for address in agents_private_addresses:
+            ssh_config += [
+                "Host %s" % address,
+                "HostName %s" % address,
+                "User capi",
+                "ProxyCommand ssh -q %s -W %%h:%%p" % k8s_master_ssh_host,
+                "StrictHostKeyChecking no",
+                "UserKnownHostsFile /dev/null",
+                "IdentityFile %s" % os.environ["SSH_KEY"],
+                ""
+            ]
+
+        ssh_config_file = os.path.join(ssh_dir, "config")
+        with open(ssh_config_file, "w") as f:
+            f.write("\n".join(ssh_config))
+
+    def enable_ip_forwarding(self):
+        self.logging.info("Enabling IP forwarding for the cluster VMs")
+
+        vm_nics = utils.retry_on_error()(
+            self.network_client.network_interfaces.list)(self.cluster_name)
+        for nic in vm_nics:
+            if nic.name == self.bootstrap_vm_nic_name:
+                continue
+
+            if nic.enable_ip_forwarding:
+                self.logging.info(
+                    "IP forwarding is already enabled on nic %s", nic.name)
+                continue
+
+            self.logging.info("Enabling IP forwarding on nic %s", nic.name)
+
+            nic_parameters = nic.as_dict()
+            nic_parameters["enable_ip_forwarding"] = True
+            utils.retry_on_error()(
+                self.network_client.network_interfaces.create_or_update)(
+                    self.cluster_name,
+                    nic.name,
+                    nic_parameters).result()
+
     def wait_for_agents(self, check_nodes_ready=True, timeout=3600):
         self._wait_for_windows_agents(check_nodes_ready=check_nodes_ready,
                                       timeout=timeout)
@@ -169,44 +236,33 @@ class CAPZProvisioner(deployer.NoopDeployer):
                "\"%s\"" % ssh_cmd, local_path,
                "capi@%s:/www/" % self.bootstrap_vm_public_ip]
 
-        utils.retry_on_error()(self._run_cmd)(cmd)
+        utils.retry_on_error()(utils.run_shell_cmd)(cmd)
 
     def run_cmd_on_k8s_node(self, cmd, node_address):
-        return self._run_cmd([
-            "ssh", "-i", os.environ["SSH_KEY"],
-            "-o", "StrictHostKeyChecking=no",
-            "-o", "UserKnownHostsFile=/dev/null",
-            "-o", "ProxyCommand='%s'" % self._get_k8s_master_ssh_proxy_cmd(),
-            "capi@%s" % node_address,
-            "'%s'" % cmd])
+        return utils.run_shell_cmd(["ssh", node_address, "'%s'" % cmd])
+
+    def run_async_cmd_on_k8s_node(self, cmd, node_address):
+        return utils.run_async_shell_cmd(
+            sh.ssh, [node_address, cmd])
 
     def download_from_k8s_node(self, remote_path, local_path,
                                node_address, timeout="10m"):
         self.logging.info("Downloading %s to %s from node %s",
                           remote_path, local_path, node_address)
-        self._run_cmd([
-            "timeout", timeout, "scp", "-i", os.environ["SSH_KEY"],
-            "-o", "StrictHostKeyChecking=no",
-            "-o", "UserKnownHostsFile=/dev/null",
-            "-o", "ProxyCommand='%s'" % self._get_k8s_master_ssh_proxy_cmd(),
-            "-r", "capi@%s:%s" % (node_address, remote_path), local_path])
+        utils.run_shell_cmd([
+            "timeout", timeout, "scp",
+            "-r", "%s:%s" % (node_address, remote_path), local_path])
 
     def upload_to_k8s_node(self, local_path, remote_path,
                            node_address, timeout="10m"):
         self.logging.info("Uploading %s to %s on node %s",
                           local_path, remote_path, node_address)
-        self._run_cmd([
-            "timeout", timeout, "scp", "-i", os.environ["SSH_KEY"],
-            "-o", "StrictHostKeyChecking=no",
-            "-o", "UserKnownHostsFile=/dev/null",
-            "-o", "ProxyCommand='%s'" % self._get_k8s_master_ssh_proxy_cmd(),
-            "-r", local_path, "capi@%s:%s" % (node_address, remote_path)])
+        utils.run_shell_cmd([
+            "timeout", timeout, "scp",
+            "-r", local_path, "%s:%s" % (node_address, remote_path)])
 
     def check_k8s_node_connection(self, node_address, timeout="1m"):
-        cmd = ["timeout", timeout, "ssh", "-i", os.environ["SSH_KEY"],
-               "-o", "StrictHostKeyChecking=no",
-               "-o", "UserKnownHostsFile=/dev/null",
-               "capi@%s" % self.master_public_address,
+        cmd = ["timeout", timeout, "ssh", self.master_public_address,
                "'nc -w 5 -z %s 22'" % node_address]
 
         _, _, ret = utils.run_cmd(cmd, shell=True, sensitive=True)
@@ -217,20 +273,34 @@ class CAPZProvisioner(deployer.NoopDeployer):
         return False
 
     def _get_agents_private_addresses(self, operating_system):
-        output, _ = utils.retry_on_error()(self._run_cmd)([
-            self.kubectl, "get", "nodes", "--kubeconfig",
-            self.capz_kubeconfig_path, "-l",
-            "kubernetes.io/os=%s" % operating_system, "-o", "yaml"
+        output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
+            self.kubectl, "get", "machine", "--kubeconfig",
+            self.kind_kubeconfig_path, "-o", "yaml"
         ])
         addresses = []
         nodes = yaml.safe_load(output)
         for node in nodes['items']:
-            node_addresses = [
-                n['address'] for n in node['status']['addresses']
-                if n['type'] == 'InternalIP'
-            ]
+            if (operating_system == "linux" and
+                    node["metadata"]["name"].startswith("capi-win")):
+                continue
+
+            if (operating_system == "windows" and
+                    not node["metadata"]["name"].startswith("capi-win")):
+                continue
+
+            try:
+                node_addresses = [
+                    n['address'] for n in node['status']['addresses']
+                    if n['type'] == 'InternalIP'
+                ]
+            except Exception as ex:
+                self.logging.warning(
+                    "Cannot find private address for node %s. Exception "
+                    "details: %s. Skipping", node["metadata"]["name"], ex)
+
             # pick the first node internal address
             addresses.append(node_addresses[0])
+
         return addresses
 
     def _parse_win_minion_image_gallery(self, win_minion_gallery_image):
@@ -248,11 +318,6 @@ class CAPZProvisioner(deployer.NoopDeployer):
             "image_version": split[3]
         }
 
-    def _get_k8s_master_ssh_proxy_cmd(self):
-        return ("ssh -q -i %s -o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null capi@%s -W %%h:%%p" % (
-                    os.environ["SSH_KEY"], self.master_public_address))
-
     def _get_azure_credentials(self):
         credentials = ServicePrincipalCredentials(
             client_id=os.environ["AZURE_CLIENT_ID"],
@@ -260,6 +325,87 @@ class CAPZProvisioner(deployer.NoopDeployer):
             tenant=os.environ["AZURE_TENANT_ID"])
         subscription_id = os.environ["AZURE_SUBSCRIPTION_ID"]
         return credentials, subscription_id
+
+    @utils.retry_on_error()
+    def _get_control_plane_vm(self):
+        for vm in self.compute_client.virtual_machines.list(self.cluster_name):
+            if vm.name.startswith("%s-control-plane" % self.cluster_name):
+                return vm
+        return None
+
+    @utils.retry_on_error()
+    def _get_control_plane_route(self):
+        routes = self.network_client.routes.list(
+            self.cluster_name,
+            "%s-node-routetable" % self.cluster_name)
+        for route in routes:
+            if route.name.startswith("%s-control-plane" % self.cluster_name):
+                return route
+        return None
+
+    def _connect_control_plane_to_node_subnet(self):
+        self.logging.info(
+            "Adding second NIC from node subnet to control plane")
+
+        control_plane_vm = self._get_control_plane_vm()
+        if not control_plane_vm:
+            raise Exception("The control plane VM was not found")
+
+        if len(control_plane_vm.network_profile.network_interfaces) > 1:
+            self.logging.info(
+                "The second NIC is already attached to the control plane")
+            return
+
+        nic_name = "%s-control-plane-node-nic" % self.cluster_name
+        node_subnet = utils.retry_on_error()(
+            self.network_client.subnets.get)(
+                self.cluster_name,
+                "%s-vnet" % self.cluster_name,
+                "%s-node-subnet" % self.cluster_name)
+        nic_parameters = {
+            "location": self.azure_location,
+            "ip_configurations": [{
+                "name": "%s-ipconfig" % nic_name,
+                "subnet": {"id": node_subnet.id}
+            }]
+        }
+        self.logging.info("Creating the second NIC")
+        nic = utils.retry_on_error()(
+            self.network_client.network_interfaces.create_or_update)(
+                self.cluster_name, nic_name, nic_parameters).result()
+
+        self.logging.info("Deallocating the control plane VM")
+        utils.retry_on_error()(
+            self.compute_client.virtual_machines.deallocate)(
+                self.cluster_name, control_plane_vm.name).wait()
+
+        self.logging.info("Attaching the second NIC to the control plane VM")
+        vm_parameters = control_plane_vm.as_dict()
+        vm_parameters["network_profile"]["network_interfaces"].append(
+            {"id": nic.id, "primary": False})
+        utils.retry_on_error()(
+            self.compute_client.virtual_machines.create_or_update)(
+                self.cluster_name, control_plane_vm.name, vm_parameters).wait()
+
+        self.logging.info("Starting the control plane VM")
+        utils.retry_on_error()(
+            self.compute_client.virtual_machines.start)(
+                self.cluster_name, control_plane_vm.name).wait()
+        utils.wait_for_port_connectivity(self.master_public_address, 22)
+
+        self.logging.info("Updating the control plane route")
+        control_plane_route = self._get_control_plane_route()
+        if not control_plane_route:
+            raise Exception("The control plane route was not found")
+        route_params = control_plane_route.as_dict()
+        route_params["next_hop_ip_address"] = \
+            nic.ip_configurations[0].private_ip_address
+        utils.retry_on_error()(
+            self.network_client.routes.create_or_update)(
+                self.cluster_name,
+                "%s-node-routetable" % self.cluster_name,
+                control_plane_route.name,
+                route_params).wait()
 
     def _wait_for_bootstrap_vm(self, timeout=900):
         self.logging.info("Waiting up to %.2f minutes for VM %s to provision",
@@ -423,7 +569,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
                 }
             },
             "hardware_profile": {
-                "vm_size": "Standard_D2s_v3"
+                "vm_size": self.bootstrap_vm_size
             },
             "storage_profile": {
                 "image_reference": {
@@ -462,6 +608,35 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
         return vm
 
+    def _cleanup_bootstrap_vm(self):
+        self.logging.info("Cleaning up the bootstrap VM")
+
+        self.logging.info("Deleting bootstrap VM")
+        utils.retry_on_error()(self.compute_client.virtual_machines.delete)(
+            self.cluster_name, self.bootstrap_vm_name).wait()
+
+        self.logging.info("Deleting bootstrap VM NIC")
+        utils.retry_on_error()(
+            self.network_client.network_interfaces.delete)(
+                self.cluster_name, self.bootstrap_vm_nic_name).wait()
+
+        self.logging.info("Deleting bootstrap VM public IP")
+        utils.retry_on_error()(self.network_client.public_ip_addresses.delete)(
+            self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
+
+        self.logging.info("Deleting bootstrap VM security group")
+        utils.retry_on_error()(
+            self.network_client.network_security_groups.delete)(
+                self.cluster_name, self.bootstrap_vm_secgroup_name).wait()
+
+    @utils.retry_on_error()
+    def _setup_bootstrap_vm(self):
+        try:
+            self._create_bootstrap_vm()
+        except Exception as ex:
+            self._cleanup_bootstrap_vm()
+            raise ex
+
     def _wait_for_windows_agents(self, check_nodes_ready=True, timeout=3600):
         self.logging.info("Waiting up to %.2f minutes for the Windows agents",
                           timeout / 60.0)
@@ -480,7 +655,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
                 "--output=custom-columns=NAME:.metadata.name", "--no-headers"
             ]
             output, _ = utils.retry_on_error()(
-                self._run_cmd)(cmd, sensitive=True)
+                utils.run_shell_cmd)(cmd, sensitive=True)
             machines = output.decode().strip().split('\n')
             windows_machines = [
                 # This value is given in the capz cluster.yaml config, and
@@ -503,7 +678,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
                     "--no-headers", windows_machine
                 ]
                 output, _ = utils.retry_on_error()(
-                    self._run_cmd)(cmd, sensitive=True)
+                    utils.run_shell_cmd)(cmd, sensitive=True)
                 status_phase = output.decode().strip()
 
                 if status_phase != "Running":
@@ -520,7 +695,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
                     windows_machine, "--no-headers"
                 ]
                 output, _ = utils.retry_on_error()(
-                    self._run_cmd)(cmd, sensitive=True)
+                    utils.run_shell_cmd)(cmd, sensitive=True)
                 node_name = output.decode("ascii").strip()
 
                 all_ready = self._is_k8s_node_ready(node_name)
@@ -541,7 +716,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             "node", "-o", "yaml", node_name
         ]
         output, _ = utils.retry_on_error()(
-            self._run_cmd)(cmd, sensitive=True)
+            utils.run_shell_cmd)(cmd, sensitive=True)
         node = yaml.safe_load(output.decode('ascii'))
 
         if "status" not in node:
@@ -587,6 +762,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             "win_minion_image_version": self.win_minion_image_version,
             "ci_version": self.ci_version,
             "flannel_mode": self.flannel_mode,
+            "container_runtime": self.container_runtime,
         }
 
         self.logging.info("Create CAPZ cluster")
@@ -594,13 +770,13 @@ class CAPZProvisioner(deployer.NoopDeployer):
             os.getcwd(), "cluster-api/azure/cluster.yaml.j2")
         output_file = "/tmp/capz-cluster.yaml"
         utils.render_template(template_file, output_file, context)
-        utils.retry_on_error()(self._run_cmd)([
+        utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "apply", "--kubeconfig", self.kind_kubeconfig_path,
             "-f", output_file
         ])
         self._wait_for_cluster()
 
-        self._create_bootstrap_vm()
+        self._setup_bootstrap_vm()
         context["bootstrap_vm_address"] = self.bootstrap_vm_private_ip
 
         self.upload_to_bootstrap_vm("%s/" % self.ci_artifacts_dir)
@@ -612,7 +788,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             os.getcwd(), "cluster-api/azure/control-plane.yaml.j2")
         output_file = "/tmp/control-plane.yaml"
         utils.render_template(template_file, output_file, context)
-        utils.retry_on_error()(self._run_cmd)([
+        utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "apply", "--kubeconfig", self.kind_kubeconfig_path,
             "-f", output_file
         ])
@@ -622,7 +798,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             os.getcwd(), "cluster-api/azure/windows-agents.yaml.j2")
         output_file = "/tmp/windows-agents.yaml"
         utils.render_template(template_file, output_file, context)
-        utils.retry_on_error()(self._run_cmd)([
+        utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "apply", "--kubeconfig", self.kind_kubeconfig_path,
             "-f", output_file
         ])
@@ -636,7 +812,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             "--output=custom-columns=KUBECONFIG_B64:.data.value",
             "--no-headers"
         ]
-        output, _ = utils.retry_on_error()(self._run_cmd)(cmd)
+        output, _ = utils.retry_on_error()(utils.run_shell_cmd)(cmd)
 
         with open(self.capz_kubeconfig_path, 'w') as f:
             f.write(base64.b64decode(output).decode('ascii'))
@@ -662,7 +838,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
                 "--output=name"
             ]
             output, _ = utils.retry_on_error()(
-                self._run_cmd)(cmd, sensitive=True)
+                utils.run_shell_cmd)(cmd, sensitive=True)
             names = output.decode().strip().split('\n')
             found = [c for c in names if c == cluster_resource_name]
             if len(found) == 0:
@@ -676,7 +852,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
                 "--no-headers"
             ]
             output, _ = utils.retry_on_error()(
-                self._run_cmd)(cmd, sensitive=True)
+                utils.run_shell_cmd)(cmd, sensitive=True)
             cluster_status = output.decode().strip()
 
             if cluster_status == "Provisioned":
@@ -705,7 +881,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
                 "--output=custom-columns=NAME:.metadata.name", "--no-headers"
             ]
             output, _ = utils.retry_on_error()(
-                self._run_cmd)(cmd, sensitive=True)
+                utils.run_shell_cmd)(cmd, sensitive=True)
             machines = output.decode().strip().split('\n')
             control_plane_machines = [
                 m for m in machines
@@ -724,7 +900,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
                     "--no-headers", control_plane_machine
                 ]
                 output, _ = utils.retry_on_error()(
-                    self._run_cmd)(cmd, sensitive=True)
+                    utils.run_shell_cmd)(cmd, sensitive=True)
                 status_phase = output.decode().strip()
 
                 if status_phase != "Running":
@@ -745,26 +921,29 @@ class CAPZProvisioner(deployer.NoopDeployer):
                                         "cluster-api/kind-config.yaml")
         kind_node_image = (os.environ.get("KIND_NODE_IMAGE")
                            or "e2eteam/kind-node:v1.18.4")
-        self._run_cmd([
+        utils.run_shell_cmd([
             "kind", "create", "cluster", "--config", kind_config_file,
             "--kubeconfig", self.kind_kubeconfig_path, "--image",
             kind_node_image, "--wait", "15m"
         ])
 
         self.logging.info("Add the Azure cluster api components")
-        cluster_api_version = "v0.3.6"
-        cluster_api_azure_provider_version = "v0.4.4"
-        self._run_cmd([
-            "clusterctl", "init", "--kubeconfig", self.kind_kubeconfig_path,
-            "--core", ("cluster-api:%s" % cluster_api_version), "--bootstrap",
-            ("kubeadm:%s" % cluster_api_version), "--control-plane",
-            ("kubeadm:%s" % cluster_api_version), "--infrastructure",
-            ("azure:%s" % cluster_api_azure_provider_version), "--config",
-            os.path.join(os.getcwd(), "cluster-api/azure/config.yaml")
+        capi_config = os.path.join(os.getcwd(),
+                                   "cluster-api/azure/config.yaml")
+        capi_version = "v0.3.8"
+        capz_provider_version = "v0.4.6"
+        utils.run_shell_cmd([
+            "clusterctl", "init",
+            "--kubeconfig", self.kind_kubeconfig_path,
+            "--core", ("cluster-api:%s" % capi_version),
+            "--bootstrap", ("kubeadm:%s" % capi_version),
+            "--control-plane", ("kubeadm:%s" % capi_version),
+            "--infrastructure", ("azure:%s" % capz_provider_version),
+            "--config", capi_config
         ])
 
         self.logging.info("Wait for the deployments to be available")
-        self._run_cmd([
+        utils.run_shell_cmd([
             self.kubectl, "wait", "--kubeconfig", self.kind_kubeconfig_path,
             "--for=condition=Available", "--timeout", "5m", "deployments",
             "--all", "--all-namespaces"
@@ -798,17 +977,3 @@ class CAPZProvisioner(deployer.NoopDeployer):
         # Set Azure location if it's not set already
         if not self.azure_location:
             self.azure_location = random.choice(constants.AZURE_LOCATIONS)
-
-    def _run_cmd(self, cmd, cwd=None, env=None, sensitive=False):
-        out, err, ret = utils.run_cmd(cmd,
-                                      timeout=(3 * 3600),
-                                      stdout=True,
-                                      stderr=True,
-                                      cwd=cwd,
-                                      env=env,
-                                      shell=True,
-                                      sensitive=sensitive)
-        if ret != 0:
-            raise Exception("Failed to execute: %s. Error: %s" %
-                            (' '.join(cmd), err))
-        return (out, err)

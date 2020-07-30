@@ -7,74 +7,100 @@ Param(
 
 $ErrorActionPreference = "Stop"
 
-function Start-ExecuteWithRetry {
-    Param(
-        [Parameter(Mandatory=$true)]
-        [ScriptBlock]$ScriptBlock,
-        [int]$MaxRetryCount=10,
-        [int]$RetryInterval=3,
-        [string]$RetryMessage,
-        [array]$ArgumentList=@()
-    )
-    $currentErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
-    $retryCount = 0
-    while ($true) {
-        Write-Output "Start-ExecuteWithRetry attempt $retryCount"
-        try {
-            $res = Invoke-Command -ScriptBlock $ScriptBlock `
-                                  -ArgumentList $ArgumentList
-            $ErrorActionPreference = $currentErrorActionPreference
-            Write-Output "Start-ExecuteWithRetry terminated"
-            return $res
-        } catch [System.Exception] {
-            $retryCount++
-            if ($retryCount -gt $MaxRetryCount) {
-                $ErrorActionPreference = $currentErrorActionPreference
-                Write-Output "Start-ExecuteWithRetry exception thrown"
-                throw
-            } else {
-                if($RetryMessage) {
-                    Write-Output "Start-ExecuteWithRetry RetryMessage: $RetryMessage"
-                } elseif($_) {
-                    Write-Output "Start-ExecuteWithRetry Retry: $_.ToString()"
-                }
-                Start-Sleep $RetryInterval
-            }
+$KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
+$CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
+
+curl.exe -s -o /tmp/utils.ps1 $CIPackagesBaseURL/scripts/utils.ps1
+. /tmp/utils.ps1
+
+
+function Stop-ContainerRuntime {
+    switch (Get-ContainerRuntime) {
+        "docker" {
+            Stop-Service "docker"
+        }
+        "containerd" {
+            Start-ExternalCommand { nssm stop containerd 2>$null }
         }
     }
 }
 
-function Start-FileDownload {
-    Param(
-        [Parameter(Mandatory=$true)]
-        [string]$URL,
-        [Parameter(Mandatory=$true)]
-        [string]$Destination,
-        [Parameter(Mandatory=$false)]
-        [int]$RetryCount=10
-    )
-    Start-ExecuteWithRetry -ScriptBlock {
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $wc = New-Object System.Net.WebClient
-        $wc.DownloadFile($URL, $Destination)
-    } -MaxRetryCount $RetryCount -RetryInterval 3 -RetryMessage "Failed to download $URL. Retrying"
+function Start-ContainerRuntime {
+    switch (Get-ContainerRuntime) {
+        "docker" {
+            Start-Service "docker"
+        }
+        "containerd" {
+            Start-ExternalCommand { nssm start containerd 2>$null }
+        }
+    }
 }
 
-$global:KubernetesPath = "$env:SystemDrive\k"
+function Update-ContainerdBins {
+    foreach($bin in @("containerd.exe", "containerd-shim-runhcs-v1.exe", "ctr.exe")) {
+        Start-FileDownload "$CIPackagesBaseURL/containerd/bin/$bin" "$CONTAINERD_DIR\bin\$bin"
+    }
+    Start-FileDownload "$CIPackagesBaseURL/containerd/bin/crictl.exe" "$KUBERNETES_DIR\crictl.exe"
+    Add-Content -Path "/tmp/kubeadm-join-config.yaml" -Encoding Ascii `
+                -Value "  criSocket: ${env:CONTAINER_RUNTIME_ENDPOINT}"
+}
 
-iex "nssm stop kubelet"
-Stop-Service -Force -Name Docker
+function Wait-ReadyContainerd {
+    Start-ExecuteWithRetry -ScriptBlock {
+        $crictlInfo = Start-ExternalCommand { crictl info 2>$null }
+        if($LASTEXITCODE) {
+            Throw "Failed to execute: crictl info"
+        }
+        $crictlInfo = $crictlInfo | ConvertFrom-Json
+        $runtimeReady = $crictlInfo.status.conditions | Where-Object type -eq RuntimeReady
+        if(!$runtimeReady.status) {
+            Throw "The containerd runtime is not ready yet"
+        }
+        $networkReady = $crictlInfo.status.conditions | Where-Object type -eq NetworkReady
+        if(!$networkReady.status) {
+            Throw "The containerd network is not ready yet"
+        }
+    } -MaxRetryCount 30 -RetryInterval 10 -RetryMessage "Containerd is not ready yet"
+}
 
-Start-FileDownload "$CIPackagesBaseURL/$CIVersion/bin/windows/amd64/kubelet.exe" "$global:KubernetesPath\kubelet.exe"
-Start-FileDownload "$CIPackagesBaseURL/$CIVersion/bin/windows/amd64/kubeadm.exe" "$global:KubernetesPath\kubeadm.exe"
+Set-MpPreference -DisableRealtimeMonitoring $true
+
+Start-ExternalCommand { nssm stop kubelet 2>$null }
+Stop-ContainerRuntime
+
+Start-FileDownload "$CIPackagesBaseURL/$CIVersion/bin/windows/amd64/kubelet.exe" "$KUBERNETES_DIR\kubelet.exe"
+Start-FileDownload "$CIPackagesBaseURL/$CIVersion/bin/windows/amd64/kubeadm.exe" "$KUBERNETES_DIR\kubeadm.exe"
+
+$containerRuntime = Get-ContainerRuntime
+switch ($containerRuntime) {
+    "containerd" {
+        Update-ContainerdBins
+        Start-FileDownload "https://balutoiu.com/ionut/windows-container-networking/sdnoverlay.exe" `
+                           "$env:SystemDrive\opt\cni\bin\sdnoverlay.exe"
+    }
+    "docker" {
+        Set-Content -Path "$env:ProgramData\docker\config\daemon.json" `
+                    -Value '{ "bridge" : "none" }' -Encoding Ascii
+        mkdir -force "$env:SystemDrive\opt\cni\bin"
+        $cniVersion = "v0.8.6"
+        Start-FileDownload "https://github.com/containernetworking/plugins/releases/download/${cniVersion}/cni-plugins-windows-amd64-${cniVersion}.tgz" `
+                            "$env:TEMP\cni-plugins.tgz"
+        tar -xf $env:TEMP\cni-plugins.tgz -C "$env:SystemDrive\opt\cni\bin"
+        if($LASTEXITCODE) {
+            Throw "Failed to extract cni-plugins.tgz"
+        }
+        Remove-Item -Force $env:TEMP\cni-plugins.tgz
+    }
+}
 
 Get-HnsNetwork | Remove-HnsNetwork
 Get-NetAdapter -Physical | Rename-NetAdapter -NewName "Ethernet"
 
-Start-Service -Name Docker
-iex "nssm start kubelet"
+Start-ContainerRuntime
+Start-ExternalCommand { nssm start kubelet 2>$null }
 
-Start-FileDownload "$CIPackagesBaseURL/$CIVersion/images/kube-proxy-windows.tar" "/tmp/kube-proxy-windows.tar"
-iex "docker.exe image load -i /tmp/kube-proxy-windows.tar"
-rm /tmp/kube-proxy-windows.tar
+if($containerRuntime -eq "containerd") {
+    Wait-ReadyContainerd
+}
+
+mkdir -Force C:\var\lib\kubelet\etc\kubernetes\manifests

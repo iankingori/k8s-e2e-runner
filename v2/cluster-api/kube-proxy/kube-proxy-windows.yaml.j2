@@ -1,0 +1,127 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: kube-proxy-windows
+  namespace: kube-system
+  labels:
+    app: kube-proxy
+data:
+  init.ps1: |
+    $ErrorActionPreference = "Stop"
+
+    mkdir -force /host/var/lib/kube-proxy/var/run/secrets/kubernetes.io/serviceaccount
+    mkdir -force /host/k/kube-proxy
+
+    cp -force /k/kube-proxy/* /host/k/kube-proxy
+    cp -force /var/lib/kube-proxy/* /host/var/lib/kube-proxy
+    cp -force /var/run/secrets/kubernetes.io/serviceaccount/* /host/var/lib/kube-proxy/var/run/secrets/kubernetes.io/serviceaccount #FIXME?
+
+    $clusterCIDR = yq r /var/lib/kube-proxy/config.conf clusterCIDR
+    Write-Output "clusterCIDR: $clusterCIDR"
+    Write-Output "POD_IP: $env:POD_IP"
+
+    $clusterCIDRSplit = $clusterCIDR -split "\."
+    $podIPSplit = $env:POD_IP -split "\."
+    if($podIPSplit[0] -ne $clusterCIDRSplit[0] -or $podIPSplit[1] -ne $clusterCIDRSplit[1]) {
+        Throw "The pod IP doesn't belong to clusterCIDR. The CNI was not properly configured"
+    }
+
+    $networkName = (Get-Content /host/etc/cni/net.d/10-flannel.conf | ConvertFrom-Json).name
+    $sourceVip = $podIPSplit[0..2] + 0 -join "."
+
+    yq w -i /host/var/lib/kube-proxy/config.conf winkernel.sourceVip $sourceVip
+    yq w -i /host/var/lib/kube-proxy/config.conf winkernel.networkName $networkName
+    yq w -i /host/var/lib/kube-proxy/config.conf winkernel.enableDSR {{ enable_win_dsr }}
+{%- if flannel_mode == "overlay" %}
+    yq w -i /host/var/lib/kube-proxy/config.conf featureGates.WinOverlay true
+{%- endif %}
+    yq w -i /host/var/lib/kube-proxy/config.conf featureGates.WinDSR {{ enable_win_dsr }}
+    yq w -i /host/var/lib/kube-proxy/config.conf enableDSR {{ enable_win_dsr }}
+    yq w -i /host/var/lib/kube-proxy/config.conf mode "kernelspace"
+
+  run.ps1: |
+    wins cli process run --path /k/kube-proxy/kube-proxy.exe --args "--v=4 --config=/var/lib/kube-proxy/config.conf --hostname-override=$env:NODE_NAME"
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-proxy-windows
+  namespace: kube-system
+  labels:
+    k8s-app: kube-proxy
+spec:
+  selector:
+    matchLabels:
+      k8s-app: kube-proxy-windows
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-proxy-windows
+    spec:
+      serviceAccountName: kube-proxy
+      initContainers:
+      - name: init-kube-proxy
+        image: e2eteam/kube-proxy-windows:{{ ci_image_tag }}
+        command:
+        - powershell
+        args:
+        - -file
+        - /var/lib/kube-proxy-windows/init.ps1
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        volumeMounts:
+        - name: host
+          mountPath: /host
+        - name: wins
+          mountPath: \\.\pipe\rancher_wins
+        - name: kube-proxy
+          mountPath: /var/lib/kube-proxy
+        - name: kube-proxy-windows
+          mountPath: /var/lib/kube-proxy-windows
+      containers:
+      - name: kube-proxy
+        image: e2eteam/kube-proxy-windows:{{ ci_image_tag }}
+        command:
+        - powershell
+        args:
+        - -file
+        - /var/lib/kube-proxy-windows/run.ps1
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: wins
+          mountPath: \\.\pipe\rancher_wins
+        - name: kube-proxy-windows
+          mountPath: /var/lib/kube-proxy-windows
+      nodeSelector:
+        kubernetes.io/os: windows
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - operator: Exists
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: kube-proxy-windows
+        name: kube-proxy-windows
+      - configMap:
+          name: kube-proxy
+        name: kube-proxy
+      - hostPath:
+          path: /
+        name: host
+      - name: wins
+        hostPath:
+          path: \\.\pipe\rancher_wins
+          type: null
+  updateStrategy:
+    type: RollingUpdate

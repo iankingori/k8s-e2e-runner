@@ -28,7 +28,7 @@ write_files:
       }
 
       retrycmd_if_failure 5 10 5m apt-get update
-      retrycmd_if_failure 5 10 5m apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+      retrycmd_if_failure 5 10 5m apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common rsync
 
       retrycmd_if_failure 5 10 5m curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
       retrycmd_if_failure 5 10 5m add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"

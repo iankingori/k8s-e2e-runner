@@ -146,7 +146,7 @@ def upload_file(local, remote):
 
 
 def upload_artifacts(local, remote):
-    if os.path.exists(local):
+    if os.path.exists(local) and len(os.listdir(local)) > 0:
         call(sh.gsutil, ["-q", "cp", "-r", local, remote])
 
 
@@ -190,7 +190,7 @@ def main():
         except socket.error:
             time.sleep(3)
 
-    success = False
+    success = True
     try:
         gcloud_login(opts.service_account)
 
@@ -221,8 +221,8 @@ def main():
 
         os.chdir(os.path.join(JOB_REPO_CLONE_DST, "v2"))
         call(sh.python3, cmd_args)
-
-        success = True
+    except Exception:
+        success = False
     finally:
         create_finished(log_paths["finished"], success)
         upload_file(log_paths["finished"], log_paths["remote_finished"])
