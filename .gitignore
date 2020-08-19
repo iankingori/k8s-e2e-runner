@@ -1,1 +1,3 @@
 *.pyc
+
+/v2/cluster-api/flannel/setup.exe

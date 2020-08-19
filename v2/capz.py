@@ -51,14 +51,17 @@ p.add("--win-minion-gallery-image",
 
 
 class CAPZProvisioner(deployer.NoopDeployer):
-    def __init__(self, flannel_mode=constants.FLANNEL_MODE_OVERLAY,
-                 container_runtime="docker"):
+    def __init__(self, ci_artifacts_dir,
+                 container_runtime="docker",
+                 flannel_mode=constants.FLANNEL_MODE_OVERLAY,
+                 kubernetes_version=constants.DEFAULT_KUBERNETES_VERSION):
         super(CAPZProvisioner, self).__init__()
 
         self.logging = log.getLogger(__name__)
         self.kubectl = utils.get_kubectl_bin()
         self.flannel_mode = flannel_mode
         self.container_runtime = container_runtime
+        self.bins_built = []
 
         opts = p.parse_known_args()[0]
         self.cluster_name = opts.cluster_name
@@ -78,8 +81,8 @@ class CAPZProvisioner(deployer.NoopDeployer):
         self.kind_kubeconfig_path = "/tmp/kind-kubeconfig.yaml"
         self.capz_kubeconfig_path = "/tmp/capz-kubeconfig.yaml"
 
-        self.ci_version = None  # set by the CI class before calling up()
-        self.ci_artifacts_dir = None  # set by the CI class before calling up()
+        self.ci_version = kubernetes_version
+        self.ci_artifacts_dir = ci_artifacts_dir
 
         self.bootstrap_vm_name = "k8s-bootstrap"
         self.bootstrap_vm_secgroup_name = "k8s-bootstrap-nsg"
@@ -128,14 +131,6 @@ class CAPZProvisioner(deployer.NoopDeployer):
         return self._get_agents_private_addresses("windows")
 
     def up(self):
-        if not self.ci_version:
-            raise Exception("The variable ci_version must be set before "
-                            "calling the deployer up() method")
-
-        if not self.ci_artifacts_dir:
-            raise Exception("The variable ci_artifacts_dir must be set "
-                            "before calling the deployer up() method")
-
         self._create_kind_cluster()
         self._create_capz_cluster()
         self._wait_for_control_plane()
@@ -763,6 +758,9 @@ class CAPZProvisioner(deployer.NoopDeployer):
             "ci_version": self.ci_version,
             "flannel_mode": self.flannel_mode,
             "container_runtime": self.container_runtime,
+            "k8s_bins": "k8sbins" in self.bins_built,
+            "containerd_bins": "containerdbins" in self.bins_built,
+            "containerd_shim_bins": "containerdshim" in self.bins_built,
         }
 
         self.logging.info("Create CAPZ cluster")

@@ -22,9 +22,13 @@ p.add("--flannel-mode", default=constants.FLANNEL_MODE_OVERLAY,
                constants.FLANNEL_MODE_L2BRIDGE],
       help="Flannel mode used by the CI.")
 p.add("--base-container-image-tag",
-      default="1809", choices=["1809", "2004"],
+      default="ltsc2019", choices=["ltsc2019", "1909", "2004"],
       help="The base container image used for the kube-proxy / flannel CNI. "
       "This needs to be adjusted depending on the Windows minion Azure image.")
+p.add("--kubernetes-version", default=constants.DEFAULT_KUBERNETES_VERSION,
+      help="The Kubernetes version to deploy. If '--build=k8sbins' is "
+      "specified, this parameter is overwriten by the version of the newly "
+      "built k8s binaries")
 p.add("--cri-tools-repo",
       default="https://github.com/kubernetes-sigs/cri-tools",
       help="The cri-tools repository. It is used to build the crictl tool.")
@@ -40,14 +44,17 @@ class CapzFlannelCI(ci.CI):
         self.kubectl = utils.get_kubectl_bin()
         self.patches = None
 
+        self.kubernetes_version = self.opts.kubernetes_version
+        self.ci_version = self.kubernetes_version
         self.ci_artifacts_dir = os.path.join(
             os.environ["HOME"], "ci_artifacts")
-        # set after k8sbins build
-        self.ci_version = None
+        os.makedirs(self.ci_artifacts_dir, exist_ok=True)
 
         self.deployer = capz.CAPZProvisioner(
             flannel_mode=self.opts.flannel_mode,
-            container_runtime=self.opts.container_runtime)
+            container_runtime=self.opts.container_runtime,
+            ci_artifacts_dir=self.ci_artifacts_dir,
+            kubernetes_version=self.kubernetes_version)
 
     def build(self, binsToBuild):
         builder_mapping = {
@@ -62,26 +69,28 @@ class CapzFlannelCI(ci.CI):
         for bins in binsToBuild:
             self.logging.info("Building %s binaries", bins)
             builder_mapping.get(bins, noop_func)()
+            self.deployer.bins_built.append(bins)
 
     def up(self):
         start = time.time()
 
         self.deployer.up()
         self.deployer.wait_for_agents(check_nodes_ready=False, timeout=7200)
-
         if self.opts.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
             self.deployer.enable_ip_forwarding()
 
         self.deployer.setup_ssh_config()
-        self._load_kube_proxy_windows_image()
+        self._setup_kubeconfig()
 
         if self.patches is not None:
             self._install_patches()
 
-        self._setup_kubeconfig()
+        if "k8sbins" in self.opts.build:
+            self._upload_kube_proxy_windows_bin()
+
         self._add_flannel_cni()
-        self._wait_for_ready_pods()
         self._add_kube_proxy_windows()
+
         self._wait_for_ready_pods()
         self.deployer.wait_for_agents(check_nodes_ready=True)
 
@@ -252,9 +261,6 @@ class CapzFlannelCI(ci.CI):
         self._validate_k8s_api_container_images()
 
     def _validate_k8s_api_versions(self):
-        if not self.ci_version:
-            raise Exception("The variable ci_version is not set")
-
         self.logging.info("Validating K8s API versions")
 
         output, _ = utils.retry_on_error()(
@@ -277,9 +283,6 @@ class CapzFlannelCI(ci.CI):
                     (node_name, self.ci_version, node_info["kubeletVersion"]))
 
     def _validate_k8s_api_container_images(self):
-        if not self.ci_version:
-            raise Exception("The variable ci_version is not set")
-
         self.logging.info("Validating K8s API container images")
 
         output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
@@ -313,28 +316,29 @@ class CapzFlannelCI(ci.CI):
             "pods", "--all", "--all-namespaces"
         ])
 
-    def _load_kube_proxy_windows_image(self):
-        self.logging.info(
-            "Loading the kube-proxy container image on the Windows agents")
-        local_script_path = os.path.join(
-            os.getcwd(), "cluster-api/scripts/import-kube-proxy-image.ps1")
+    def _upload_kube_proxy_windows_bin(self):
+        self.logging.info("Uploading the kube-proxy.exe to the Windows agents")
+
         win_node_addresses = self.deployer.windows_private_addresses
-        self._upload_to(local_script_path, "/tmp/import-kube-proxy-image.ps1",
-                        win_node_addresses)
-        cmd = ("/tmp/import-kube-proxy-image.ps1 "
-               "-CIVersion %s -CIPackagesBaseURL http://%s" % (
-                   self.ci_version, self.deployer.bootstrap_vm_private_ip))
-        self._run_remote_cmd(cmd, win_node_addresses)
+        kube_proxy_bin = "%s/%s/bin/windows/amd64/kube-proxy.exe" % (
+            self.ci_artifacts_dir, self.ci_version)
+
+        self._run_remote_cmd("mkdir -force /build", win_node_addresses)
+        self._upload_to(
+            kube_proxy_bin, "/build/kube-proxy.exe", win_node_addresses)
 
     def _add_kube_proxy_windows(self):
         template_file = os.path.join(
             os.getcwd(), "cluster-api/kube-proxy/kube-proxy-windows.yaml.j2")
+        server_core_tag = "windowsservercore-%s" % (
+            self.opts.base_container_image_tag)
         context = {
-            "ci_image_tag": self.ci_version.replace("+", "_"),
+            "kubernetes_version": self.kubernetes_version,
+            "server_core_tag": server_core_tag,
             "enable_win_dsr": str(self.opts.install_dsr).lower(),
             "flannel_mode": self.opts.flannel_mode
         }
-        output_file = "/tmp/kube-proxy-kube-proxy-windows.yaml"
+        output_file = "/tmp/kube-proxy-windows.yaml"
         utils.render_template(template_file, output_file, context)
 
         cmd = [self.kubectl, "apply", "-f", output_file]
@@ -391,37 +395,6 @@ class CapzFlannelCI(ci.CI):
     def _setup_kubeconfig(self):
         os.environ["KUBECONFIG"] = self.deployer.capz_kubeconfig_path
 
-    def _build_kube_proxy_win_image(self,
-                                    output_file="/tmp/kube-proxy-windows.tar"):
-        self.logging.info("Building kube-proxy Windows DaemonSet image")
-
-        # Setup docker buildx
-        env = {"DOCKER_CLI_EXPERIMENTAL": "enabled"}
-        cmd = [
-            "docker buildx ls | grep -q docker-buildx", "||",
-            "docker buildx create --name docker-buildx"
-        ]
-        utils.run_shell_cmd(cmd, env=env)
-        utils.run_shell_cmd(["docker buildx use docker-buildx"], env=env)
-
-        # Cross-build kube-proxy Windows image
-        ci_image_tag = self.ci_version.replace("+", "_")
-        dockerfile_path = os.path.join(
-            os.getcwd(),
-            "cluster-api/kube-proxy/kube-proxy-windows-buildx.Dockerfile")
-        base_image_tag = "v1.18.5-windowsservercore-%s" % (
-            self.opts.base_container_image_tag)
-        cmd = [
-            "docker", "buildx", "build", "-f", dockerfile_path, "-t",
-            "e2eteam/kube-proxy-windows:%s" % ci_image_tag, "--build-arg",
-            "baseImage=e2eteam/kube-proxy-windows:%s" % base_image_tag,
-            "--platform=windows/amd64",
-            "--output=type=docker,dest=%s" % output_file,
-            "%s/%s" % (utils.get_k8s_folder(),
-                       constants.KUBERNETES_WINDOWS_BINS_LOCATION)
-        ]
-        utils.retry_on_error()(utils.run_shell_cmd)(cmd, env=env)
-
     def _build_k8s_artifacts(self):
         k8s_path = utils.get_k8s_folder()
         utils.clone_repo(self.opts.k8s_repo, self.opts.k8s_branch, k8s_path)
@@ -443,7 +416,9 @@ class CapzFlannelCI(ci.CI):
 
         self.logging.info("Building K8s Linux DaemonSet container images")
         cmd = ['make', 'quick-release-images']
-        utils.retry_on_error()(utils.run_shell_cmd)(cmd, k8s_path)
+        env = {"KUBE_FASTBUILD": "true",
+               "KUBE_BUILD_CONFORMANCE": "n"}
+        utils.retry_on_error()(utils.run_shell_cmd)(cmd, k8s_path, env)
 
         kubeadm_bin = os.path.join(constants.KUBERNETES_LINUX_BINS_LOCATION,
                                    'kubeadm')
@@ -477,6 +452,7 @@ class CapzFlannelCI(ci.CI):
                 k8s_path, constants.KUBERNETES_LINUX_BINS_LOCATION, bin_name)
             shutil.copy(linux_bin_path, ci_artifacts_linux_bin_dir)
 
+        for bin_name in ["kubectl", "kubelet", "kubeadm", "kube-proxy"]:
             win_bin_path = "%s/%s/%s.exe" % (
                 k8s_path, constants.KUBERNETES_WINDOWS_BINS_LOCATION, bin_name)
             shutil.copy(win_bin_path, ci_artifacts_windows_bin_dir)
@@ -490,12 +466,6 @@ class CapzFlannelCI(ci.CI):
                 k8s_path, constants.KUBERNETES_IMAGES_LOCATION,
                 image_name)
             shutil.copy(image_path, ci_artifacts_images_dir)
-
-        kube_proxy_windows_image_file = "%s/%s" % (
-            ci_artifacts_images_dir, "kube-proxy-windows.tar")
-        self._build_kube_proxy_win_image(kube_proxy_windows_image_file)
-
-        self.deployer.ci_artifacts_dir = self.ci_artifacts_dir
 
     def _build_containerd_binaries(self):
         containerd_path = utils.get_containerd_folder()

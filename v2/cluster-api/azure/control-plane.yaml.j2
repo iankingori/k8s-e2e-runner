@@ -76,12 +76,16 @@ spec:
         name: '{{ ds.meta_data["local_hostname"] }}'
 {%- endraw %}
     preKubeadmCommands:
-    - curl -Lo /tmp/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.sh
-    - bash /tmp/kubeadm-bootstrap.sh {{ ci_version }} http://{{ bootstrap_vm_address }}
+{%- if k8s_bins %}
+    - curl -Lo /tmp/update-k8s.sh http://{{ bootstrap_vm_address }}/scripts/update-k8s.sh
+    - bash /tmp/update-k8s.sh http://{{ bootstrap_vm_address }} {{ ci_version }}
+{%- endif %}
 {%- if flannel_mode == "overlay" %}
     - curl -Lo /tmp/set-nics-mtu.sh http://{{ bootstrap_vm_address }}/scripts/set-nics-mtu.sh
     - bash /tmp/set-nics-mtu.sh
 {%- endif %}
+    - curl -Lo /tmp/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.sh
+    - bash /tmp/kubeadm-bootstrap.sh
     useExperimentalRetryJoin: true
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
@@ -100,9 +104,11 @@ spec:
         osType: Linux
       sshPublicKey: {{ azure_ssh_public_key_b64 }}
       vmSize: {{ master_vm_size }}
+{%- if k8s_bins %}
       image:
         marketplace:
           publisher: cncf-upstream
           offer: capi
           sku: k8s-1dot18dot3-ubuntu-1804
           version: "2020.05.20"
+{%- endif %}

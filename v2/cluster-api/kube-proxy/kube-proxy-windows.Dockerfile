@@ -1,4 +1,4 @@
-ARG k8sVersion="v1.18.5"
+ARG k8sVersion="v1.18.6"
 ARG servercoreTag="ltsc2019"
 
 FROM mcr.microsoft.com/windows/servercore:${servercoreTag}
@@ -8,6 +8,7 @@ ARG k8sVersion
 
 RUN mkdir -force C:\k\kube-proxy; \
     pushd C:\k\kube-proxy; \
+    Write-Output ${env:k8sVersion}; \
     curl.exe --fail -sLO https://dl.k8s.io/${env:k8sVersion}/bin/windows/amd64/kube-proxy.exe
 
 RUN mkdir C:\utils; \

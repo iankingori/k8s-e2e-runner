@@ -33,6 +33,6 @@ Start-Service sshd
 # Authorize SSH key
 Set-SSHPublicKey
 
-# Set PowerShell as defaul shell
+# Set PowerShell as default shell
 New-ItemProperty -Force -Path "HKLM:\SOFTWARE\OpenSSH" -PropertyType String `
                  -Name DefaultShell -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"

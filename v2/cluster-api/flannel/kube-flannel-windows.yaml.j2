@@ -50,28 +50,9 @@ data:
     cp -force /kube-proxy/kubeconfig.conf /host/k/flannel/kubeconfig.yml
     cp -force /var/run/secrets/kubernetes.io/serviceaccount/* /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount/
 
-    $result = wins cli hns get-network --name External
-    if($LASTEXITCODE) {
-      if($result.Contains("Network Id  not found")) {
-        wins cli process run --path /k/flannel/setup.exe --args "--mode={{ mode }} --interface=Ethernet"
-      } else {
-        Throw "Failed to get the hns network via wins"
-      }
-    } else {
-      Write-Output "External HNS network is already created"
-      Write-Output $result
-    }
-    $result = wins cli route add --addresses 169.254.169.254
-    if($LASTEXITCODE) {
-      if($result.Contains("The object already exists")) {
-        Write-Output "Route 169.254.169.254 is already added"
-      } else {
-        Write-Output $result
-        Throw "Failed to add route 169.254.169.254"
-      }
-    }
-
   run.ps1: |
+    wins cli process run --path /k/flannel/setup.exe --args "--mode={{ mode }} --interface=Ethernet"
+    wins cli route add --addresses 169.254.169.254
     wins cli process run --path /k/flannel/flanneld.exe --args "--kube-subnet-mgr --ip-masq --kubeconfig-file /k/flannel/kubeconfig.yml" --envs "POD_NAME=$env:POD_NAME POD_NAMESPACE=$env:POD_NAMESPACE"
 
 {% include ("cni/" + container_runtime + "-" + mode + "-windows.yaml.j2") %}

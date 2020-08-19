@@ -1,3 +1,7 @@
+$KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
+$CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
+
+
 function Start-ExternalCommand {
     Param(
         [Parameter(Mandatory=$true)]
@@ -96,4 +100,47 @@ function Get-ContainerRuntime {
         return "containerd"
     }
     Throw "Could not find any container runtime installed"
+}
+
+function Stop-ContainerRuntime {
+    switch (Get-ContainerRuntime) {
+        "docker" {
+            Stop-Service "docker"
+        }
+        "containerd" {
+            Start-ExternalCommand { nssm stop containerd 2>$null }
+        }
+    }
+}
+
+function Wait-ReadyContainerd {
+    Start-ExecuteWithRetry -ScriptBlock {
+        $crictlInfo = Start-ExternalCommand { crictl info 2>$null }
+        if($LASTEXITCODE) {
+            Throw "Failed to execute: crictl info"
+        }
+        $crictlInfo = $crictlInfo | ConvertFrom-Json
+        $runtimeReady = $crictlInfo.status.conditions | Where-Object type -eq RuntimeReady
+        if(!$runtimeReady.status) {
+            Throw "The containerd runtime is not ready yet"
+        }
+        $networkReady = $crictlInfo.status.conditions | Where-Object type -eq NetworkReady
+        if(!$networkReady.status) {
+            Throw "The containerd network is not ready yet"
+        }
+    } -MaxRetryCount 30 -RetryInterval 10 -RetryMessage "Containerd is not ready yet"
+}
+
+function Set-PowerProfile {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [ValidateSet("PowerSave", "Balanced", "Performance")]
+        [string]$PowerProfile
+    )
+    $guids = @{
+        "PowerSave" = "a1841308-3541-4fab-bc81-f71556f20b4a";
+        "Balanced" = "381b4222-f694-41f0-9685-ff5bb260df2e";
+        "Performance" = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c";
+    }
+    Start-ExternalCommand { PowerCfg.exe /S $guids[$PowerProfile] }
 }

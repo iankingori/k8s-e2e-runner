@@ -1,6 +1,8 @@
 AZURE_LOCATIONS = ["eastus2", "westeurope", "westus2", "southcentralus"]
 WINDOWS_ADMIN_USER = "azureuser"
 
+DEFAULT_KUBERNETES_VERSION = "v1.18.8"
+
 FLANNEL_MODE_OVERLAY = "overlay"
 FLANNEL_MODE_L2BRIDGE = "host-gw"
 
