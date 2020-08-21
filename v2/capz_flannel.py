@@ -1,7 +1,10 @@
 import glob
 import shutil
+import re
 import os
 import time
+
+from distutils.util import strtobool
 
 import configargparse
 import yaml
@@ -61,6 +64,7 @@ class CapzFlannelCI(ci.CI):
             "k8sbins": self._build_k8s_artifacts,
             "containerdbins": self._build_containerd_binaries,
             "containerdshim": self._build_containerd_shim,
+            "sdncnibins": self._build_sdn_cni_binaries,
         }
 
         def noop_func():
@@ -89,6 +93,9 @@ class CapzFlannelCI(ci.CI):
             self._upload_kube_proxy_windows_bin()
 
         self._add_flannel_cni()
+        self._wait_for_ready_cni()
+        if self.opts.flannel_mode == constants.FLANNEL_MODE_OVERLAY:
+            self._allocate_win_source_vip()
         self._add_kube_proxy_windows()
 
         self._wait_for_ready_pods()
@@ -291,15 +298,15 @@ class CapzFlannelCI(ci.CI):
         ])
         nodes = yaml.safe_load(output.decode("ascii"))
 
-        images_tag = self.ci_version.replace("+", "_")
+        images_tag = self.ci_version.replace("+", "_").strip("v")
+        name_regex = re.compile(r"^(k8s.gcr.io/kube-.*):v(.*)$")
         for node in nodes["items"]:
             non_ci_images_names = []
             for image in node["status"]["images"]:
                 non_ci_images_names += [
                     name for name in image["names"]
-                    if (name.startswith("k8s.gcr.io/kube-")
-                        and not name.endswith(images_tag))
-                ]
+                    if (name_regex.match(name)
+                        and name_regex.match(name).group(2) != images_tag)]
 
                 if len(non_ci_images_names) > 0:
                     self.logging.error(
@@ -326,6 +333,63 @@ class CapzFlannelCI(ci.CI):
         self._run_remote_cmd("mkdir -force /build", win_node_addresses)
         self._upload_to(
             kube_proxy_bin, "/build/kube-proxy.exe", win_node_addresses)
+
+    def _allocate_win_source_vip(self):
+        self.logging.info("Allocating source VIP for the Windows agents")
+
+        local_script_path = os.path.join(
+            os.getcwd(), "cluster-api/scripts/allocate-source-vip.ps1")
+        remote_script_path = "/tmp/allocate-source-vip.ps1"
+        win_node_addresses = self.deployer.windows_private_addresses
+
+        self._upload_to(
+            local_script_path, remote_script_path, win_node_addresses)
+        self._run_remote_cmd(remote_script_path, win_node_addresses)
+
+    def _wait_for_ready_cni(self, timeout=900):
+        self.logging.info(
+            "Waiting up to %.2f minutes for ready CNI on the Windows agents",
+            timeout / 60.0)
+
+        win_node_addresses = self.deployer.windows_private_addresses
+        local_script_path = os.path.join(
+            os.getcwd(), "cluster-api/scripts/confirm-ready-cni.ps1")
+        remote_script_path = "/tmp/confirm-ready-cni.ps1"
+
+        self._upload_to(
+            local_script_path, remote_script_path, win_node_addresses)
+
+        sleep_time = 10
+        start = time.time()
+        while True:
+            elapsed = time.time() - start
+            if elapsed > timeout:
+                err_msg = "The CNI was not ready within %s minutes." % (
+                    timeout / 60.0)
+                self.logging.error(err_msg)
+                raise Exception(err_msg)
+
+            all_ready = True
+            for node_address in win_node_addresses:
+                cmd = ["timeout", "1m", "ssh", node_address,
+                       remote_script_path]
+                try:
+                    stdout, _ = utils.run_shell_cmd(cmd, sensitive=True)
+                except Exception:
+                    all_ready = False
+                    break
+
+                cni_ready = strtobool(stdout.decode('ascii').strip())
+                if not cni_ready:
+                    all_ready = False
+                    break
+
+            if all_ready:
+                self.logging.info(
+                    "The CNI is ready on all the Windows agents")
+                break
+
+            time.sleep(sleep_time)
 
     def _add_kube_proxy_windows(self):
         template_file = os.path.join(
@@ -540,6 +604,23 @@ class CapzFlannelCI(ci.CI):
         containerd_shim_bin = os.path.join(
             containerd_shim_path, constants.CONTAINERD_SHIM_BIN)
         shutil.copy(containerd_shim_bin, ci_artifacts_containerd_bin_dir)
+
+    def _build_sdn_cni_binaries(self):
+        sdn_cni_dir = utils.get_sdn_folder()
+        utils.clone_repo(
+            self.opts.sdn_repo, self.opts.sdn_branch, sdn_cni_dir)
+
+        self.logging.info("Building the SDN CNI binaries")
+        utils.run_shell_cmd(["GOOS=windows", "make", "all"], sdn_cni_dir)
+
+        self.logging.info("Copying binaries to local artifacts directory")
+        ci_artifacts_cni_dir = os.path.join(self.ci_artifacts_dir, "cni")
+        os.makedirs(ci_artifacts_cni_dir, exist_ok=True)
+
+        sdn_binaries_names = ["nat.exe", "sdnbridge.exe", "sdnoverlay.exe"]
+        for sdn_bin_name in sdn_binaries_names:
+            sdn_bin = os.path.join(sdn_cni_dir, "out", sdn_bin_name)
+            shutil.copy(sdn_bin, ci_artifacts_cni_dir)
 
     def _collect_logs(self, node_address, local_script_path,
                       remote_script_path, remote_cmd, remote_logs_archive):

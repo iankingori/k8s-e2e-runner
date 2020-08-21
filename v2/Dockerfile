@@ -9,11 +9,16 @@ ARG CAPI_VERSION=v0.3.8
 RUN apt-get update && \
     apt-get install -y \
         build-essential curl git libffi-dev libssl-dev \
-        python3 python3-pip rsync unzip wget net-tools openssh-client
+        python3 python3-pip rsync unzip wget net-tools openssh-client vim
 
 # Setup UTC timezone
 RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
+
+# APT cleanup
+RUN apt-get autoclean && \
+    apt-get autoremove && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install Python tools
 RUN pip3 install --upgrade \

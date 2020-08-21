@@ -31,6 +31,7 @@ p.add("--cluster-name",
 p.add("--cluster-network-subnet",
       default="10.244.0.0/16",
       help="The cluster network subnet given to the cluster-api manifest")
+p.add("--kind-cluster-name", default="kind", help="The kind cluster name")
 p.add("--location", help="The Azure location for the spawned resource.")
 p.add("--bootstrap-vm-size", default="Standard_B1ms",
       help="Size of the bootstrap VM")
@@ -66,6 +67,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
         opts = p.parse_known_args()[0]
         self.cluster_name = opts.cluster_name
         self.cluster_network_subnet = opts.cluster_network_subnet
+        self.kind_cluster_name = opts.kind_cluster_name
         self.azure_location = opts.location
         self.master_vm_size = opts.master_vm_size
 
@@ -142,7 +144,8 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
     def down(self):
         self.logging.info("Deleting kind cluster")
-        utils.run_shell_cmd(["kind", "delete", "cluster"])
+        utils.run_shell_cmd([
+            "kind", "delete", "cluster", "--name", self.kind_cluster_name])
 
         self.logging.info("Deleting Azure resource group")
         client = self.resource_mgmt_client
@@ -233,8 +236,9 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
         utils.retry_on_error()(utils.run_shell_cmd)(cmd)
 
-    def run_cmd_on_k8s_node(self, cmd, node_address):
-        return utils.run_shell_cmd(["ssh", node_address, "'%s'" % cmd])
+    def run_cmd_on_k8s_node(self, cmd, node_address, timeout="10m"):
+        return utils.run_shell_cmd([
+            "timeout", timeout, "ssh", node_address, "'%s'" % cmd])
 
     def run_async_cmd_on_k8s_node(self, cmd, node_address):
         return utils.run_async_shell_cmd(
@@ -759,6 +763,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             "flannel_mode": self.flannel_mode,
             "container_runtime": self.container_runtime,
             "k8s_bins": "k8sbins" in self.bins_built,
+            "sdn_cni_bins": "sdncnibins" in self.bins_built,
             "containerd_bins": "containerdbins" in self.bins_built,
             "containerd_shim_bins": "containerdshim" in self.bins_built,
         }
@@ -922,7 +927,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
         utils.run_shell_cmd([
             "kind", "create", "cluster", "--config", kind_config_file,
             "--kubeconfig", self.kind_kubeconfig_path, "--image",
-            kind_node_image, "--wait", "15m"
+            kind_node_image, "--wait", "15m", "--name", self.kind_cluster_name
         ])
 
         self.logging.info("Add the Azure cluster api components")

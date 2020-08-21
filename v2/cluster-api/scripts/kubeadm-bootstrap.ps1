@@ -21,6 +21,8 @@ switch(Get-ContainerRuntime) {
         Start-Service -Name "docker"
     }
     "containerd" {
+        Add-Content -Path "/tmp/kubeadm-join-config.yaml" -Encoding Ascii `
+                    -Value "  criSocket: ${env:CONTAINER_RUNTIME_ENDPOINT}"
         Start-ExternalCommand { nssm set containerd Start SERVICE_AUTO_START 2>$null }
         Start-ExternalCommand { nssm start containerd 2>$null }
         Wait-ReadyContainerd

@@ -94,6 +94,10 @@ spec:
       - curl.exe -Lo /tmp/update-k8s.ps1 http://{{ bootstrap_vm_address }}/scripts/update-k8s.ps1
       - powershell -C "/tmp/update-k8s.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -CIVersion {{ ci_version }}"
 {%- endif %}
+{%- if sdn_cni_bins %}
+      - curl.exe -Lo /tmp/update-sdn-cni.ps1 http://{{ bootstrap_vm_address }}/scripts/update-sdn-cni.ps1
+      - powershell -C "/tmp/update-sdn-cni.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }}"
+{%- endif %}
 {%- if containerd_bins and containerd_shim_bins %}
       - curl.exe -Lo /tmp/update-containerd.ps1 http://{{ bootstrap_vm_address }}/scripts/update-containerd.ps1
       - powershell -C "/tmp/update-containerd.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }}"

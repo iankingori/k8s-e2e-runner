@@ -15,18 +15,19 @@ data:
     cp -force /var/lib/kube-proxy/* /host/var/lib/kube-proxy
     cp -force /var/run/secrets/kubernetes.io/serviceaccount/* /host/var/lib/kube-proxy/var/run/secrets/kubernetes.io/serviceaccount #FIXME?
 
-    $flannelSubnet = Get-Content /host/run/flannel/subnet.env | Where-Object { $_.StartsWith("FLANNEL_SUBNET=") }
-    $sourceVip = ($flannelSubnet.Trim("FLANNEL_SUBNET=") -split "\.")[0..2] + 0 -join "."
     $networkName = (Get-Content /host/etc/cni/net.d/10-flannel.conf | ConvertFrom-Json).name
 
-    yq w -i /host/var/lib/kube-proxy/config.conf winkernel.sourceVip $sourceVip
     yq w -i /host/var/lib/kube-proxy/config.conf winkernel.networkName $networkName
-    yq w -i /host/var/lib/kube-proxy/config.conf winkernel.enableDSR {{ enable_win_dsr }}
 {%- if flannel_mode == "overlay" %}
+    $sourceVip = ((cat /host/k/sourceVip.json | ConvertFrom-Json).ip4.ip -split '/')[0]
+    yq w -i /host/var/lib/kube-proxy/config.conf winkernel.sourceVip $sourceVip
     yq w -i /host/var/lib/kube-proxy/config.conf featureGates.WinOverlay true
 {%- endif %}
+{%- if enable_win_dsr == "true" %}
+    yq w -i /host/var/lib/kube-proxy/config.conf winkernel.enableDSR {{ enable_win_dsr }}
     yq w -i /host/var/lib/kube-proxy/config.conf featureGates.WinDSR {{ enable_win_dsr }}
     yq w -i /host/var/lib/kube-proxy/config.conf enableDSR {{ enable_win_dsr }}
+{%- endif %}
     yq w -i /host/var/lib/kube-proxy/config.conf mode "kernelspace"
 
   run.ps1: |
@@ -61,6 +62,7 @@ spec:
       initContainers:
       - name: init-kube-proxy
         image: e2eteam/kube-proxy-windows:{{ kubernetes_version }}-{{ server_core_tag }}
+        imagePullPolicy: Always
         command:
         - powershell
         args:
@@ -78,6 +80,7 @@ spec:
       containers:
       - name: kube-proxy
         image: e2eteam/kube-proxy-windows:{{ kubernetes_version }}-{{ server_core_tag }}
+        imagePullPolicy: Always
         command:
         - powershell
         args:

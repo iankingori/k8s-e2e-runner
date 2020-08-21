@@ -1,5 +1,6 @@
 $KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
 $CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
+$OPT_DIR = Join-Path $env:SystemDrive "opt"
 
 
 function Start-ExternalCommand {
