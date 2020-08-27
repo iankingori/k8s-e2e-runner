@@ -59,7 +59,7 @@ class CapzFlannelCI(ci.CI):
             ci_artifacts_dir=self.ci_artifacts_dir,
             kubernetes_version=self.kubernetes_version)
 
-    def build(self, binsToBuild):
+    def build(self, bins_to_build):
         builder_mapping = {
             "k8sbins": self._build_k8s_artifacts,
             "containerdbins": self._build_containerd_binaries,
@@ -70,7 +70,7 @@ class CapzFlannelCI(ci.CI):
         def noop_func():
             pass
 
-        for bins in binsToBuild:
+        for bins in bins_to_build:
             self.logging.info("Building %s binaries", bins)
             builder_mapping.get(bins, noop_func)()
             self.deployer.bins_built.append(bins)
@@ -211,8 +211,11 @@ class CapzFlannelCI(ci.CI):
 
             time.sleep(sleep_time)
 
-    def _prepareTestEnv(self):
+    def _prepare_test_env(self):
         self.logging.info("Preparing test env")
+
+        utils.clone_git_repo(
+            self.opts.k8s_repo, self.opts.k8s_branch, utils.get_k8s_folder())
 
         os.environ["KUBE_MASTER"] = "local"
         os.environ["KUBE_MASTER_IP"] = self.deployer.master_public_address
@@ -461,7 +464,8 @@ class CapzFlannelCI(ci.CI):
 
     def _build_k8s_artifacts(self):
         k8s_path = utils.get_k8s_folder()
-        utils.clone_repo(self.opts.k8s_repo, self.opts.k8s_branch, k8s_path)
+        utils.clone_git_repo(
+            self.opts.k8s_repo, self.opts.k8s_branch, k8s_path)
 
         self.logging.info("Building K8s Linux binaries")
         cmd = [
@@ -533,17 +537,18 @@ class CapzFlannelCI(ci.CI):
 
     def _build_containerd_binaries(self):
         containerd_path = utils.get_containerd_folder()
-        utils.clone_repo(self.opts.containerd_repo,
-                         self.opts.containerd_branch, containerd_path)
+        utils.clone_git_repo(self.opts.containerd_repo,
+                             self.opts.containerd_branch, containerd_path)
 
         ctr_path = utils.get_ctr_folder()
-        utils.clone_repo(self.opts.ctr_repo, self.opts.ctr_branch, ctr_path)
+        utils.clone_git_repo(self.opts.ctr_repo,
+                             self.opts.ctr_branch, ctr_path)
 
         gopath = utils.get_go_path()
         cri_tools_path = os.path.join(
             gopath, "src", "github.com", "kubernetes-sigs", "cri-tools")
-        utils.clone_repo(self.opts.cri_tools_repo, self.opts.cri_tools_branch,
-                         cri_tools_path)
+        utils.clone_git_repo(self.opts.cri_tools_repo,
+                             self.opts.cri_tools_branch, cri_tools_path)
 
         self.logging.info("Building containerd with cri plugin")
         utils.run_shell_cmd(["GOOS=windows", "make"], containerd_path)
@@ -585,9 +590,9 @@ class CapzFlannelCI(ci.CI):
             vendoring_path = utils.get_containerd_folder()
             utils.run_shell_cmd(cmd, vendoring_path)
         else:
-            utils.clone_repo(self.opts.containerd_shim_repo,
-                             self.opts.containerd_shim_branch,
-                             containerd_shim_path)
+            utils.clone_git_repo(self.opts.containerd_shim_repo,
+                                 self.opts.containerd_shim_branch,
+                                 containerd_shim_path)
 
         self.logging.info("Building containerd shim")
         cmd = [
@@ -607,7 +612,7 @@ class CapzFlannelCI(ci.CI):
 
     def _build_sdn_cni_binaries(self):
         sdn_cni_dir = utils.get_sdn_folder()
-        utils.clone_repo(
+        utils.clone_git_repo(
             self.opts.sdn_repo, self.opts.sdn_branch, sdn_cni_dir)
 
         self.logging.info("Building the SDN CNI binaries")
@@ -637,8 +642,8 @@ class CapzFlannelCI(ci.CI):
 
         self.deployer.run_cmd_on_k8s_node(remote_cmd, node_address)
 
-        output, _ = self.deployer.run_cmd_on_k8s_node("hostname", node_address)
-        node_name = output.decode('ascii').strip()
+        node_name, _ = self.deployer.run_cmd_on_k8s_node(
+            "hostname", node_address)
 
         local_logs_archive = os.path.join(
             self.opts.log_path,

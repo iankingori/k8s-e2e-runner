@@ -1,5 +1,5 @@
 IMG = e2eteam/k8s-e2e-runner
-TAG = dev-terraform
+TAG = latest
 
 all: build
 

@@ -38,7 +38,7 @@ def parse_args():
     )
     p.add("--job-branch", default="master", help="Branch for job runner.")
     p.add("--service-account", help="Service account for gcloud login.")
-    p.add("--log-path", default="/tmp/civ2_logs", help="Local logs path")
+    p.add("--log-path", default="/tmp/ci_logs", help="Local logs path")
     p.add("--gs", help="Log Google bucket")
     p.add("job_args", nargs=configargparse.REMAINDER)
 
@@ -206,12 +206,12 @@ def main():
         logger.info("Using job config file: %s", job_config_file)
         cluster_name = get_cluster_name()
 
-        # Reset logging format before running civ2
+        # Reset logging format before running the runner main.py
         for handler in logger.handlers:
             handler.setFormatter(logging.Formatter("%(message)s"))
 
         cmd_args = [
-            "civ2.py",
+            "main.py",
             "--configfile=%s" % job_config_file,
             "--cluster-name=%s" % cluster_name,
             "--log-path=%s" % log_paths["artifacts"]
@@ -219,7 +219,7 @@ def main():
         if len(opts.job_args) > 1:
             cmd_args += opts.job_args[1:]
 
-        os.chdir(os.path.join(JOB_REPO_CLONE_DST, "v2"))
+        os.chdir(os.path.join(JOB_REPO_CLONE_DST, "e2e-runner"))
         call(sh.python3, cmd_args)
     except Exception:
         success = False

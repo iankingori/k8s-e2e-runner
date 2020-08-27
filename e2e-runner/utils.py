@@ -1,7 +1,6 @@
-import subprocess
 import os
-import log
 import functools
+import subprocess
 import errno
 import random
 import re
@@ -10,16 +9,18 @@ import string
 import tempfile
 import time
 import glob
-import constants
 import traceback
 import socket
-import six
-import jinja2
-
 from base64 import b64encode
+from threading import Timer
+
+import jinja2
+import six
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS1_v1_5
-from threading import Timer
+
+import log
+import constants
 
 logging = log.getLogger(__name__)
 
@@ -49,7 +50,7 @@ def run_cmd(cmd,
     if stderr is True:
         f_stderr = subprocess.PIPE
     if not sensitive:
-        logging.info("Calling %s" % " ".join(cmd))
+        logging.info("Calling %s", " ".join(cmd))
     if shell:
         cmd = " ".join(cmd)
     proc = subprocess.Popen(cmd,
@@ -71,8 +72,8 @@ def clone_repo(repo, branch="master", dest_path=None):
     cmd = ["git", "clone", "--single-branch", "--branch", branch, repo]
     if dest_path:
         cmd.append(dest_path)
-    logging.info("Cloning git repo %s on branch %s in location %s" %
-                 (repo, branch, dest_path if not None else os.getcwd()))
+    logging.info("Cloning git repo %s on branch %s in location %s",
+                 repo, branch, dest_path if not None else os.getcwd())
     _, err, ret = run_cmd(cmd, timeout=900, stderr=True)
     if ret != 0:
         raise Exception("Git Clone Failed with error: %s." % err)
@@ -107,7 +108,7 @@ def generate_random_password(key, length=20):
     cipher = Cipher_PKCS1_v1_5.new(pubKeyObj)
     cipher_text = cipher.encrypt(passw.encode())
     enc_pwd = b64encode(cipher_text)
-    logging.info("Encrypted pass: %s" % enc_pwd)
+    logging.info("Encrypted pass: %s", enc_pwd)
 
     return passw
 
@@ -170,7 +171,7 @@ def build_containerd_binaries(containerd_path=None, ctr_path=None):
 
     if ret != 0:
         logging.error(
-            "Failed to build containerd windows binaries with error: %s" % err)
+            "Failed to build containerd windows binaries with error: %s", err)
         raise Exception(
             "Failed to build containerd windows binaries with error: %s" % err)
 
@@ -182,10 +183,10 @@ def build_containerd_binaries(containerd_path=None, ctr_path=None):
     _, err, ret = run_cmd(cmd, stderr=True, cwd=ctr_path, shell=True)
 
     if ret != 0:
-        logging.error("Failed to build ctr windows binary with error: %s" %
-                      err)
-        raise Exception("Failed to build ctr windows binary with error: %s" %
-                        err)
+        logging.error(
+            "Failed to build ctr windows binary with error: %s", err)
+        raise Exception(
+            "Failed to build ctr windows binary with error: %s" % err)
 
     logging.info("Succesfully built ctr binary.")
     logging.info("Copying built bins to central location")
@@ -210,13 +211,13 @@ def build_containerd_shim(containerd_shim_path=None, fromVendor=False):
         cmd = ["go", "get", "github.com/LK4D4/vndr"]
         _, err, ret = run_cmd(cmd, stderr=True, shell=True)
         if ret != 0:
-            logging.error("Failed to install vndr with error: %s" % err)
+            logging.error("Failed to install vndr with error: %s", err)
             raise Exception("Failed to install vndr with error: %s" % err)
 
         cmd = ["vndr", "-whitelist", "hcsshim", "github.com/Microsoft/hcsshim"]
         _, err, ret = run_cmd(cmd, stderr=True, cwd=vendoring_path, shell=True)
         if ret != 0:
-            logging.error("Failed to install vndr with error: %s" % err)
+            logging.error("Failed to install vndr with error: %s", err)
             raise Exception("Failed to install vndr with error: %s" % err)
 
     cmd = [
@@ -230,7 +231,7 @@ def build_containerd_shim(containerd_shim_path=None, fromVendor=False):
                           shell=True)
 
     if ret != 0:
-        logging.error("Failed to build containerd shim with error: %s" % err)
+        logging.error("Failed to build containerd shim with error: %s", err)
         raise Exception("Failed to build containerd shim with error: %s" % err)
 
     logging.info("Succesfully built containerd shim.")
@@ -250,10 +251,10 @@ def build_sdn_binaries(sdn_path=None):
     _, err, ret = run_cmd(cmd, stderr=True, cwd=sdn_path, shell=True)
 
     if ret != 0:
-        logging.error("Failed to build sdn windows binaries with error: %s" %
-                      err)
-        raise Exception("Failed to build sdn windows binaries with error: %s" %
-                        err)
+        logging.error(
+            "Failed to build sdn windows binaries with error: %s", err)
+        raise Exception(
+            "Failed to build sdn windows binaries with error: %s" % err)
 
     logging.info("Successfuly built sdn binaries.")
     logging.info("Copying built bins to central location")
@@ -270,6 +271,7 @@ def build_k8s_binaries(k8s_path=None):
     logging.info("Build K8s linux binaries.")
 
     components = ('cmd/kube-controller-manager '
+                  'cmd/kube-apiserver '
                   'cmd/kube-scheduler '
                   'cmd/kube-proxy '
                   'cmd/kubelet '
@@ -279,10 +281,10 @@ def build_k8s_binaries(k8s_path=None):
     _, err, ret = run_cmd(cmd, stderr=True, cwd=k8s_path, shell=True)
 
     if ret != 0:
-        logging.error("Failed to build k8s linux binaries with error: %s" %
-                      err)
-        raise Exception("Failed to build k8s linux binaries with error: %s" %
-                        err)
+        logging.error(
+            "Failed to build k8s linux binaries with error: %s", err)
+        raise Exception(
+            "Failed to build k8s linux binaries with error: %s" % err)
 
     cmd = [
         "make", 'WHAT="cmd/kubelet cmd/kubectl cmd/kube-proxy"',
@@ -291,10 +293,10 @@ def build_k8s_binaries(k8s_path=None):
 
     _, err, ret = run_cmd(cmd, stderr=True, cwd=k8s_path, shell=True)
     if ret != 0:
-        logging.error("Failed to build k8s windows binaries with error: %s" %
-                      err)
-        raise Exception("Failed to build k8s windows binaries with error: %s" %
-                        err)
+        logging.error(
+            "Failed to build k8s windows binaries with error: %s", err)
+        raise Exception(
+            "Failed to build k8s windows binaries with error: %s" % err)
 
     logging.info("Succesfully built k8s binaries.")
 
@@ -322,7 +324,7 @@ def download_file(url, dst):
     _, _, ret = run_cmd(cmd, stderr=True)
 
     if ret != 0:
-        logging.error("Failed to download file: %s" % url)
+        logging.error("Failed to download file: %s", url)
 
     return ret
 
@@ -370,7 +372,7 @@ def wait_for_ready_pod(pod_name, timeout=300):
 
     while True:
         elapsed = time.time() - start
-        if (elapsed > timeout):
+        if elapsed > timeout:
             return False
 
         out, err, ret = run_cmd(cmd,
@@ -380,11 +382,11 @@ def wait_for_ready_pod(pod_name, timeout=300):
                                 sensitive=True)
 
         if ret != 0:
-            logging.error("Failed to get pod ready status: %s" % err)
+            logging.error("Failed to get pod ready status: %s", err)
             raise Exception("Failed to get pod ready status: %s" % err)
 
         pod_ready = out.strip()
-        if (pod_ready == "true"):
+        if pod_ready == "true":
             return True
 
         time.sleep(5)
@@ -399,7 +401,7 @@ def daemonset_cleanup(daemonset_yaml, daemonset_name, timeout=600):
     out, err, ret = run_cmd(cmd, stdout=True, stderr=True, shell=True)
 
     if ret != 0:
-        logging.error("Failed to delete daemonset: %s" % err)
+        logging.error("Failed to delete daemonset: %s", err)
         raise Exception("Failed to delete daemonset: %s" % err)
 
     cmd = [
@@ -410,7 +412,7 @@ def daemonset_cleanup(daemonset_yaml, daemonset_name, timeout=600):
 
     while True:
         elapsed = time.time() - start
-        if (elapsed > timeout):
+        if elapsed > timeout:
             return False
 
         out, err, ret = run_cmd(cmd,
@@ -420,10 +422,10 @@ def daemonset_cleanup(daemonset_yaml, daemonset_name, timeout=600):
                                 sensitive=True)
 
         if ret != 0:
-            logging.error("Failed to get daemonset: %s" % err)
+            logging.error("Failed to get daemonset: %s", err)
             raise Exception("Failed to get daemonset: %s" % err)
 
-        if (out.strip() == ""):
+        if out.strip() == "":
             return True
 
         time.sleep(5)
@@ -519,3 +521,12 @@ def run_async_shell_cmd(cmd, args):
 
     proc = cmd(args, _out=process_stdout, _err=process_stderr, _bg=True)
     return proc
+
+
+def clone_git_repo(repo_url, branch_name, local_dir):
+    if os.path.exists(local_dir) and len(os.listdir(local_dir)) > 0:
+        run_shell_cmd(cmd=["git", "fetch"], cwd=local_dir)
+        run_shell_cmd(cmd=["git", "checkout", branch_name], cwd=local_dir)
+        return
+
+    clone_repo(repo_url, branch_name, local_dir)

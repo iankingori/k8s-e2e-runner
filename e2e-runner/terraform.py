@@ -1,16 +1,17 @@
-import configargparse
-import constants
 import datetime
+import json
+import os
+import random
+from urllib.parse import urlparse
+
+import configargparse
+from azure.common.credentials import ServicePrincipalCredentials
+from azure.mgmt.resource import ResourceManagementClient
+
+import constants
 import deployer
 import log
 import utils
-import os
-import random
-import json
-
-from urllib.parse import urlparse
-from azure.common.credentials import ServicePrincipalCredentials
-from azure.mgmt.resource import ResourceManagementClient
 
 p = configargparse.get_argument_parser()
 
@@ -41,11 +42,12 @@ p.add("--ssh-private-key-path",
 
 
 class TerraformProvisioner(deployer.NoopDeployer):
-
     CUSTOM_VHD = "custom_vhd"
     AZURE_IMAGE_URN = "image_urn"
 
     def __init__(self):
+        super(TerraformProvisioner, self).__init__()
+
         self.opts = p.parse_known_args()[0]
         if self.opts.location is None:
             self.opts.location = random.choice(constants.AZURE_LOCATIONS)
@@ -231,7 +233,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
                                             self.opts.win_minion_image)))
         if win_min_image_type == TerraformProvisioner.AZURE_IMAGE_URN:
             image = self._parse_azure_image_urn(self.opts.win_minion_image)
-            for key in image.keys():
+            for key in image:
                 extra_args = extra_args + (out_format % (key, image[key]))
 
         with open(self.terraform_vars_file, "w") as f:
@@ -276,7 +278,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
 
         for terraform_var, env_var in zip(terraform_vars, env_vars):
             if not os.getenv(env_var):
-                self.logging.error(msg % env_var)
+                self.logging.error(msg, env_var)
                 raise Exception(msg % env_var)
             cmd.append("-var")
             var = ("'%s=%s'" % (terraform_var, os.getenv(env_var).strip()))
@@ -324,7 +326,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
 
         return json.loads(out)
 
-    def _parse_terraform_output(self, output):
+    def parse_terraform_output(self, output):
         master_ip = output["master"]["value"][
             self.get_cluster_master_vm_name()]
         self._set_cluster_master_vm_public_ip(master_ip)
@@ -333,13 +335,13 @@ class TerraformProvisioner(deployer.NoopDeployer):
 
         print(json.dumps(self.cluster))
 
-    def _populate_hosts_file(self):
+    def populate_hosts_file(self):
         with open("/etc/hosts", "a") as f:
             vm_name = self.get_cluster_master_vm_name()
             vm_name = vm_name + " kubernetes"
             vm_public_ip = self.get_cluster_master_public_ip()
             hosts_entry = ("%s %s\n" % (vm_public_ip, vm_name))
-            self.logging.info("Adding entry '%s' to hosts file." %
+            self.logging.info("Adding entry '%s' to hosts file.",
                               hosts_entry.rstrip("\n"))
             f.write(hosts_entry)
 
@@ -349,7 +351,7 @@ class TerraformProvisioner(deployer.NoopDeployer):
                 if vm_name.find("master") > 0:
                     vm_name = vm_name + " kubernetes"
                 hosts_entry = ("%s %s\n" % (vm_public_ip, vm_name))
-                self.logging.info("Adding entry '%s' to hosts file." %
+                self.logging.info("Adding entry '%s' to hosts file.",
                                   hosts_entry.rstrip("\n"))
                 f.write(hosts_entry)
 
@@ -358,9 +360,9 @@ class TerraformProvisioner(deployer.NoopDeployer):
         self._get_terraform_config()
         self._create_terraform_vars_file()
         terraform_output = self._deploy_cluster()
-        self.logging.info("Terraform output: '%s'" % terraform_output)
-        self._parse_terraform_output(terraform_output)
-        self._populate_hosts_file()
+        self.logging.info("Terraform output: '%s'", terraform_output)
+        self.parse_terraform_output(terraform_output)
+        self.populate_hosts_file()
 
     def down(self):
         # Unfortunately, terraform destroy is not working properly

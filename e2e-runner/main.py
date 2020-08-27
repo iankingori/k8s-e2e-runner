@@ -9,7 +9,7 @@ import utils
 
 p = configargparse.get_argument_parser()
 
-logging = log.getLogger("civ2")
+logging = log.getLogger("e2e-runner")
 
 
 def parse_args():
@@ -36,7 +36,7 @@ def parse_args():
           default=False,
           help='Openrc file for OpenStack cluster')
     p.add('--log-path',
-          default="/tmp/civ2_logs",
+          default="/tmp/ci_logs",
           help='Path to place all artifacts')
     p.add('--ci', help="flannel, terraform_flannel, capz_flannel")
     p.add('--install-patch',

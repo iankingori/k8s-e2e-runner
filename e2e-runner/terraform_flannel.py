@@ -1,15 +1,17 @@
 import ast
-import ci
-import configargparse
-import constants
-import utils
-import os
-import terraform
-import time
-import shutil
-import yaml
 import json
 import glob
+import os
+import shutil
+import time
+import yaml
+
+import configargparse
+
+import ci
+import constants
+import utils
+import terraform
 
 p = configargparse.get_argument_parser()
 
@@ -189,8 +191,7 @@ class Terraform_Flannel(ci.CI):
         utils.mkdir_p(full_ansible_tmp_path)
         # Copy prebuilt binaries to ansible tmp
         for path in glob.glob("%s/*" % utils.get_bins_path()):
-            self.logging.info("Copying %s to %s." %
-                              (path, full_ansible_tmp_path))
+            self.logging.info("Copying %s to %s.", path, full_ansible_tmp_path)
             shutil.copy(path, full_ansible_tmp_path)
 
         azure_ccm = "false"
@@ -223,8 +224,7 @@ class Terraform_Flannel(ci.CI):
 
     def _install_patches(self):
         self.logging.info("Installing patches.")
-        installer_script = os.path.join(
-            "/tmp/k8s-e2e-runner/v2/installPatches.ps1")
+        installer_script = os.path.join(os.getcwd(), "installPatches.ps1")
         vms = self.deployer.get_cluster_win_minion_vms_names()
 
         self._copyTo(installer_script, "c:\\", vms, windows=True)
@@ -236,7 +236,7 @@ class Terraform_Flannel(ci.CI):
 
         ret, out = self._waitForConnection(vms, windows=True)
         if ret != 0:
-            self.logging.error("No connection to machines. Error: %s" % out)
+            self.logging.error("No connection to machines. Error: %s", out)
             raise Exception("No connection to machines. Error: %s" % out)
 
     def install_lanfix(self):
@@ -245,11 +245,11 @@ class Terraform_Flannel(ci.CI):
         vms = self.deployer.get_cluster_win_minion_vms_names()
 
         for file in fix_files:
-            self.logging.info("Downloading file: %s" % file)
+            self.logging.info("Downloading file: %s", file)
             ret = utils.download_file(("http://10.0.10.187/%s" % file),
                                       ("/tmp/lanfix/%s" % file))
             if ret != 0:
-                raise Exception("Failed to download file: %s", file)
+                raise Exception("Failed to download file: %s" % file)
             self._copyTo(("/tmp/lanfix/%s" % file), "c:\\", vms, windows=True)
 
         self._runRemoteCmd(("bcdedit /set testsigning on"),
@@ -277,10 +277,11 @@ class Terraform_Flannel(ci.CI):
         out, _, ret = utils.run_cmd(cmd,
                                     stdout=True,
                                     cwd=self.ansible_playbook_root)
+        out = out.decode('ascii').strip()
 
         if ret != 0:
             self.logging.error(
-                "Failed to deploy ansible-playbook with error: %s" % out)
+                "Failed to deploy ansible-playbook with error: %s", out)
             raise Exception(
                 "Failed to deploy ansible-playbook with error: %s" % out)
         self.logging.info("Succesfully deployed ansible-playbook.")
@@ -313,7 +314,7 @@ class Terraform_Flannel(ci.CI):
         os.environ["KUBECONFIG"] = kubeconfig_path
 
     def _waitForConnection(self, machines, windows):
-        self.logging.info("Waiting for connection to %s." % machines)
+        self.logging.info("Waiting for connection to %s.", machines)
         cmd = ["ansible"]
         cmd.append("'%s'" % " ".join(machines))
 
@@ -328,11 +329,10 @@ class Terraform_Flannel(ci.CI):
                                     stdout=True,
                                     cwd=self.ansible_playbook_root,
                                     shell=True)
-        return ret, out
+        return ret, out.decode('ascii').strip()
 
     def _copyTo(self, src, dest, machines, windows=False, root=False):
-        self.logging.info("Copying file %s to %s on %s." %
-                          (src, dest, machines))
+        self.logging.info("Copying file %s to %s on %s.", src, dest, machines)
         cmd = ["ansible"]
         if root:
             cmd.append("--become")
@@ -348,7 +348,7 @@ class Terraform_Flannel(ci.CI):
 
         ret, out = self._waitForConnection(machines, windows=windows)
         if ret != 0:
-            self.logging.error("No connection to machines. Error: %s" % out)
+            self.logging.error("No connection to machines. Error: %s", out)
             raise Exception("No connection to machines. Error: %s" % out)
 
         # Ansible logs everything to stdout
@@ -356,14 +356,15 @@ class Terraform_Flannel(ci.CI):
                                     stdout=True,
                                     cwd=self.ansible_playbook_root,
                                     shell=True)
+        out = out.decode('ascii').strip()
         if ret != 0:
             self.logging.error(
-                "Ansible failed to copy file %s with error: %s" % (src, out))
+                "Ansible failed to copy file %s with error: %s", src, out)
             raise Exception("Ansible failed to copy file %s with error: %s" %
                             (src, out))
 
     def _copyFrom(self, src, dest, machine, windows=False, root=False):
-        self.logging.info("Copying file %s:%s to %s." % (machine, src, dest))
+        self.logging.info("Copying file %s:%s to %s.", machine, src, dest)
         cmd = ["ansible"]
         if root:
             cmd.append("--become")
@@ -382,17 +383,18 @@ class Terraform_Flannel(ci.CI):
         ret, _ = self._waitForConnection([machine], windows=windows)
         if ret != 0:
             self.logging.error("No connection to machine: %s", machine)
-            raise Exception("No connection to machine: %s", machine)
+            raise Exception("No connection to machine: %s" % machine)
 
         out, _, ret = utils.run_cmd(cmd,
                                     stdout=True,
                                     cwd=self.ansible_playbook_root,
                                     shell=True)
+        out = out.decode('ascii').strip()
 
         if ret != 0:
             self.logging.error(
-                "Ansible failed to fetch file from %s with error: %s" %
-                (machine, out))
+                "Ansible failed to fetch file from %s with error: %s",
+                machine, out)
             raise Exception(
                 "Ansible failed to fetch file from %s with error: %s" %
                 (machine, out))
@@ -413,8 +415,8 @@ class Terraform_Flannel(ci.CI):
                       retries,
                       windows=False,
                       root=False):
-        self.logging.info("Running cmd %s on remote machines %s." %
-                          (command, machines))
+        self.logging.info("Running cmd %s on remote machines %s.",
+                          command, machines)
 
         def _runRemoteAnsible(command, machines, windows=False, root=False):
             cmd = ["ansible"]
@@ -437,17 +439,16 @@ class Terraform_Flannel(ci.CI):
             cmd.append("'%s'" % command)
             ret, out = self._waitForConnection(machines, windows=windows)
             if ret != 0:
-                self.logging.error("No connection to machines. Error: %s" %
-                                   out)
+                self.logging.error("No connection to machines. Error: %s", out)
             out, _, ret = utils.run_cmd(cmd,
                                         stdout=True,
                                         cwd=self.ansible_playbook_root,
                                         shell=True)
-            return ret, out
+            return ret, out.decode('ascii').strip()
 
         ret, out = _runRemoteAnsible(command, machines, windows, root)
         while retries != 0 and ret != 0:
-            self.logging.info("Ansible failed to run command %s. Retrying." %
+            self.logging.info("Ansible failed to run command %s. Retrying.",
                               command)
             retries -= 1
             ret, out = _runRemoteAnsible(
@@ -457,12 +458,12 @@ class Terraform_Flannel(ci.CI):
                 root=root)
         if ret == 0:
             self.logging.info(
-                "Ansible succesfully ran command %s on machines %s." %
-                (command, machines))
+                "Ansible succesfully ran command %s on machines %s.",
+                command, machines)
         else:
-            self.logging.error(
-                ("Ansible failed to run command %s "
-                 "on machines %s with error: %s") % (command, machines, out))
+            self.logging.error("Ansible failed to run command %s "
+                               "on machines %s with error: %s",
+                               command, machines, out)
             raise Exception(
                 ("Ansible failed to run command %s "
                  "on machines %s with error: %s") % (command, machines, out))
@@ -485,9 +486,10 @@ class Terraform_Flannel(ci.CI):
         kubectl = utils.get_kubectl_bin()
         cmd = [kubectl, "create", "-f", self.opts.prepull_yaml]
         out, _, ret = utils.run_cmd(cmd, stdout=True)
+        out = out.decode('ascii').strip()
 
         if ret != 0:
-            self.logging.error("Failed to start daemonset: %s" % out)
+            self.logging.error("Failed to start daemonset: %s", out)
             raise Exception("Failed to start daemonset: %s" % out)
 
         # Sleep for 15 minutes
@@ -496,12 +498,12 @@ class Terraform_Flannel(ci.CI):
         if not utils.daemonset_cleanup(self.opts.prepull_yaml, daemonset_name):
             self.logging.error("Timed out waiting for daemonset cleanup: %s",
                                daemonset_name)
-            raise Exception("Timed out waiting for daemonset cleanup: %s",
+            raise Exception("Timed out waiting for daemonset cleanup: %s" %
                             daemonset_name)
 
         self.logging.info("Succesfully prepulled images.")
 
-    def _prepareTestEnv(self):
+    def _prepare_test_env(self):
         os.environ["KUBE_MASTER"] = "local"
         os.environ["KUBE_MASTER_IP"] = "kubernetes"
         os.environ["KUBE_MASTER_URL"] = "https://kubernetes"
@@ -541,7 +543,7 @@ class Terraform_Flannel(ci.CI):
         utils.clone_repo(self.opts.sdn_repo, self.opts.sdn_branch, sdn_path)
         utils.build_sdn_binaries()
 
-    def build(self, binsToBuild):
+    def build(self, bins_to_build):
         builder_mapping = {
             "k8sbins": self._build_k8s_binaries,
             "containerdbins": self._build_containerd_binaries,
@@ -552,8 +554,8 @@ class Terraform_Flannel(ci.CI):
         def noop_func():
             pass
 
-        for bins in binsToBuild:
-            self.logging.info("Building %s binaries." % bins)
+        for bins in bins_to_build:
+            self.logging.info("Building %s binaries.", bins)
             builder_mapping.get(bins, noop_func)()
 
     def up(self):
@@ -576,8 +578,8 @@ class Terraform_Flannel(ci.CI):
             with open(self.opts.terraformData, 'r') as file:
                 data = file.read().replace('\n', '')
             terraform_data = ast.literal_eval(data)
-            self.deployer._parse_terraform_output(terraform_data)
-            self.deployer._populate_hosts_file()
+            self.deployer.parse_terraform_output(terraform_data)
+            self.deployer.populate_hosts_file()
             master = self.deployer.get_cluster_master_vm_name()
 
             self._prepare_ansible()
@@ -623,74 +625,42 @@ class Terraform_Flannel(ci.CI):
         utils.sed_inplace(daemonset_yaml_file, "{{SCRIPT_URL}}", script_url)
 
         kubectl = utils.get_kubectl_bin()
-        cmd = [kubectl, "create", "-f", daemonset_yaml_file]
-        out, err, ret = utils.run_cmd(cmd,
-                                      stdout=True,
-                                      stderr=True,
-                                      shell=True)
 
-        if ret != 0:
-            self.logging.error("Failed to start daemonset: %s" % err)
-            raise Exception("Failed to start daemonset: %s" % err)
-
-        cmd = [
+        utils.run_shell_cmd([kubectl, "create", "-f", daemonset_yaml_file])
+        out, _ = utils.run_shell_cmd([
             kubectl, "get", "pods",
             "--selector=name=%s" % daemonset_name,
             "--output=custom-columns=NAME:.metadata.name", "--no-headers"
-        ]
-        out, err, ret = utils.run_cmd(cmd,
-                                      stdout=True,
-                                      stderr=True,
-                                      shell=True)
+        ])
 
-        if ret != 0:
-            self.logging.error("Failed to get collect-logs pods: %s" % err)
-            raise Exception("Failed to get collect-logs pods: %s" % err)
-
-        log_pods = out.splitlines()
+        log_pods = out.decode('ascii').strip().splitlines()
         for pod in log_pods:
             if not utils.wait_for_ready_pod(pod):
                 self.logging.warning(
                     "Timed out waiting for pod to be ready: %s", pod)
                 continue
 
-            cmd = [
+            out, _ = utils.run_shell_cmd([
                 kubectl, "get", "pod", pod,
                 "--output=custom-columns=NODE:.spec.nodeName", "--no-headers"
-            ]
-            vm_name, err, ret = utils.run_cmd(cmd,
-                                              stdout=True,
-                                              stderr=True,
-                                              shell=True)
+            ])
+            vm_name = out.decode('ascii').strip()
 
-            if ret != 0:
-                self.logging.error("Failed to get VM name: %s" % err)
-                raise Exception("Failed to get VM name: %s" % err)
-
-            vm_name = vm_name.strip()
-            self.logging.info("Copying logs from: %s" % vm_name)
+            self.logging.info("Copying logs from: %s", vm_name)
 
             logs_vm_path = os.path.join(self.opts.log_path, "%s.zip" % vm_name)
 
-            if (operating_system == "linux"):
+            if operating_system == "linux":
                 src_path = "%s:/tmp/k8s-logs.tar.gz" % pod
             else:
                 src_path = "%s:k/logs.zip" % pod
 
-            cmd = [kubectl, "cp", src_path, logs_vm_path]
-            out, err, ret = utils.run_cmd(cmd,
-                                          stdout=True,
-                                          stderr=True,
-                                          shell=True)
-
-            if ret != 0:
-                self.logging.error("Failed to copy logs: %s" % err)
-                raise Exception("Failed to copy logs: %s" % err)
+            utils.run_shell_cmd([kubectl, "cp", src_path, logs_vm_path])
 
         if not utils.daemonset_cleanup(daemonset_yaml_file, daemonset_name):
             self.logging.error("Timed out waiting for daemonset cleanup: %s",
                                daemonset_name)
-            raise Exception("Timed out waiting for daemonset cleanup: %s",
+            raise Exception("Timed out waiting for daemonset cleanup: %s" %
                             daemonset_name)
 
         self.logging.info("Finished collecting %s logs.", operating_system)

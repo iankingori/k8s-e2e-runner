@@ -24,7 +24,6 @@ RUN apt-get autoclean && \
 RUN pip3 install --upgrade \
         pip setuptools \
         crudini toml configargparse pycrypto sh property-cached \
-        python-novaclient python-openstackclient \
         ansible pywinrm \
         azure-common azure-mgmt-resource azure-mgmt-compute azure-mgmt-network
 

@@ -46,7 +46,6 @@ p.add("--win-minion-size",
       default="Standard_D2s_v3",
       help="Size of Windows minions.")
 p.add("--win-minion-gallery-image",
-      required=True,
       help="The Windows minion shared gallery. The parameter shall be given "
       "as: <IMG_GALLERY_RG>:<IMG_GALLERY_NAME>:<IMG_DEFINITION>:<IMG_VERSION>")
 
