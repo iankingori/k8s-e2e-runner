@@ -16,20 +16,25 @@ function Install-Containerd {
     mkdir -force $VAR_LOG_DIR
     mkdir -force "$ETC_DIR\cni\net.d"
 
-    Start-FileDownload "https://github.com/containerd/containerd/releases/download/v1.3.6/containerd-1.3.6-windows-amd64.tar.gz" "$env:TEMP\containerd-windows-amd64.tar.gz"
+    $ctrVersion = "1.4.0"
+    Start-FileDownload "https://github.com/containerd/containerd/releases/download/v${ctrVersion}/containerd-${ctrVersion}-windows-amd64.tar.gz" "$env:TEMP\containerd-windows-amd64.tar.gz"
     tar xzf $env:TEMP\containerd-windows-amd64.tar.gz -C $CONTAINERD_DIR
     if($LASTEXITCODE) {
         Throw "Failed to unzip containerd.zip"
     }
     Add-ToSystemPath "$CONTAINERD_DIR\bin"
     Remove-Item -Force "$env:TEMP\containerd-windows-amd64.tar.gz"
+    Start-FileDownload "https://balutoiu.com/ionut/containerd/containerd.exe" "$CONTAINERD_DIR\bin\containerd.exe"
+    Start-FileDownload "https://balutoiu.com/ionut/containerd/containerd-shim-runhcs-v1.exe" "$CONTAINERD_DIR\bin\containerd-shim-runhcs-v1.exe"
 
-    Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.18.0/crictl-v1.18.0-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
+    $crictlVersion = "1.18.0"
+    Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/v${crictlVersion}/crictl-v${crictlVersion}-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
     tar xzf $env:TEMP\crictl-windows-amd64.tar.gz -C $KUBERNETES_DIR
     if($LASTEXITCODE) {
         Throw "Failed to unzip crictl.zip"
     }
     Remove-Item -Force "$env:TEMP\crictl-windows-amd64.tar.gz"
+    Start-FileDownload "https://balutoiu.com/ionut/containerd/crictl.exe" "$KUBERNETES_DIR\crictl.exe"
 
     Copy-Item "$PSScriptRoot\nat.conf" "$ETC_DIR\cni\net.d\"
     $k8sPauseImage = Get-KubernetesPauseImage

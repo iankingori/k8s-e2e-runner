@@ -186,7 +186,7 @@ function Install-Kubelet {
 function Install-CNI {
     mkdir -force "$OPT_DIR\cni\bin"
 
-    $cniVersion = "v0.8.6"
+    $cniVersion = "v0.8.7"
     Start-FileDownload "https://github.com/containernetworking/plugins/releases/download/${cniVersion}/cni-plugins-windows-amd64-${cniVersion}.tgz" `
                        "$env:TEMP\cni-plugins.tgz"
     tar -xf $env:TEMP\cni-plugins.tgz -C "$OPT_DIR\cni\bin"
