@@ -502,15 +502,6 @@ class CapzFlannelCI(ci.CI):
         ci_artifacts_images_dir = "%s/%s/images" % (
             self.ci_artifacts_dir, self.ci_version)
 
-        if self.opts.install_dsr:
-            ret = utils.retry_on_error()(utils.download_file)(
-                "http://10.0.173.212/kube-proxy.exe",
-                "%s/%s/kube-proxy.exe" % (
-                    k8s_path, constants.KUBERNETES_WINDOWS_BINS_LOCATION))
-            if ret != 0:
-                raise Exception("Failed to download kube-proxy.exe with "
-                                "DSR patch")
-
         os.makedirs(ci_artifacts_linux_bin_dir, exist_ok=True)
         os.makedirs(ci_artifacts_windows_bin_dir, exist_ok=True)
         os.makedirs(ci_artifacts_images_dir, exist_ok=True)
