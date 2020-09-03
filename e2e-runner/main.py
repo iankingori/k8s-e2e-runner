@@ -43,7 +43,7 @@ def parse_args():
           action="append",
           help="URLs of KBs to install on Windows nodes")
     p.add('--install-lanfix', type=str2bool, default=False)
-    p.add('--install-dsr', type=str2bool, default=False)
+    p.add('--enable-win-dsr', type=str2bool, default=False)
     p.add('--cluster-name', help="Name of cluster.")
     p.add('--k8s-repo', default="http://github.com/kubernetes/kubernetes")
     p.add('--k8s-branch', default="master")

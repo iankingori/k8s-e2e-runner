@@ -402,7 +402,7 @@ class CapzFlannelCI(ci.CI):
         context = {
             "kubernetes_version": self.kubernetes_version,
             "server_core_tag": server_core_tag,
-            "enable_win_dsr": str(self.opts.install_dsr).lower(),
+            "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),
             "flannel_mode": self.opts.flannel_mode
         }
         output_file = "/tmp/kube-proxy-windows.yaml"
