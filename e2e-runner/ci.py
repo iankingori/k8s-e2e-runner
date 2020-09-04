@@ -130,6 +130,9 @@ class CI(object):
                  "dryRun": self.opts.test_dry_run,
                  "focus": self.opts.test_focus_regex,
                  "skip": self.opts.test_skip_regex})
+        docker_config_file = os.environ.get("DOCKER_CONFIG_FILE")
+        if docker_config_file:
+            cmd.append(' --docker-config-file=%s' % docker_config_file)
         return subprocess.call(cmd, cwd=utils.get_k8s_folder())
 
     def test(self):
