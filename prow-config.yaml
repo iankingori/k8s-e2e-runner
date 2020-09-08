@@ -1,0 +1,615 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+  namespace: default
+data:
+  config.yaml: |
+    log_level: debug
+    pod_namespace: test-pods
+
+    sinker:
+      max_prowjob_age: 2d
+      max_pod_age: 1d
+
+    presets:
+    - labels:
+        preset-azure-account: "true"
+      env:
+      - name: AZURE_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_CLIENT_ID
+            name: azcreds
+      - name: AZURE_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_CLIENT_SECRET
+            name: azcreds
+      - name: AZURE_SUB_ID
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_SUB_ID
+            name: azcreds
+      - name: AZURE_TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_TENANT_ID
+            name: azcreds
+    - labels:
+        preset-prod-azure-account: "true"
+      env:
+      - name: AZURE_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_CLIENT_ID
+            name: prod-azcreds
+      - name: AZURE_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_CLIENT_SECRET
+            name: prod-azcreds
+      - name: AZURE_SUB_ID
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_SUB_ID
+            name: prod-azcreds
+      - name: AZURE_TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_TENANT_ID
+            name: prod-azcreds
+      - name: AZURE_STORAGE_ACCOUNT
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_STORAGE_ACCOUNT
+            name: prod-azcreds
+      - name: AZURE_STORAGE_ACCOUNT_KEY
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_STORAGE_ACCOUNT_KEY
+            name: prod-azcreds
+    - labels:
+        preset-service-account: "true"
+      env:
+      - name: GCLOUD_SERVICE_ACCOUNT
+        value: /etc/google/k8s-ovn-service-account.json
+      - name: GCLOUD_UPLOAD_BUCKET
+        value: "gs://k8s-ovn"
+      volumes:
+      - name: service-account
+        secret:
+          defaultMode: 0400
+          secretName: service-account
+      volumeMounts:
+      - name: service-account
+        mountPath: /etc/google
+        readOnly: true
+    - labels:
+        preset-ssh-key: "true"
+      env:
+      - name: SSH_KEY
+        value: /etc/ssh/id_rsa
+      - name: SSH_KEY_PUB
+        value: /etc/ssh/id_rsa.pub
+      volumes:
+      - name: ssh
+        secret:
+          defaultMode: 0400
+          secretName: ssh-key-default
+      volumeMounts:
+      - name: ssh
+        mountPath: /etc/ssh
+        readOnly: true
+    - labels:
+        preset-kube-backup: "true"
+      env:
+      - name: BACKUP_CONFIGMAPS
+        value: "config,plugins"
+      - name: BACKUP_SECRETS
+        value: "default/hmac-token,default/oauth-token,test-pods/azcreds,test-pods/prod-azcreds,test-pods/service-account,test-pods/ssh-key-default,test-pods/aks-azure-cred,test-pods/aks-azure-cred-upstream,test-pods/aks-azure-ssh,test-pods/aks-azure-storage,test-pods/aks-docker-pass,test-pods/aks-service-account,test-pods/aks-ssh-key-secret,test-pods/kubeconfig"
+      - name: ENCRYPTION_KEY
+        value: /etc/ssh/id_rsa.pub
+      - name: AZURE_STORAGE_CONTAINER_PROW_BKP
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_STORAGE_CONTAINER_PROW_BKP
+            name: prod-azcreds
+      volumes:
+      - name: ssh
+        secret:
+          defaultMode: 0400
+          secretName: ssh-key-default
+      - name: kubeconfig
+        secret:
+          defaultMode: 0400
+          secretName: kubeconfig
+      volumeMounts:
+      - name: ssh
+        mountPath: /etc/ssh
+        readOnly: true
+      - name: kubeconfig
+        mountPath: /root/.kube
+        readOnly: true
+    - labels:
+        preset-aks-service-account: "true"
+      env:
+      - name: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/service-account/service-account.json
+      volumes:
+      - name: aks-service
+        secret:
+          secretName: aks-service-account
+      volumeMounts:
+      - name: aks-service
+        mountPath: /etc/service-account
+        readOnly: true
+    - labels:
+        preset-aks-azure-creds: "true"
+      env:
+      - name: AZURE_CREDENTIALS
+        value: /etc/azure-cred/credentials
+      volumes:
+      - name: aks-azure-cred
+        secret:
+          secretName: aks-azure-cred
+      volumeMounts:
+      - name: aks-azure-cred
+        mountPath: /etc/azure-cred
+        readOnly: true
+    - labels:
+        preset-aks-azure-creds-upstream: "true"
+      env:
+      - name: AZURE_CREDENTIALS
+        value: /etc/azure-cred/credentials
+      volumes:
+      - name: aks-azure-cred
+        secret:
+          secretName: aks-azure-cred-upstream
+      volumeMounts:
+      - name: aks-azure-cred
+        mountPath: /etc/azure-cred
+        readOnly: true
+    - labels:
+        preset-aks-azure-ssh: "true"
+      env:
+      - name: AZURE_SSH_PUBLIC_KEY_FILE
+        value: /etc/azure-ssh/azure-ssh.pub
+      - name: CLOUD_CONFIG
+        value: random
+      - name: AZ_STORAGE_CONTAINER_NAME
+        value: mystoragecontainer
+      - name: REGISTRY
+        value: k8se2eimages.azurecr.io
+      - name: WIN_BUILD
+        value: https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/build/build-windows-k8s.sh
+      - name: KUBE_VERBOSE
+        value: "0"
+      volumes:
+      - name: aks-docker-pass
+        secret:
+          secretName: aks-docker-pass
+          defaultMode: 256
+      - name: aks-azure-ssh
+        secret:
+          secretName: aks-azure-ssh
+          defaultMode: 256
+      volumeMounts:
+      - name: aks-azure-ssh
+        mountPath: /etc/azure-ssh
+        readOnly: true
+      - name: aks-docker-pass
+        mountPath: /etc/ci
+        readOnly: true
+    - labels:
+        preset-aks-azure-storage: "true"
+      env:
+      - name: AZ_STORAGE_KEY
+        valueFrom:
+          secretKeyRef:
+            name: aks-azure-storage
+            key: az_storage_key
+      - name: AZ_STORAGE_ACCOUNT
+        valueFrom:
+          secretKeyRef:
+            name: aks-azure-storage
+            key: az_storage_account
+    - labels:
+        preset-repo-list: "true"
+      env:
+      - name: KUBE_TEST_REPO_LIST_DOWNLOAD_LOCATION
+        value: https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list
+    - labels:
+        preset-aks-k8s-ssh: "true"
+      env:
+      - name: USER
+        value: prow
+      - name: JENKINS_GCE_SSH_PRIVATE_KEY_FILE
+        value: /etc/ssh-key-secret/ssh-private
+      - name: JENKINS_GCE_SSH_PUBLIC_KEY_FILE
+        value: /etc/ssh-key-secret/ssh-public
+      volumes:
+      - name: aks-ssh
+        secret:
+          defaultMode: 0400
+          secretName: aks-ssh-key-secret
+      volumeMounts:
+      - name: aks-ssh
+        mountPath: /etc/ssh-key-secret
+        readOnly: true
+    - labels:
+        preset-perm-env-dkr-l2b: "true"
+      volumes:
+      - name: perm-env-docker-l2bridge-2
+        secret:
+          defaultMode: 0400
+          secretName: perm-env-docker-l2bridge-2
+      volumeMounts:
+      - name: perm-env-docker-l2bridge-2
+        mountPath: /etc/terraform-data
+        readOnly: true
+    - labels:
+        preset-kind: "true"
+      volumes:
+      - name: dind-storage
+        emptyDir: {}
+      - name: libmodules
+        hostPath:
+          path: /lib/modules
+      volumeMounts:
+      - mountPath: /var/lib/docker
+        name: dind-storage
+      - mountPath: /lib/modules
+        name: libmodules
+        readOnly: true
+    - labels:
+        preset-windows-private-registry-cred: "true"
+      env:
+      - name: DOCKER_CONFIG_FILE
+        value: /etc/docker-cred/config.json
+      volumes:
+      - name: windows-private-registry-cred
+        secret:
+          secretName: windows-private-registry-docker-config
+      volumeMounts:
+      - name: windows-private-registry-cred
+        mountPath: /etc/docker-cred/
+        readOnly: true
+
+    periodics:
+    - interval: 24h
+      always_run: true
+      agent: kubernetes
+      name: kube-backup
+      labels:
+        preset-prod-azure-account: "true"
+        preset-kube-backup: "true"
+      spec:
+        containers:
+        - image: e2eteam/kube-backup:latest
+          namespace: test-pods
+          imagePullPolicy: Always
+
+    - cron: "0 0/12 * * *"
+      always_run: true
+      agent: kubernetes
+      name: ci-kubernetes-e2e-flannel-l2bridge-master-windows
+      labels:
+        preset-ssh-key: "true"
+        preset-prod-azure-account: "true"
+        preset-service-account: "true"
+        preset-kind: "true"
+      spec:
+        containers:
+        - image: e2eteam/k8s-e2e-runner:capz_flannel
+          imagePullPolicy: Always
+          namespace: test-pods
+          securityContext:
+            privileged: true
+          args:
+            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
+            - "--job-branch=capz_flannel"
+            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
+            - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
+            - "--"
+            - "--ci=capz_flannel"
+            - "--flannel-mode=host-gw"
+            - "--win-minion-count=2"
+            - "--test=True"
+            - "--up=True"
+            - "--down=True"
+            - "--build=k8sbins"
+            - "--cluster-name=capzflannel-l2br-$(BUILD_ID)"
+            - "--parallel-test-nodes=5"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:1.0.1"
+            - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
+            - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
+            - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application"
+            - "--kubetest-link=https://k8swin.blob.core.windows.net/k8s-windows/kubetest"
+
+    - cron: "0 3/12 * * *"
+      always_run: true
+      agent: kubernetes
+      name: ci-kubernetes-e2e-flannel-overlay-master-windows
+      labels:
+        preset-ssh-key: "true"
+        preset-prod-azure-account: "true"
+        preset-service-account: "true"
+        preset-kind: "true"
+      spec:
+        containers:
+        - image: e2eteam/k8s-e2e-runner:capz_flannel
+          imagePullPolicy: Always
+          namespace: test-pods
+          securityContext:
+            privileged: true
+          args:
+            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
+            - "--job-branch=capz_flannel"
+            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
+            - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
+            - "--"
+            - "--ci=capz_flannel"
+            - "--flannel-mode=overlay"
+            - "--win-minion-count=2"
+            - "--test=True"
+            - "--up=True"
+            - "--down=True"
+            - "--build=k8sbins"
+            - "--cluster-name=capzflannel-ovrl-$(BUILD_ID)"
+            - "--parallel-test-nodes=5"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:1.0.1"
+            - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
+            - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
+            - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application"
+            - "--kubetest-link=https://k8swin.blob.core.windows.net/k8s-windows/kubetest"
+
+    - cron: "0 6/12 * * *"
+      always_run: true
+      agent: kubernetes
+      name: ci-kubernetes-e2e-sdnbridge-ctrd-master-windows
+      labels:
+        preset-ssh-key: "true"
+        preset-prod-azure-account: "true"
+        preset-service-account: "true"
+        preset-kind: "true"
+      spec:
+        containers:
+        - image: e2eteam/k8s-e2e-runner:capz_flannel
+          imagePullPolicy: Always
+          namespace: test-pods
+          securityContext:
+            privileged: true
+          args:
+            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
+            - "--job-branch=capz_flannel"
+            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
+            - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
+            - "--"
+            - "--ci=capz_flannel"
+            - "--flannel-mode=host-gw"
+            - "--win-minion-count=2"
+            - "--test=True"
+            - "--up=True"
+            - "--down=True"
+            - "--build=k8sbins"
+            - "--build=containerdbins"
+            - "--build=containerdshim"
+            - "--container-runtime=containerd"
+            - "--cluster-name=capzctrd-$(BUILD_ID)"
+            - "--parallel-test-nodes=5"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:1.0.1"
+            - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
+            - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
+            - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
+            - "--kubetest-link=https://k8swin.blob.core.windows.net/k8s-windows/kubetest"
+
+    - cron: "0 9/12 * * *"
+      always_run: true
+      agent: kubernetes
+      name: ci-kubernetes-e2e-sdnoverlay-ctrd-master-windows
+      labels:
+        preset-ssh-key: "true"
+        preset-prod-azure-account: "true"
+        preset-service-account: "true"
+        preset-kind: "true"
+      spec:
+        containers:
+        - image: e2eteam/k8s-e2e-runner:capz_flannel
+          imagePullPolicy: Always
+          namespace: test-pods
+          securityContext:
+            privileged: true
+          args:
+            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
+            - "--job-branch=capz_flannel"
+            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
+            - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
+            - "--"
+            - "--ci=capz_flannel"
+            - "--flannel-mode=overlay"
+            - "--win-minion-count=2"
+            - "--test=True"
+            - "--up=True"
+            - "--down=True"
+            - "--build=k8sbins"
+            - "--build=containerdbins"
+            - "--build=containerdshim"
+            - "--container-runtime=containerd"
+            - "--cluster-name=capzctrd-$(BUILD_ID)"
+            - "--parallel-test-nodes=5"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:1.0.1"
+            - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
+            - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
+            - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
+            - "--kubetest-link=https://k8swin.blob.core.windows.net/k8s-windows/kubetest"
+
+    - cron: "0 2 * * *"
+      always_run: true
+      agent: kubernetes
+      name: containerd-windows-sac1909-sdnbridge
+      labels:
+        preset-ssh-key: "true"
+        preset-prod-azure-account: "true"
+        preset-service-account: "true"
+        preset-kind: "true"
+      spec:
+        containers:
+        - image: e2eteam/k8s-e2e-runner:capz_flannel
+          imagePullPolicy: Always
+          namespace: test-pods
+          securityContext:
+            privileged: true
+          args:
+            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
+            - "--job-branch=capz_flannel"
+            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
+            - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
+            - "--"
+            - "--ci=capz_flannel"
+            - "--flannel-mode=host-gw"
+            - "--win-minion-count=2"
+            - "--test=True"
+            - "--up=True"
+            - "--down=True"
+            - "--build=sdncnibins"
+            - "--k8s-branch=v1.19.0"
+            - "--base-container-image-tag=1909"
+            - "--container-runtime=containerd"
+            - "--cluster-name=capzctrd1909-$(BUILD_ID)"
+            - "--parallel-test-nodes=5"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:1.0.1"
+            - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
+            - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
+            - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
+            - "--kubetest-link=https://k8swin.blob.core.windows.net/k8s-windows/kubetest"
+
+    - cron: "0 8 * * *"
+      always_run: true
+      agent: kubernetes
+      name: containerd-windows-sac1909-sdnoverlay
+      labels:
+        preset-ssh-key: "true"
+        preset-prod-azure-account: "true"
+        preset-service-account: "true"
+        preset-kind: "true"
+      spec:
+        containers:
+        - image: e2eteam/k8s-e2e-runner:capz_flannel
+          imagePullPolicy: Always
+          namespace: test-pods
+          securityContext:
+            privileged: true
+          args:
+            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
+            - "--job-branch=capz_flannel"
+            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
+            - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
+            - "--"
+            - "--ci=capz_flannel"
+            - "--flannel-mode=overlay"
+            - "--win-minion-count=2"
+            - "--test=True"
+            - "--up=True"
+            - "--down=True"
+            - "--build=sdncnibins"
+            - "--k8s-branch=v1.19.0"
+            - "--base-container-image-tag=1909"
+            - "--container-runtime=containerd"
+            - "--cluster-name=capzctrd1909-$(BUILD_ID)"
+            - "--parallel-test-nodes=5"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:1.0.1"
+            - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
+            - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
+            - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
+            - "--kubetest-link=https://k8swin.blob.core.windows.net/k8s-windows/kubetest"
+
+    - cron: "0 14 * * *"
+      always_run: true
+      agent: kubernetes
+      name: containerd-windows-sac2004-sdnbridge
+      labels:
+        preset-ssh-key: "true"
+        preset-prod-azure-account: "true"
+        preset-service-account: "true"
+        preset-kind: "true"
+        preset-windows-private-registry-cred: "true"
+      spec:
+        containers:
+        - image: e2eteam/k8s-e2e-runner:capz_flannel
+          imagePullPolicy: Always
+          namespace: test-pods
+          securityContext:
+            privileged: true
+          args:
+            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
+            - "--job-branch=capz_flannel"
+            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
+            - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
+            - "--"
+            - "--ci=capz_flannel"
+            - "--flannel-mode=host-gw"
+            - "--win-minion-count=2"
+            - "--test=True"
+            - "--up=True"
+            - "--down=True"
+            - "--build=sdncnibins"
+            - "--k8s-branch=v1.19.0"
+            - "--base-container-image-tag=2004"
+            - "--container-runtime=containerd"
+            - "--cluster-name=capzctrd2004-$(BUILD_ID)"
+            - "--parallel-test-nodes=5"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:1.0.2"
+            - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-2004"
+            - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
+            - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
+            - "--kubetest-link=https://k8swin.blob.core.windows.net/k8s-windows/kubetest"
+
+    - cron: "0 20 * * *"
+      always_run: true
+      agent: kubernetes
+      name: containerd-windows-sac2004-sdnoverlay
+      labels:
+        preset-ssh-key: "true"
+        preset-prod-azure-account: "true"
+        preset-service-account: "true"
+        preset-kind: "true"
+        preset-windows-private-registry-cred: "true"
+      spec:
+        containers:
+        - image: e2eteam/k8s-e2e-runner:capz_flannel
+          imagePullPolicy: Always
+          namespace: test-pods
+          securityContext:
+            privileged: true
+          args:
+            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
+            - "--job-branch=capz_flannel"
+            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
+            - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
+            - "--"
+            - "--ci=capz_flannel"
+            - "--flannel-mode=overlay"
+            - "--win-minion-count=2"
+            - "--test=True"
+            - "--up=True"
+            - "--down=True"
+            - "--build=sdncnibins"
+            - "--k8s-branch=v1.19.0"
+            - "--base-container-image-tag=2004"
+            - "--container-runtime=containerd"
+            - "--cluster-name=capzctrd2004-$(BUILD_ID)"
+            - "--parallel-test-nodes=5"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:1.0.2"
+            - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-2004"
+            - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
+            - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
+            - "--kubetest-link=https://k8swin.blob.core.windows.net/k8s-windows/kubetest"

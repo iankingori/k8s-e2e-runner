@@ -1,0 +1,50 @@
+  cni-conf.json: |
+    {
+      "name": "vxlan0",
+      "cniVersion": "0.2.0",
+      "type": "flannel",
+      "capabilities": {
+        "dns": true
+      },
+      "delegate": {
+        "type": "sdnoverlay",
+        "dns": {
+          "nameservers": [
+            "10.96.0.10"
+          ],
+          "search": [
+            "svc.cluster.local"
+          ]
+        },
+        "AdditionalArgs": [
+          {
+            "Name": "EndpointPolicy",
+            "Value": {
+              "Type": "OutBoundNAT",
+              "Settings": {
+                "Exceptions": []
+              }
+            }
+          },
+          {
+            "Name": "EndpointPolicy",
+            "Value": {
+              "Type": "SDNRoute",
+              "Settings": {
+                "DestinationPrefix": "",
+                "NeedEncap": true
+              }
+            }
+          },
+          {
+            "Name": "EndpointPolicy",
+            "Value": {
+              "Type": "ProviderAddress",
+              "Settings": {
+                "ProviderAddress": ""
+              }
+            }
+          }
+        ]
+      }
+    }

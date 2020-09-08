@@ -1,0 +1,32 @@
+---
+apiVersion: cluster.x-k8s.io/v1alpha3
+kind: Cluster
+metadata:
+  name: {{ cluster_name }}
+  namespace: default
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+      - {{ cluster_network_subnet }}
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+    kind: KubeadmControlPlane
+    name: {{ cluster_name }}-control-plane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+    kind: AzureCluster
+    name: {{ cluster_name }}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+kind: AzureCluster
+metadata:
+  name: {{ cluster_name }}
+  namespace: default
+spec:
+  location: {{ azure_location }}
+  networkSpec:
+    vnet:
+      name: {{ cluster_name }}-vnet
+  resourceGroup: {{ cluster_name }}
+  subscriptionID: {{ azure_subscription_id }}
