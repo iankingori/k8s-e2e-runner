@@ -51,8 +51,6 @@ data:
     cp -force /var/run/secrets/kubernetes.io/serviceaccount/* /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount/
 
   run.ps1: |
-    wins cli process run --path /k/flannel/setup.exe --args "--mode={{ mode }} --interface=Ethernet"
-    wins cli route add --addresses 169.254.169.254
     wins cli process run --path /k/flannel/flanneld.exe --args "--kube-subnet-mgr --ip-masq --kubeconfig-file /k/flannel/kubeconfig.yml" --envs "POD_NAME=$env:POD_NAME POD_NAMESPACE=$env:POD_NAMESPACE"
 
 {% include ("cni/" + container_runtime + "-" + mode + "-windows.yaml.j2") %}

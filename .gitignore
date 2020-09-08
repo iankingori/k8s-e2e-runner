@@ -1,4 +1,3 @@
 *.pyc
 
-/e2e-runner/cluster-api/flannel/setup.exe
 /image-builder/azure-cbsl-init/*.offline

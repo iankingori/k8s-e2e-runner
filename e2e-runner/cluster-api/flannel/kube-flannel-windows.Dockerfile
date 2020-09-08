@@ -7,12 +7,6 @@ RUN mkdir -force C:\k\flannel; \
     pushd C:\k\flannel; \
     curl.exe -LO https://github.com/coreos/flannel/releases/download/v0.12.0/flanneld.exe
 
-ADD https://github.com/Microsoft/SDN/raw/master/Kubernetes/windows/hns.psm1 /k/flannel
-
-# make sure that the binary is already compiled via:
-#    GOOS=windows go build -o setup.exe setup.go
-COPY setup.exe /k/flannel/setup.exe
-
 RUN mkdir C:\utils; \
     curl.exe -Lo C:\utils\wins.exe https://github.com/rancher/wins/releases/download/v0.0.4/wins.exe; \
     curl.exe -Lo C:\utils\yq.exe https://github.com/mikefarah/yq/releases/download/2.4.1/yq_windows_amd64.exe; \
