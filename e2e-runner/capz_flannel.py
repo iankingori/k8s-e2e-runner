@@ -89,7 +89,7 @@ class CapzFlannelCI(ci.CI):
         if self.patches is not None:
             self._install_patches()
 
-        if "k8sbins" in self.opts.build:
+        if "k8sbins" in self.deployer.bins_built:
             self._upload_kube_proxy_windows_bin()
 
         self._add_flannel_cni()
