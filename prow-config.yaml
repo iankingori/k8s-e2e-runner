@@ -9,33 +9,10 @@ data:
     pod_namespace: test-pods
 
     sinker:
-      max_prowjob_age: 2d
-      max_pod_age: 1d
+      max_prowjob_age: 48h
+      max_pod_age: 24h
 
     presets:
-    - labels:
-        preset-azure-account: "true"
-      env:
-      - name: AZURE_CLIENT_ID
-        valueFrom:
-          secretKeyRef:
-            key: AZURE_CLIENT_ID
-            name: azcreds
-      - name: AZURE_CLIENT_SECRET
-        valueFrom:
-          secretKeyRef:
-            key: AZURE_CLIENT_SECRET
-            name: azcreds
-      - name: AZURE_SUB_ID
-        valueFrom:
-          secretKeyRef:
-            key: AZURE_SUB_ID
-            name: azcreds
-      - name: AZURE_TENANT_ID
-        valueFrom:
-          secretKeyRef:
-            key: AZURE_TENANT_ID
-            name: azcreds
     - labels:
         preset-prod-azure-account: "true"
       env:
@@ -132,123 +109,6 @@ data:
         mountPath: /root/.kube
         readOnly: true
     - labels:
-        preset-aks-service-account: "true"
-      env:
-      - name: GOOGLE_APPLICATION_CREDENTIALS
-        value: /etc/service-account/service-account.json
-      volumes:
-      - name: aks-service
-        secret:
-          secretName: aks-service-account
-      volumeMounts:
-      - name: aks-service
-        mountPath: /etc/service-account
-        readOnly: true
-    - labels:
-        preset-aks-azure-creds: "true"
-      env:
-      - name: AZURE_CREDENTIALS
-        value: /etc/azure-cred/credentials
-      volumes:
-      - name: aks-azure-cred
-        secret:
-          secretName: aks-azure-cred
-      volumeMounts:
-      - name: aks-azure-cred
-        mountPath: /etc/azure-cred
-        readOnly: true
-    - labels:
-        preset-aks-azure-creds-upstream: "true"
-      env:
-      - name: AZURE_CREDENTIALS
-        value: /etc/azure-cred/credentials
-      volumes:
-      - name: aks-azure-cred
-        secret:
-          secretName: aks-azure-cred-upstream
-      volumeMounts:
-      - name: aks-azure-cred
-        mountPath: /etc/azure-cred
-        readOnly: true
-    - labels:
-        preset-aks-azure-ssh: "true"
-      env:
-      - name: AZURE_SSH_PUBLIC_KEY_FILE
-        value: /etc/azure-ssh/azure-ssh.pub
-      - name: CLOUD_CONFIG
-        value: random
-      - name: AZ_STORAGE_CONTAINER_NAME
-        value: mystoragecontainer
-      - name: REGISTRY
-        value: k8se2eimages.azurecr.io
-      - name: WIN_BUILD
-        value: https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/build/build-windows-k8s.sh
-      - name: KUBE_VERBOSE
-        value: "0"
-      volumes:
-      - name: aks-docker-pass
-        secret:
-          secretName: aks-docker-pass
-          defaultMode: 256
-      - name: aks-azure-ssh
-        secret:
-          secretName: aks-azure-ssh
-          defaultMode: 256
-      volumeMounts:
-      - name: aks-azure-ssh
-        mountPath: /etc/azure-ssh
-        readOnly: true
-      - name: aks-docker-pass
-        mountPath: /etc/ci
-        readOnly: true
-    - labels:
-        preset-aks-azure-storage: "true"
-      env:
-      - name: AZ_STORAGE_KEY
-        valueFrom:
-          secretKeyRef:
-            name: aks-azure-storage
-            key: az_storage_key
-      - name: AZ_STORAGE_ACCOUNT
-        valueFrom:
-          secretKeyRef:
-            name: aks-azure-storage
-            key: az_storage_account
-    - labels:
-        preset-repo-list: "true"
-      env:
-      - name: KUBE_TEST_REPO_LIST_DOWNLOAD_LOCATION
-        value: https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list
-    - labels:
-        preset-aks-k8s-ssh: "true"
-      env:
-      - name: USER
-        value: prow
-      - name: JENKINS_GCE_SSH_PRIVATE_KEY_FILE
-        value: /etc/ssh-key-secret/ssh-private
-      - name: JENKINS_GCE_SSH_PUBLIC_KEY_FILE
-        value: /etc/ssh-key-secret/ssh-public
-      volumes:
-      - name: aks-ssh
-        secret:
-          defaultMode: 0400
-          secretName: aks-ssh-key-secret
-      volumeMounts:
-      - name: aks-ssh
-        mountPath: /etc/ssh-key-secret
-        readOnly: true
-    - labels:
-        preset-perm-env-dkr-l2b: "true"
-      volumes:
-      - name: perm-env-docker-l2bridge-2
-        secret:
-          defaultMode: 0400
-          secretName: perm-env-docker-l2bridge-2
-      volumeMounts:
-      - name: perm-env-docker-l2bridge-2
-        mountPath: /etc/terraform-data
-        readOnly: true
-    - labels:
         preset-kind: "true"
       volumes:
       - name: dind-storage
@@ -301,15 +161,14 @@ data:
         preset-kind: "true"
       spec:
         containers:
-        - image: e2eteam/k8s-e2e-runner:capz_flannel
+        - image: e2eteam/k8s-e2e-runner:latest
           imagePullPolicy: Always
           namespace: test-pods
           securityContext:
             privileged: true
           args:
-            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
-            - "--job-branch=capz_flannel"
-            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--job-repo=https://github.com/e2e-win/k8s-e2e-runner"
+            - "--job-config=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
             - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -339,15 +198,14 @@ data:
         preset-kind: "true"
       spec:
         containers:
-        - image: e2eteam/k8s-e2e-runner:capz_flannel
+        - image: e2eteam/k8s-e2e-runner:latest
           imagePullPolicy: Always
           namespace: test-pods
           securityContext:
             privileged: true
           args:
-            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
-            - "--job-branch=capz_flannel"
-            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--job-repo=https://github.com/e2e-win/k8s-e2e-runner"
+            - "--job-config=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
             - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -377,15 +235,14 @@ data:
         preset-kind: "true"
       spec:
         containers:
-        - image: e2eteam/k8s-e2e-runner:capz_flannel
+        - image: e2eteam/k8s-e2e-runner:latest
           imagePullPolicy: Always
           namespace: test-pods
           securityContext:
             privileged: true
           args:
-            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
-            - "--job-branch=capz_flannel"
-            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--job-repo=https://github.com/e2e-win/k8s-e2e-runner"
+            - "--job-config=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
             - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -418,15 +275,14 @@ data:
         preset-kind: "true"
       spec:
         containers:
-        - image: e2eteam/k8s-e2e-runner:capz_flannel
+        - image: e2eteam/k8s-e2e-runner:latest
           imagePullPolicy: Always
           namespace: test-pods
           securityContext:
             privileged: true
           args:
-            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
-            - "--job-branch=capz_flannel"
-            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--job-repo=https://github.com/e2e-win/k8s-e2e-runner"
+            - "--job-config=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
             - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -459,15 +315,14 @@ data:
         preset-kind: "true"
       spec:
         containers:
-        - image: e2eteam/k8s-e2e-runner:capz_flannel
+        - image: e2eteam/k8s-e2e-runner:latest
           imagePullPolicy: Always
           namespace: test-pods
           securityContext:
             privileged: true
           args:
-            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
-            - "--job-branch=capz_flannel"
-            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--job-repo=https://github.com/e2e-win/k8s-e2e-runner"
+            - "--job-config=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
             - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -500,15 +355,14 @@ data:
         preset-kind: "true"
       spec:
         containers:
-        - image: e2eteam/k8s-e2e-runner:capz_flannel
+        - image: e2eteam/k8s-e2e-runner:latest
           imagePullPolicy: Always
           namespace: test-pods
           securityContext:
             privileged: true
           args:
-            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
-            - "--job-branch=capz_flannel"
-            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--job-repo=https://github.com/e2e-win/k8s-e2e-runner"
+            - "--job-config=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
             - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -542,15 +396,14 @@ data:
         preset-windows-private-registry-cred: "true"
       spec:
         containers:
-        - image: e2eteam/k8s-e2e-runner:capz_flannel
+        - image: e2eteam/k8s-e2e-runner:latest
           imagePullPolicy: Always
           namespace: test-pods
           securityContext:
             privileged: true
           args:
-            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
-            - "--job-branch=capz_flannel"
-            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--job-repo=https://github.com/e2e-win/k8s-e2e-runner"
+            - "--job-config=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
             - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -584,15 +437,14 @@ data:
         preset-windows-private-registry-cred: "true"
       spec:
         containers:
-        - image: e2eteam/k8s-e2e-runner:capz_flannel
+        - image: e2eteam/k8s-e2e-runner:latest
           imagePullPolicy: Always
           namespace: test-pods
           securityContext:
             privileged: true
           args:
-            - "--job-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner"
-            - "--job-branch=capz_flannel"
-            - "--job-config=https://raw.githubusercontent.com/ionutbalutoiu/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
+            - "--job-repo=https://github.com/e2e-win/k8s-e2e-runner"
+            - "--job-config=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/capz_flannel/e2e-runner/config_capz_flannel.txt"
             - "--service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gs=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"

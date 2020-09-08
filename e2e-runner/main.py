@@ -57,17 +57,17 @@ def parse_args():
           default="http://github.com/microsoft/windows-container-networking")
     p.add('--sdn-branch', default="master")
     p.add('--collect-logs-windows-yaml',
-          default="https://raw.githubusercontent.com/ionutbalutoiu/"
-          "k8s-e2e-runner/capz_flannel/e2e-runner/collect-logs-windows.yaml")
+          default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/"
+          "master/e2e-runner/collect-logs-windows.yaml")
     p.add('--collect-logs-windows-script',
-          default="https://raw.githubusercontent.com/ionutbalutoiu/"
-          "k8s-e2e-runner/capz_flannel/e2e-runner/collect-logs.ps1")
+          default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/"
+          "master/e2e-runner/collect-logs.ps1")
     p.add('--collect-logs-linux-yaml',
-          default="https://raw.githubusercontent.com/ionutbalutoiu/"
-          "k8s-e2e-runner/capz_flannel/e2e-runner/collect-logs-linux.yaml")
+          default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/"
+          "master/e2e-runner/collect-logs-linux.yaml")
     p.add('--collect-logs-linux-script',
-          default="https://raw.githubusercontent.com/ionutbalutoiu/"
-          "k8s-e2e-runner/capz_flannel/e2e-runner/collect-logs.sh")
+          default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/"
+          "master/e2e-runner/collect-logs.sh")
     p.add('--prepull-yaml',
           default="https://raw.githubusercontent.com/kubernetes-sigs/"
           "windows-testing/master/gce/prepull.yaml")
