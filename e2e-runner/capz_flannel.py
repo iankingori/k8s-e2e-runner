@@ -473,6 +473,7 @@ class CapzFlannelCI(ci.CI):
             'KUBE_BUILD_PLATFORMS="linux/amd64"'
         ]
         utils.run_shell_cmd(cmd, k8s_path)
+        del os.environ["KUBECTL_PATH"]
 
         self.logging.info("Building K8s Windows binaries")
         cmd = [

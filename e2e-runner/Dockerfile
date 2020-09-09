@@ -4,6 +4,7 @@ ARG GO_VERSION=1.15
 ARG TF_VERSION=0.12.24
 ARG KIND_VERSION=v0.8.1
 ARG CAPI_VERSION=v0.3.8
+ARG KUBECTL_VERSION=v1.19.0
 
 # Install system packages
 RUN apt-get update && \
@@ -64,6 +65,11 @@ RUN curl -Lo /usr/local/bin/kind "https://github.com/kubernetes-sigs/kind/releas
 # Install clusterctl
 RUN curl -Lo /usr/local/bin/clusterctl "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CAPI_VERSION}/clusterctl-linux-amd64" && \
     chmod +x /usr/local/bin/clusterctl
+
+# Install kubectl
+RUN curl -Lo /usr/local/bin/kubectl "https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
+    chmod +x /usr/local/bin/kubectl
+ENV KUBECTL_PATH "/usr/local/bin/kubectl"
 
 WORKDIR /workspace
 
