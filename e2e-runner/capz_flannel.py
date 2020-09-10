@@ -7,6 +7,7 @@ import time
 from distutils.util import strtobool
 
 import configargparse
+import sh
 import yaml
 
 import capz
@@ -170,13 +171,21 @@ class CapzFlannelCI(ci.CI):
         self._upload_to(local_script_path,
                         "/tmp/installPatches.ps1",
                         node_addresses)
-        self._run_remote_cmd("/tmp/installPatches.ps1 %s" % self.patches,
-                             node_addresses)
+
+        async_cmds = []
+        for node_address in node_addresses:
+            cmd_args = [node_address, "/tmp/installPatches.ps1", self.patches]
+            log_prefix = "%s : " % node_address
+            async_cmds.append(
+                utils.run_async_shell_cmd(sh.ssh, cmd_args, log_prefix))
+        for async_cmd in async_cmds:
+            async_cmd.wait()
+
         self._wait_for_connection(node_addresses)
 
     def _upload_to(self, local_path, remote_path, node_addresses):
         for node_address in node_addresses:
-            self.deployer.upload_to_k8s_node(
+            utils.retry_on_error()(self.deployer.upload_to_k8s_node)(
                 local_path, remote_path, node_address)
 
     def _run_remote_cmd(self, cmd, node_addresses):
