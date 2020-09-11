@@ -512,12 +512,12 @@ def run_shell_cmd(cmd, cwd=None, env=None, sensitive=False):
     return (out, err)
 
 
-def run_async_shell_cmd(cmd, args):
+def run_async_shell_cmd(cmd, args, log_prefix=""):
     def process_stdout(line):
-        logging.info(line.strip())
+        logging.info(log_prefix + line.strip())
 
     def process_stderr(line):
-        logging.warning(line.strip())
+        logging.warning(log_prefix + line.strip())
 
     proc = cmd(args, _out=process_stdout, _err=process_stderr, _bg=True)
     return proc
