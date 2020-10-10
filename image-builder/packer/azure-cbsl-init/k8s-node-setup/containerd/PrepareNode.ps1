@@ -16,25 +16,22 @@ function Install-Containerd {
     mkdir -force $VAR_LOG_DIR
     mkdir -force "$ETC_DIR\cni\net.d"
 
-    $ctrVersion = "1.4.0"
-    Start-FileDownload "https://github.com/containerd/containerd/releases/download/v${ctrVersion}/containerd-${ctrVersion}-windows-amd64.tar.gz" "$env:TEMP\containerd-windows-amd64.tar.gz"
-    tar xzf $env:TEMP\containerd-windows-amd64.tar.gz -C $CONTAINERD_DIR
+    $criContainerdVersion = "1.4.1"
+    Start-FileDownload "https://github.com/containerd/containerd/releases/download/v${criContainerdVersion}/cri-containerd-cni-${criContainerdVersion}-windows-amd64.tar.gz" "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
+    tar xzf $env:TEMP\cri-containerd-windows-amd64.tar.gz -C $CONTAINERD_DIR
     if($LASTEXITCODE) {
         Throw "Failed to unzip containerd.zip"
     }
-    Add-ToSystemPath "$CONTAINERD_DIR\bin"
-    Remove-Item -Force "$env:TEMP\containerd-windows-amd64.tar.gz"
-    Start-FileDownload "https://balutoiu.com/ionut/containerd/containerd.exe" "$CONTAINERD_DIR\bin\containerd.exe"
-    Start-FileDownload "https://balutoiu.com/ionut/containerd/containerd-shim-runhcs-v1.exe" "$CONTAINERD_DIR\bin\containerd-shim-runhcs-v1.exe"
+    Add-ToSystemPath $CONTAINERD_DIR
+    Remove-Item -Force "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
 
-    $crictlVersion = "1.18.0"
+    $crictlVersion = "1.19.0"
     Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/v${crictlVersion}/crictl-v${crictlVersion}-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
     tar xzf $env:TEMP\crictl-windows-amd64.tar.gz -C $KUBERNETES_DIR
     if($LASTEXITCODE) {
         Throw "Failed to unzip crictl.zip"
     }
     Remove-Item -Force "$env:TEMP\crictl-windows-amd64.tar.gz"
-    Start-FileDownload "https://balutoiu.com/ionut/containerd/crictl.exe" "$KUBERNETES_DIR\crictl.exe"
 
     Copy-Item "$PSScriptRoot\nat.conf" "$ETC_DIR\cni\net.d\"
     $k8sPauseImage = Get-KubernetesPauseImage
@@ -42,7 +39,7 @@ function Install-Containerd {
         ForEach-Object { $_ -replace "{{K8S_PAUSE_IMAGE}}", $k8sPauseImage } | `
         Out-File "$CONTAINERD_DIR\containerd_config.toml" -Encoding ascii
 
-    nssm install containerd $CONTAINERD_DIR\bin\containerd.exe --config $CONTAINERD_DIR\containerd_config.toml
+    nssm install containerd $CONTAINERD_DIR\containerd.exe --config $CONTAINERD_DIR\containerd_config.toml
     if($LASTEXITCODE) {
         Throw "Failed to install containerd service"
     }
@@ -54,6 +51,7 @@ function Install-Containerd {
     if($LASTEXITCODE) {
         Throw "Failed to set AppStderr for containerd service"
     }
+
     nssm set containerd Start SERVICE_DEMAND_START
     if($LASTEXITCODE) {
         Throw "Failed to set containerd manual start type"
@@ -62,10 +60,7 @@ function Install-Containerd {
     $env:CONTAINER_RUNTIME_ENDPOINT = "npipe:\\.\pipe\containerd-containerd"
     [Environment]::SetEnvironmentVariable("CONTAINER_RUNTIME_ENDPOINT", $env:CONTAINER_RUNTIME_ENDPOINT, [System.EnvironmentVariableTarget]::Machine)
 
-    nssm restart containerd
-    if($LASTEXITCODE) {
-        Throw "Failed to start containerd"
-    }
+    Start-Service -Name "containerd"
 }
 
 function Start-ContainerImagesPull {

@@ -8,32 +8,11 @@ $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\..\common.ps1"
 
 
-function Install-DockerEE {
-    $dockerVersions = curl.exe -s https://dockermsft.blob.core.windows.net/dockercontainer/DockerMsftIndex.json
-    if($LASTEXITCODE) {
-        Throw "Failed to download DockerMsftIndex.json"
-    }
-    $dockerVersions = $dockerVersions | ConvertFrom-Json
-    $latest = $dockerVersions.channels.19.03.version
-
-    Start-FileDownload $dockerVersions.versions.$latest.url "$env:TEMP\docker.zip"
-    tar -xvf $env:TEMP\docker.zip -C "$env:ProgramFiles"
-    if($LASTEXITCODE) {
-        Throw "Failed to unzip docker.zip"
-    }
-    Remove-Item -Force "$env:TEMP\docker.zip"
-    Add-ToSystemPath "$env:ProgramFiles\docker"
-
-    mkdir -force "$env:ProgramData\docker\config"
+function Set-DockerConfig {
     Set-Content -Path "$env:ProgramData\docker\config\daemon.json" `
                 -Value '{ "bridge" : "none" }' -Encoding Ascii
 
-    dockerd.exe --register-service
-    if($LASTEXITCODE) {
-        Throw "Failed to register Docker Windows service"
-    }
     Set-Service -Name "docker" -StartupType Manual
-    Start-Service "docker"
 }
 
 function Start-ContainerImagesPull {
@@ -94,9 +73,10 @@ function Start-ContainerImagesPull {
     }
 }
 
+
 Install-NSSM
 Install-CNI
-Install-DockerEE
+Set-DockerConfig
 Install-Kubelet -KubernetesVersion $KubernetesVersion `
                 -StartKubeletScriptPath "$PSScriptRoot\StartKubelet.ps1" `
                 -ContainerRuntimeServiceName "docker"
