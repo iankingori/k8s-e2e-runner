@@ -22,11 +22,11 @@ RUN apt-get autoclean && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Python tools
-RUN pip3 install --upgrade \
-        pip setuptools \
+RUN pip3 install \
         crudini toml configargparse pycrypto sh property-cached \
-        ansible pywinrm \
-        azure-common azure-mgmt-resource azure-mgmt-compute azure-mgmt-network
+        ansible==2.9.13 pywinrm==0.4.1 \
+        azure-common==1.1.25 azure-mgmt-resource==10.2.0 \
+        azure-mgmt-compute==13.1.0 azure-mgmt-network==11.0.0
 
 # Install Golang
 ENV GOPATH "/go"
