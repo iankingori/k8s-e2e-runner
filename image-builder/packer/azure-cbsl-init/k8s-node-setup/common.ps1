@@ -19,24 +19,21 @@ function Start-ExecuteWithRetry {
     $ErrorActionPreference = "Continue"
     $retryCount = 0
     while ($true) {
-        Write-Output "Start-ExecuteWithRetry attempt $retryCount"
         try {
             $res = Invoke-Command -ScriptBlock $ScriptBlock `
                                   -ArgumentList $ArgumentList
             $ErrorActionPreference = $currentErrorActionPreference
-            Write-Output "Start-ExecuteWithRetry terminated"
             return $res
         } catch [System.Exception] {
             $retryCount++
             if ($retryCount -gt $MaxRetryCount) {
                 $ErrorActionPreference = $currentErrorActionPreference
-                Write-Output "Start-ExecuteWithRetry exception thrown"
                 throw
             } else {
                 if($RetryMessage) {
-                    Write-Output "Start-ExecuteWithRetry RetryMessage: $RetryMessage"
+                    Write-Output "Retry (${retryCount}/${MaxRetryCount}): $RetryMessage"
                 } elseif($_) {
-                    Write-Output "Start-ExecuteWithRetry Retry: $_"
+                    Write-Output "Retry (${retryCount}/${MaxRetryCount}): $_"
                 }
                 Start-Sleep $RetryInterval
             }
@@ -53,6 +50,7 @@ function Start-FileDownload {
         [Parameter(Mandatory=$false)]
         [int]$RetryCount=10
     )
+    Write-Output "Downloading $URL to $Destination"
     Start-ExecuteWithRetry -ScriptBlock {
         iex "curl.exe -L -s -o $Destination $URL"
     } -MaxRetryCount $RetryCount -RetryInterval 3 -RetryMessage "Failed to download $URL. Retrying"
@@ -204,44 +202,6 @@ function Install-CNI {
     }
     Remove-Item -Force $env:TEMP\windows-container-networking-cni.zip
 
-    Start-FileDownload "https://balutoiu.com/ionut/windows-container-networking/sdnoverlay.exe" "$OPT_DIR\cni\bin\sdnoverlay.exe"
-    Start-FileDownload "https://balutoiu.com/ionut/windows-container-networking/sdnbridge.exe" "$OPT_DIR\cni\bin\sdnbridge.exe"
-}
-
-function Start-ExecuteWithRetry {
-    Param(
-        [Parameter(Mandatory=$true)]
-        [ScriptBlock]$ScriptBlock,
-        [int]$MaxRetryCount=10,
-        [int]$RetryInterval=3,
-        [string]$RetryMessage,
-        [array]$ArgumentList=@()
-    )
-    $currentErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
-    $retryCount = 0
-    while ($true) {
-        Write-Output "Start-ExecuteWithRetry attempt $retryCount"
-        try {
-            $res = Invoke-Command -ScriptBlock $ScriptBlock `
-                                  -ArgumentList $ArgumentList
-            $ErrorActionPreference = $currentErrorActionPreference
-            Write-Output "Start-ExecuteWithRetry terminated"
-            return $res
-        } catch [System.Exception] {
-            $retryCount++
-            if ($retryCount -gt $MaxRetryCount) {
-                $ErrorActionPreference = $currentErrorActionPreference
-                Write-Output "Start-ExecuteWithRetry exception thrown"
-                throw
-            } else {
-                if($RetryMessage) {
-                    Write-Output "Start-ExecuteWithRetry RetryMessage: $RetryMessage"
-                } elseif($_) {
-                    Write-Output "Start-ExecuteWithRetry Retry: $_"
-                }
-                Start-Sleep $RetryInterval
-            }
-        }
-    }
+    Start-FileDownload "https://capzwin.blob.core.windows.net/bin/sdnoverlay.exe" "$OPT_DIR\cni\bin\sdnoverlay.exe"
+    Start-FileDownload "https://capzwin.blob.core.windows.net/bin/sdnbridge.exe" "$OPT_DIR\cni\bin\sdnbridge.exe"
 }

@@ -1,0 +1,127 @@
+{
+  "variables": {
+    "subscription_id": "{{ env `AZURE_SUBSCRIPTION_ID` }}",
+    "tenant_id": "{{ env `AZURE_TENANT_ID` }}",
+    "client_id": "{{ env `AZURE_CLIENT_ID` }}",
+    "client_secret": "{{ env `AZURE_CLIENT_SECRET` }}",
+
+    "build_timestamp": "{{ timestamp }}",
+
+    "resource_group_name": "{{ user `resource_group_name` }}",
+
+    "sig_name": "{{ user `sig_name` }}",
+    "sig_image_name": "{{ user `sig_image_name` }}",
+    "sig_image_version": "{{ user `sig_image_version` }}",
+    "sig_image_replication_regions": "{{ user `sig_image_replication_regions` }}",
+
+    "image_publisher": "{{ user `image_publisher` }}",
+    "image_offer": "{{ user `image_offer` }}",
+    "image_sku": "{{ user `image_sku` }}",
+
+    "location": "{{ user `location` }}",
+    "vm_size": "{{ user `vm_size` }}"
+  },
+  "builders": [
+    {
+      "type": "azure-arm",
+      "name": "k8s-e2e-image-builder-{{ user `build_timestamp` }}",
+
+      "subscription_id": "{{ user `subscription_id` }}",
+      "tenant_id": "{{ user `tennant_id` }}",
+      "client_id": "{{ user `client_id` }}",
+      "client_secret": "{{ user `client_secret` }}",
+
+      "shared_image_gallery_destination": {
+        "resource_group": "{{ user `resource_group_name` }}",
+        "gallery_name": "{{ user `sig_name` }}",
+        "image_name": "{{ user `sig_image_name` }}",
+        "image_version": "0.{{ user `sig_image_version` }}.{{ user `build_timestamp` }}",
+        "replication_regions": "{{ user `sig_image_replication_regions` }}"
+      },
+      "shared_image_gallery_timeout": "6h",
+      "shared_image_gallery_replica_count": 1,
+
+      "managed_image_name": "{{ user `sig_image_name` }}-{{ user `build_timestamp` }}",
+      "managed_image_resource_group_name": "{{ user `resource_group_name` }}",
+
+      "os_type": "Windows",
+      "image_publisher": "{{ user `image_publisher` }}",
+      "image_offer": "{{ user `image_offer` }}",
+      "image_sku": "{{ user `image_sku` }}",
+
+      "vm_size": "{{ user `vm_size` }}",
+      "location": "{{ user `location` }}",
+
+      "communicator": "winrm",
+      "winrm_use_ssl": true,
+      "winrm_insecure": true,
+      "winrm_username": "packer",
+      "winrm_timeout": "10m"
+    }
+  ],
+  "provisioners": [
+    {
+      "elevated_user": "packer",
+      "elevated_password": "{{.WinRMPassword}}",
+      "type": "powershell",
+      "inline": ["New-Item -ItemType Directory -Force -Path C:\\k8s-node-setup"]
+    },
+    {
+      "type": "file",
+      "source": "k8s-node-setup/",
+      "destination": "C:\\k8s-node-setup"
+    },
+    {
+      "elevated_user": "packer",
+      "elevated_password": "{{.WinRMPassword}}",
+      "type": "powershell",
+      "inline": ["C:\\k8s-node-setup\\setup-prerequisites.ps1 -ContainerRuntime {{ user `container_runtime` }}"]
+    },
+    {
+      "type": "windows-restart"
+    },
+    {
+      "elevated_user": "packer",
+      "elevated_password": "{{.WinRMPassword}}",
+      "type": "powershell",
+      "inline": ["C:\\k8s-node-setup\\install-windows-features.ps1"]
+    },
+    {
+      "type": "windows-restart"
+
+    },
+    {
+      "elevated_user": "packer",
+      "elevated_password": "{{.WinRMPassword}}",
+      "type": "powershell",
+      "inline": ["C:\\k8s-node-setup\\install-windows-updates.ps1"]
+    },
+    {
+      "type": "windows-restart"
+    },
+    {
+      "elevated_user": "packer",
+      "elevated_password": "{{.WinRMPassword}}",
+      "type": "powershell",
+      "inline": ["C:\\k8s-node-setup\\{{ user `container_runtime` }}\\PrepareNode.ps1 -KubernetesVersion {{ user `kubernetes_version` }}"]
+    },
+    {
+      "elevated_user": "packer",
+      "elevated_password": "{{.WinRMPassword}}",
+      "type": "powershell",
+      "inline": ["C:\\k8s-node-setup\\cbsl-init\\install.ps1"]
+    },
+    {
+      "elevated_user": "packer",
+      "elevated_password": "{{.WinRMPassword}}",
+      "type": "powershell",
+      "inline": ["Remove-Item -Recurse -Force -Path C:\\k8s-node-setup"]
+    },
+    {
+      "elevated_user": "packer",
+      "elevated_password": "{{.WinRMPassword}}",
+      "type": "powershell",
+      "script": "k8s-node-setup/run-sysprep.ps1"
+    }
+  ]
+}

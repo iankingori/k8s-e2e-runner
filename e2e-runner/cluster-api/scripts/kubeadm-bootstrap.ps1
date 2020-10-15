@@ -13,7 +13,7 @@ Set-Service -Name "wuauserv" -StartupType Disabled
 Stop-Service -Name "wuauserv"
 Set-MpPreference -DisableRealtimeMonitoring $true
 Set-PowerProfile -PowerProfile "Performance"
-Get-NetAdapter -Physical | Rename-NetAdapter -NewName "Ethernet"
+Get-NetAdapter -Physical | Rename-NetAdapter -NewName "eth0"
 
 switch(Get-ContainerRuntime) {
     "docker" {

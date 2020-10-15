@@ -4,7 +4,7 @@ ARG GO_VERSION=1.15
 ARG TF_VERSION=0.12.24
 ARG KIND_VERSION=v0.8.1
 ARG CAPI_VERSION=v0.3.8
-ARG KUBECTL_VERSION=v1.19.0
+ARG KUBECTL_VERSION=v1.19.2
 
 # Install system packages
 RUN apt-get update && \
@@ -22,11 +22,11 @@ RUN apt-get autoclean && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Python tools
-RUN pip3 install --upgrade \
-        pip setuptools \
+RUN pip3 install \
         crudini toml configargparse pycrypto sh property-cached \
-        ansible pywinrm \
-        azure-common azure-mgmt-resource azure-mgmt-compute azure-mgmt-network
+        ansible==2.9.13 pywinrm==0.4.1 \
+        azure-common==1.1.25 azure-mgmt-resource==10.2.0 \
+        azure-mgmt-compute==13.1.0 azure-mgmt-network==11.0.0
 
 # Install Golang
 ENV GOPATH "/go"
