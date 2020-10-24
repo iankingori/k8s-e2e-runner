@@ -645,6 +645,7 @@ class CapzFlannelCI(ci.CI):
 
         node_name, _ = self.deployer.run_cmd_on_k8s_node(
             "hostname", node_address)
+        node_name = node_name.strip()
 
         local_logs_archive = os.path.join(
             self.opts.log_path,
