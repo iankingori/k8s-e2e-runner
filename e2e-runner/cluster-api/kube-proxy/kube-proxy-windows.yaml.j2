@@ -26,7 +26,6 @@ data:
 {%- if enable_win_dsr == "true" %}
     yq w -i /host/var/lib/kube-proxy/config.conf winkernel.enableDSR {{ enable_win_dsr }}
     yq w -i /host/var/lib/kube-proxy/config.conf featureGates.WinDSR {{ enable_win_dsr }}
-    yq w -i /host/var/lib/kube-proxy/config.conf enableDSR {{ enable_win_dsr }}
 {%- endif %}
     yq w -i /host/var/lib/kube-proxy/config.conf mode "kernelspace"
 
@@ -39,7 +38,7 @@ data:
     }
     cp -force /k/kube-proxy/kube-proxy.exe /host/k/kube-proxy/kube-proxy.exe
 
-    wins cli process run --path /k/kube-proxy/kube-proxy.exe --args "--v=4 --config=/var/lib/kube-proxy/config.conf --hostname-override=$env:NODE_NAME"
+    wins cli process run --path /k/kube-proxy/kube-proxy.exe --args "--v=4 --config=/var/lib/kube-proxy/config.conf --enable-dsr={{ enable_win_dsr }} --hostname-override=$env:NODE_NAME"
 
 ---
 apiVersion: apps/v1
