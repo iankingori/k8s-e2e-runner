@@ -3,18 +3,18 @@ $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\common.ps1"
 
 $extraUpdates = @{
-    "ltsc2019" = @(
-        @{"ID" = "KB4577069"
-          "URL" = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2020/09/windows10.0-kb4577069-x64_ea0fa6bd418d0684a7a077cb62384ae593d43b7a.msu"}
-    )
-    "1909" = @(
-        @{"ID" = "KB4577062"
-          "URL" = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2020/09/windows10.0-kb4577062-x64_fe452cf752c4368d5eeb07fa34bc05f1296b4be7.msu"}
-    )
-    "2004" = @(
-        @{"ID" = "KB4577063"
-          "URL" = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2020/09/windows10.0-kb4577063-x64_3f928d263c1d36f690ece1edf1e2eb165a4b8fc5.msu"}
-    )
+    #
+    # For each release, the array needs to have items given as:
+    # @{
+    #   "ID" = "KB4577069"
+    #   "URL" = "http://download.windowsupdate.com/c/.../.../KB4577069.msu"
+    # }
+    #
+    # NOTE: Only *.msu packages must be given.
+    #
+    "ltsc2019" = @()
+    "1909" = @()
+    "2004" = @()
 }
 
 
