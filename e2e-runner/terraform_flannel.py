@@ -16,7 +16,7 @@ import terraform
 p = configargparse.get_argument_parser()
 
 p.add("--ansibleRepo",
-      default="http://github.com/e2e-win/flannel-kubernetes",
+      default="https://github.com/e2e-win/flannel-kubernetes",
       help="Ansible Repository for ovn-ovs playbooks.")
 p.add("--ansibleBranch",
       default="master",

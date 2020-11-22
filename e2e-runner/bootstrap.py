@@ -33,7 +33,7 @@ def parse_args():
     p.add("--job-config", help="Configuration for job to be ran. URL or file.")
     p.add(
         "--job-repo",
-        default="http://github.com/e2e-win/k8s-e2e-runner",
+        default="https://github.com/e2e-win/k8s-e2e-runner",
         help="Respository for job runner.",
     )
     p.add("--job-branch", default="master", help="Branch for job runner.")

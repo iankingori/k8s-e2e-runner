@@ -1,8 +1,7 @@
-FROM e2eteam/dind-bionic:latest
+FROM ubuntu:bionic
 
 ARG GO_VERSION=1.15
 ARG TF_VERSION=0.12.24
-ARG KIND_VERSION=v0.8.1
 ARG CAPI_VERSION=v0.3.8
 ARG KUBECTL_VERSION=v1.19.2
 
@@ -11,10 +10,6 @@ RUN apt-get update && \
     apt-get install -y \
         build-essential curl git libffi-dev libssl-dev \
         python3 python3-pip rsync unzip wget net-tools openssh-client vim
-
-# Setup UTC timezone
-RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
 
 # APT cleanup
 RUN apt-get autoclean && \
@@ -58,10 +53,6 @@ RUN wget -q https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${T
     rm terraform_${TF_VERSION}_linux_amd64.zip && \
     mv terraform /usr/local/bin
 
-# Install kind
-RUN curl -Lo /usr/local/bin/kind "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64" && \
-    chmod +x /usr/local/bin/kind
-
 # Install clusterctl
 RUN curl -Lo /usr/local/bin/clusterctl "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CAPI_VERSION}/clusterctl-linux-amd64" && \
     chmod +x /usr/local/bin/clusterctl
@@ -76,4 +67,4 @@ WORKDIR /workspace
 ADD bootstrap.py /workspace
 RUN chmod +x bootstrap.py
 
-ENTRYPOINT ["/usr/local/bin/tini", "--", "/entrypoint.sh", "./bootstrap.py"]
+ENTRYPOINT ["./bootstrap.py"]

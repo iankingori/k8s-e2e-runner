@@ -28,5 +28,10 @@ spec:
   networkSpec:
     vnet:
       name: {{ cluster_name }}-vnet
+    subnets:
+      - name: {{ cluster_name }}-controlplane-subnet
+        role: control-plane
+      - name: {{ cluster_name }}-node-subnet
+        role: node
   resourceGroup: {{ cluster_name }}
   subscriptionID: {{ azure_subscription_id }}

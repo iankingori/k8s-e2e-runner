@@ -1,5 +1,3 @@
-import glob
-import shutil
 import re
 import os
 import time
@@ -52,12 +50,10 @@ class CapzFlannelCI(ci.CI):
         self.ci_version = self.kubernetes_version
         self.ci_artifacts_dir = os.path.join(
             os.environ["HOME"], "ci_artifacts")
-        os.makedirs(self.ci_artifacts_dir, exist_ok=True)
 
         self.deployer = capz.CAPZProvisioner(
             flannel_mode=self.opts.flannel_mode,
             container_runtime=self.opts.container_runtime,
-            ci_artifacts_dir=self.ci_artifacts_dir,
             kubernetes_version=self.kubernetes_version)
 
     def build(self, bins_to_build):
@@ -162,6 +158,49 @@ class CapzFlannelCI(ci.CI):
     def set_patches(self, patches=None):
         self.patches = patches
 
+    def _prepare_tests(self):
+        kubectl = utils.get_kubectl_bin()
+        out, _ = utils.run_shell_cmd([
+            kubectl, "get", "nodes", "--selector",
+            "beta.kubernetes.io/os=linux", "--no-headers", "-o",
+            "custom-columns=NAME:.metadata.name"
+        ])
+        linux_nodes = out.decode("ascii").strip().split("\n")
+        for node in linux_nodes:
+            utils.run_shell_cmd([
+                kubectl, "taint", "nodes", "--overwrite", node,
+                "node-role.kubernetes.io/master=:NoSchedule"
+            ])
+            utils.run_shell_cmd([
+                kubectl, "label", "nodes", "--overwrite", node,
+                "node-role.kubernetes.io/master=NoSchedule"
+            ])
+
+        self.logging.info("Downloading repo-list")
+        utils.download_file(self.opts.repo_list, "/tmp/repo-list")
+        os.environ["KUBE_TEST_REPO_LIST"] = "/tmp/repo-list"
+
+        self.deployer.remote_clone_git_repo(
+            self.opts.k8s_repo, self.opts.k8s_branch,
+            self.deployer.remote_k8s_path)
+
+        self.logging.info("Building tests")
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=['make WHAT="test/e2e/e2e.test"'],
+            cwd=self.deployer.remote_k8s_path)
+
+        self.logging.info("Building ginkgo")
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=['make WHAT="vendor/github.com/onsi/ginkgo/ginkgo"'],
+            cwd=self.deployer.remote_k8s_path)
+
+        local_k8s_path = utils.get_k8s_folder()
+        os.makedirs(local_k8s_path, exist_ok=True)
+        self.deployer.download_from_bootstrap_vm(
+            "{}/".format(self.deployer.remote_k8s_path), local_k8s_path)
+
+        self._setup_kubetest()
+
     def _install_patches(self):
         self.logging.info("Installing patches")
 
@@ -222,9 +261,6 @@ class CapzFlannelCI(ci.CI):
 
     def _prepare_test_env(self):
         self.logging.info("Preparing test env")
-
-        utils.clone_git_repo(
-            self.opts.k8s_repo, self.opts.k8s_branch, utils.get_k8s_folder())
 
         os.environ["KUBE_MASTER"] = "local"
         os.environ["KUBE_MASTER_IP"] = self.deployer.master_public_address
@@ -339,8 +375,9 @@ class CapzFlannelCI(ci.CI):
         self.logging.info("Uploading the kube-proxy.exe to the Windows agents")
 
         win_node_addresses = self.deployer.windows_private_addresses
-        kube_proxy_bin = "%s/%s/bin/windows/amd64/kube-proxy.exe" % (
-            self.ci_artifacts_dir, self.ci_version)
+        kube_proxy_bin = "%s/%s/kube-proxy.exe" % (
+            utils.get_k8s_folder(),
+            constants.KUBERNETES_WINDOWS_BINS_LOCATION)
 
         self._run_remote_cmd("mkdir -force /build", win_node_addresses)
         self._upload_to(
@@ -472,59 +509,65 @@ class CapzFlannelCI(ci.CI):
         os.environ["KUBECONFIG"] = self.deployer.capz_kubeconfig_path
 
     def _build_k8s_artifacts(self):
-        k8s_path = utils.get_k8s_folder()
-        utils.clone_git_repo(
-            self.opts.k8s_repo, self.opts.k8s_branch, k8s_path)
+        local_k8s_path = utils.get_k8s_folder()
+        remote_k8s_path = self.deployer.remote_k8s_path
+        self.deployer.remote_clone_git_repo(
+            self.opts.k8s_repo, self.opts.k8s_branch, remote_k8s_path)
 
         self.logging.info("Building K8s Linux binaries")
-        cmd = [
-            'make', 'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm"',
-            'KUBE_BUILD_PLATFORMS="linux/amd64"'
-        ]
-        utils.run_shell_cmd(cmd, k8s_path)
+        cmd = ('make '
+               'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm" '
+               'KUBE_BUILD_PLATFORMS="linux/amd64"')
+        self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
         del os.environ["KUBECTL_PATH"]
 
         self.logging.info("Building K8s Windows binaries")
-        cmd = [
-            'make',
-            'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm cmd/kube-proxy"',
-            'KUBE_BUILD_PLATFORMS="windows/amd64"'
-        ]
-        utils.run_shell_cmd(cmd, k8s_path)
+        cmd = ('make '
+               'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm cmd/kube-proxy" '
+               'KUBE_BUILD_PLATFORMS="windows/amd64"')
+        self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
+
+        os.makedirs(local_k8s_path, exist_ok=True)
+        self.deployer.download_from_bootstrap_vm(
+            "{}/".format(remote_k8s_path), local_k8s_path)
 
         self.logging.info("Building K8s Linux DaemonSet container images")
-        cmd = ['make', 'quick-release-images']
-        env = {"KUBE_FASTBUILD": "true",
-               "KUBE_BUILD_CONFORMANCE": "n"}
-        utils.retry_on_error()(utils.run_shell_cmd)(cmd, k8s_path, env)
+        cmd = ("KUBE_FASTBUILD=true KUBE_BUILD_CONFORMANCE=n make "
+               "quick-release-images")
+        self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
 
         kubeadm_bin = os.path.join(constants.KUBERNETES_LINUX_BINS_LOCATION,
                                    'kubeadm')
         out, _ = utils.run_shell_cmd(
-            [kubeadm_bin, "version", "-o=short"], k8s_path)
+            [kubeadm_bin, "version", "-o=short"], local_k8s_path)
         self.ci_version = out.decode().strip()
         self.deployer.ci_version = self.ci_version
 
-        ci_artifacts_linux_bin_dir = "%s/%s/bin/linux/amd64" % (
-            self.ci_artifacts_dir, self.ci_version)
-        ci_artifacts_windows_bin_dir = "%s/%s/bin/windows/amd64" % (
-            self.ci_artifacts_dir, self.ci_version)
-        ci_artifacts_images_dir = "%s/%s/images" % (
-            self.ci_artifacts_dir, self.ci_version)
+        self.logging.info("Copying binaries to remote artifacts directory")
+        linux_bin_dir = "%s/%s/bin/linux/amd64" % (
+            self.deployer.remote_artifacts_dir, self.ci_version)
+        windows_bin_dir = "%s/%s/bin/windows/amd64" % (
+            self.deployer.remote_artifacts_dir, self.ci_version)
+        images_dir = "%s/%s/images" % (
+            self.deployer.remote_artifacts_dir, self.ci_version)
 
-        os.makedirs(ci_artifacts_linux_bin_dir, exist_ok=True)
-        os.makedirs(ci_artifacts_windows_bin_dir, exist_ok=True)
-        os.makedirs(ci_artifacts_images_dir, exist_ok=True)
+        script = [
+            "mkdir -p {0} {1} {2}".format(
+                linux_bin_dir, windows_bin_dir, images_dir)]
 
         for bin_name in ["kubectl", "kubelet", "kubeadm"]:
             linux_bin_path = "%s/%s/%s" % (
-                k8s_path, constants.KUBERNETES_LINUX_BINS_LOCATION, bin_name)
-            shutil.copy(linux_bin_path, ci_artifacts_linux_bin_dir)
+                remote_k8s_path,
+                constants.KUBERNETES_LINUX_BINS_LOCATION,
+                bin_name)
+            script.append("cp {0} {1}".format(linux_bin_path, linux_bin_dir))
 
         for bin_name in ["kubectl", "kubelet", "kubeadm", "kube-proxy"]:
             win_bin_path = "%s/%s/%s.exe" % (
-                k8s_path, constants.KUBERNETES_WINDOWS_BINS_LOCATION, bin_name)
-            shutil.copy(win_bin_path, ci_artifacts_windows_bin_dir)
+                remote_k8s_path,
+                constants.KUBERNETES_WINDOWS_BINS_LOCATION,
+                bin_name)
+            script.append("cp {0} {1}".format(win_bin_path, windows_bin_dir))
 
         images_names = [
             "kube-apiserver.tar", "kube-controller-manager.tar",
@@ -532,101 +575,124 @@ class CapzFlannelCI(ci.CI):
         ]
         for image_name in images_names:
             image_path = "%s/%s/%s" % (
-                k8s_path, constants.KUBERNETES_IMAGES_LOCATION,
+                remote_k8s_path,
+                constants.KUBERNETES_IMAGES_LOCATION,
                 image_name)
-            shutil.copy(image_path, ci_artifacts_images_dir)
+            script.append("cp {0} {1}".format(image_path, images_dir))
+        script.append("chmod 644 {0}/*".format(images_dir))
+
+        self.deployer.run_cmd_on_bootstrap_vm(script)
 
     def _build_containerd_binaries(self):
-        containerd_path = utils.get_containerd_folder()
-        utils.clone_git_repo(self.opts.containerd_repo,
-                             self.opts.containerd_branch, containerd_path)
+        remote_containerd_path = self.deployer.remote_containerd_path
+        self.deployer.remote_clone_git_repo(
+            self.opts.containerd_repo, self.opts.containerd_branch,
+            remote_containerd_path)
 
-        ctr_path = utils.get_ctr_folder()
-        utils.clone_git_repo(self.opts.ctr_repo,
-                             self.opts.ctr_branch, ctr_path)
+        remote_ctr_path = self.deployer.remote_ctr_path
+        self.deployer.remote_clone_git_repo(
+            self.opts.ctr_repo, self.opts.ctr_branch, remote_ctr_path)
 
-        gopath = utils.get_go_path()
-        cri_tools_path = os.path.join(
-            gopath, "src", "github.com", "kubernetes-sigs", "cri-tools")
-        utils.clone_git_repo(self.opts.cri_tools_repo,
-                             self.opts.cri_tools_branch, cri_tools_path)
+        remote_cri_tools_path = os.path.join(
+            self.deployer.remote_go_path,
+            "src", "github.com", "kubernetes-sigs", "cri-tools")
+        self.deployer.remote_clone_git_repo(
+            self.opts.cri_tools_repo, self.opts.cri_tools_branch,
+            remote_cri_tools_path)
 
         self.logging.info("Building containerd with cri plugin")
-        utils.run_shell_cmd(["GOOS=windows", "make"], containerd_path)
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=["GOOS=windows make"], cwd=remote_containerd_path)
 
         self.logging.info("Building ctr")
-        utils.run_shell_cmd(["GOOS=windows", "make", "bin/ctr.exe"], ctr_path)
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=["GOOS=windows make bin/ctr.exe"], cwd=remote_ctr_path)
 
         self.logging.info("Building crictl")
-        utils.run_shell_cmd(["GOOS=windows", "make", "crictl"], cri_tools_path)
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=["GOOS=windows make crictl"], cwd=remote_cri_tools_path)
 
-        self.logging.info("Copying binaries to local artifacts directory")
-        ci_artifacts_containerd_bin_dir = os.path.join(
-            self.ci_artifacts_dir, "containerd/bin")
-        os.makedirs(ci_artifacts_containerd_bin_dir, exist_ok=True)
+        self.logging.info("Copying binaries to remote artifacts directory")
+        artifacts_containerd_bin_dir = os.path.join(
+            self.deployer.remote_artifacts_dir, "containerd/bin")
+        script = ["mkdir -p {0}".format(artifacts_containerd_bin_dir)]
 
-        containerd_bins_location = os.path.join(
-            containerd_path, constants.CONTAINERD_BINS_LOCATION)
-        for path in glob.glob("%s/*" % containerd_bins_location):
-            shutil.copy(path, ci_artifacts_containerd_bin_dir)
+        containerd_bins = os.path.join(remote_containerd_path,
+                                       constants.CONTAINERD_BINS_LOCATION)
+        script.append("cp {0}/containerd.exe {1}".format(
+            containerd_bins, artifacts_containerd_bin_dir))
 
-        ctr_bin = os.path.join(ctr_path, constants.CONTAINERD_CTR_LOCATION)
-        shutil.copy(ctr_bin, ci_artifacts_containerd_bin_dir)
+        ctr_bin = os.path.join(remote_ctr_path,
+                               constants.CONTAINERD_CTR_LOCATION)
+        script.append("cp {0} {1}".format(
+            ctr_bin, artifacts_containerd_bin_dir))
 
-        crictl_bin = os.path.join(cri_tools_path, "_output/crictl.exe")
-        shutil.copy(crictl_bin, ci_artifacts_containerd_bin_dir)
+        crictl_bin = os.path.join(remote_cri_tools_path, "_output/crictl.exe")
+        script.append("cp {0} {1}".format(
+            crictl_bin, artifacts_containerd_bin_dir))
+
+        self.deployer.run_cmd_on_bootstrap_vm(script)
 
     def _build_containerd_shim(self):
         fromVendor = False
         if self.opts.containerd_shim_repo is None:
             fromVendor = True
 
-        containerd_shim_path = utils.get_containerd_shim_folder(fromVendor)
+        remote_containerd_shim_path = \
+            self.deployer.remote_containerd_shim_path(fromVendor)
 
         if fromVendor:
-            utils.run_shell_cmd(["go", "get", "github.com/LK4D4/vndr"])
+            self.deployer.run_cmd_on_bootstrap_vm(
+                cmd=["go get github.com/LK4D4/vndr"])
 
-            cmd = ["vndr", "-whitelist", "hcsshim",
-                   "github.com/Microsoft/hcsshim"]
-            vendoring_path = utils.get_containerd_folder()
-            utils.run_shell_cmd(cmd, vendoring_path)
+            self.deployer.run_cmd_on_bootstrap_vm(
+                cmd=[("{}/bin/vndr -whitelist "
+                      "hcsshim github.com/Microsoft/hcsshim").format(
+                          self.deployer.remote_go_path)],
+                cwd=self.deployer.remote_containerd_path)
         else:
-            utils.clone_git_repo(self.opts.containerd_shim_repo,
-                                 self.opts.containerd_shim_branch,
-                                 containerd_shim_path)
+            self.deployer.remote_clone_git_repo(
+                self.opts.containerd_shim_repo,
+                self.opts.containerd_shim_branch, remote_containerd_shim_path)
 
         self.logging.info("Building containerd shim")
-        cmd = [
-            "GOOS=windows", "go", "build", "-o", constants.CONTAINERD_SHIM_BIN,
-            constants.CONTAINERD_SHIM_DIR
-        ]
-        utils.run_shell_cmd(cmd, containerd_shim_path)
+        cmd = ["GOOS=windows go build -o {0} {1}".format(
+            constants.CONTAINERD_SHIM_BIN, constants.CONTAINERD_SHIM_DIR)]
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=cmd, cwd=remote_containerd_shim_path)
 
-        self.logging.info("Copying binaries to local artifacts directory")
-        ci_artifacts_containerd_bin_dir = os.path.join(
-            self.ci_artifacts_dir, "containerd/bin")
-        os.makedirs(ci_artifacts_containerd_bin_dir, exist_ok=True)
+        self.logging.info("Copying binaries to remote artifacts directory")
+        artifacts_containerd_bin_dir = os.path.join(
+            self.deployer.remote_artifacts_dir, "containerd/bin")
+        script = ["mkdir -p {0}".format(artifacts_containerd_bin_dir)]
 
-        containerd_shim_bin = os.path.join(
-            containerd_shim_path, constants.CONTAINERD_SHIM_BIN)
-        shutil.copy(containerd_shim_bin, ci_artifacts_containerd_bin_dir)
+        containerd_shim_bin = os.path.join(remote_containerd_shim_path,
+                                           constants.CONTAINERD_SHIM_BIN)
+        script.append("cp {0} {1}".format(
+            containerd_shim_bin, artifacts_containerd_bin_dir))
+
+        self.deployer.run_cmd_on_bootstrap_vm(script)
 
     def _build_sdn_cni_binaries(self):
-        sdn_cni_dir = utils.get_sdn_folder()
-        utils.clone_git_repo(
-            self.opts.sdn_repo, self.opts.sdn_branch, sdn_cni_dir)
+        remote_sdn_cni_dir = self.deployer.remote_sdn_path
+        self.deployer.remote_clone_git_repo(
+            self.opts.sdn_repo, self.opts.sdn_branch, remote_sdn_cni_dir)
 
         self.logging.info("Building the SDN CNI binaries")
-        utils.run_shell_cmd(["GOOS=windows", "make", "all"], sdn_cni_dir)
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=["GOOS=windows make all"], cwd=remote_sdn_cni_dir)
 
-        self.logging.info("Copying binaries to local artifacts directory")
-        ci_artifacts_cni_dir = os.path.join(self.ci_artifacts_dir, "cni")
-        os.makedirs(ci_artifacts_cni_dir, exist_ok=True)
+        self.logging.info("Copying binaries to remote artifacts directory")
+        artifacts_cni_dir = os.path.join(
+            self.deployer.remote_artifacts_dir, "cni")
+        script = ["mkdir -p {0}".format(artifacts_cni_dir)]
 
         sdn_binaries_names = ["nat.exe", "sdnbridge.exe", "sdnoverlay.exe"]
         for sdn_bin_name in sdn_binaries_names:
-            sdn_bin = os.path.join(sdn_cni_dir, "out", sdn_bin_name)
-            shutil.copy(sdn_bin, ci_artifacts_cni_dir)
+            sdn_bin = os.path.join(remote_sdn_cni_dir, "out", sdn_bin_name)
+            script.append("cp {0} {1}".format(sdn_bin, artifacts_cni_dir))
+
+        self.deployer.run_cmd_on_bootstrap_vm(script)
 
     def _collect_logs(self, node_address, local_script_path,
                       remote_script_path, remote_cmd, remote_logs_archive):
