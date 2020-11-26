@@ -69,7 +69,7 @@ function Start-ContainerImagesPull {
         (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
         "mcr.microsoft.com/windows/servercore:${windowsRelease}",
-        "docker.io/e2eteam/flannel-windows:v0.13.0-rc1-windowsservercore-${windowsRelease}",
+        "docker.io/e2eteam/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
         "docker.io/e2eteam/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
     )
     foreach($img in $images) {
