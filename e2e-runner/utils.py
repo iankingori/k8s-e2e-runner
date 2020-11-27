@@ -500,9 +500,11 @@ def wait_for_port_connectivity(address, port, max_wait=300):
         raise Exception(err_msg)
 
 
-def run_shell_cmd(cmd, cwd=None, env=None, sensitive=False):
+def run_shell_cmd(cmd, cwd=None, env=None, sensitive=False,
+                  timeout=(3 * 3600)):
+
     out, err, ret = run_cmd(
-        cmd, timeout=(3 * 3600), stdout=True, stderr=True, shell=True,
+        cmd, timeout=timeout, stdout=True, stderr=True, shell=True,
         cwd=cwd, env=env, sensitive=sensitive)
 
     if ret != 0:

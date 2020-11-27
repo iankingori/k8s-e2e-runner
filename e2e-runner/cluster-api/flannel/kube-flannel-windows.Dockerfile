@@ -5,7 +5,7 @@ SHELL ["powershell", "-NoLogo", "-Command", "$ErrorActionPreference = 'Stop'; $P
 
 RUN mkdir -force C:\k\flannel; \
     pushd C:\k\flannel; \
-    curl.exe -LO https://github.com/coreos/flannel/releases/download/v0.13.0-rc1/flanneld.exe
+    curl.exe -LO https://github.com/coreos/flannel/releases/download/v0.13.0/flanneld.exe
 
 RUN mkdir C:\utils; \
     curl.exe -Lo C:\utils\wins.exe https://github.com/rancher/wins/releases/download/v0.0.4/wins.exe; \

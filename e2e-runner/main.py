@@ -45,7 +45,7 @@ def parse_args():
     p.add('--install-lanfix', type=str2bool, default=False)
     p.add('--enable-win-dsr', type=str2bool, default=False)
     p.add('--cluster-name', help="Name of cluster.")
-    p.add('--k8s-repo', default="http://github.com/kubernetes/kubernetes")
+    p.add('--k8s-repo', default="https://github.com/kubernetes/kubernetes")
     p.add('--k8s-branch', default="master")
     p.add('--containerd-repo', default="https://github.com/containerd/cri")
     p.add('--containerd-branch', default="master")
@@ -54,7 +54,7 @@ def parse_args():
     p.add('--ctr-repo', default="https://github.com/containerd/containerd")
     p.add('--ctr-branch', default="master")
     p.add('--sdn-repo',
-          default="http://github.com/microsoft/windows-container-networking")
+          default="https://github.com/microsoft/windows-container-networking")
     p.add('--sdn-branch', default="master")
     p.add('--collect-logs-windows-yaml',
           default="https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/"
@@ -105,8 +105,6 @@ def main():
             ci.set_patches(" ".join(opts.install_patch))
 
         if opts.up is True:
-            if opts.down is True:
-                ci.down()
             ci.up()
         else:
             ci.reclaim()

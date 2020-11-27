@@ -21,7 +21,7 @@ function Start-ContainerImagesPull {
         (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
         "mcr.microsoft.com/windows/servercore:${windowsRelease}",
-        "e2eteam/flannel-windows:v0.13.0-rc1-windowsservercore-${windowsRelease}",
+        "e2eteam/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
         "e2eteam/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}",
         "e2eteam/busybox:1.29",
         "e2eteam/curl:1803",

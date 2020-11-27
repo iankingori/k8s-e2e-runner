@@ -51,6 +51,7 @@
 
       "vm_size": "{{ user `vm_size` }}",
       "location": "{{ user `location` }}",
+      "temp_resource_group_name": "build-{{ user `sig_image_name` }}-{{ user `build_timestamp` }}",
 
       "communicator": "winrm",
       "winrm_use_ssl": true,

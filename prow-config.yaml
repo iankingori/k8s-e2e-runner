@@ -111,20 +111,6 @@ data:
         mountPath: /root/.kube
         readOnly: true
     - labels:
-        preset-kind: "true"
-      volumes:
-      - name: dind-storage
-        emptyDir: {}
-      - name: libmodules
-        hostPath:
-          path: /lib/modules
-      volumeMounts:
-      - mountPath: /var/lib/docker
-        name: dind-storage
-      - mountPath: /lib/modules
-        name: libmodules
-        readOnly: true
-    - labels:
         preset-windows-private-registry-cred: "true"
       env:
       - name: DOCKER_CONFIG_FILE
@@ -160,7 +146,6 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
-        preset-kind: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -184,7 +169,7 @@ data:
             - "--build=k8sbins"
             - "--cluster-name=capzflannel-l2br-$(BUILD_ID)"
             - "--parallel-test-nodes=5"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:0.1192.1603391877"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:0.1192.1606393940"
             - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
             - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
             - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application"
@@ -198,7 +183,6 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
-        preset-kind: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -222,7 +206,7 @@ data:
             - "--build=k8sbins"
             - "--cluster-name=capzflannel-ovrl-$(BUILD_ID)"
             - "--parallel-test-nodes=5"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:0.1192.1603391877"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:0.1192.1606393940"
             - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
             - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
             - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application"
@@ -236,7 +220,6 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
-        preset-kind: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -263,7 +246,7 @@ data:
             - "--container-runtime=containerd"
             - "--cluster-name=capzctrd-$(BUILD_ID)"
             - "--parallel-test-nodes=5"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:0.1192.1603391882"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:0.1192.1606393918"
             - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
             - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
             - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
@@ -277,7 +260,6 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
-        preset-kind: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -304,7 +286,7 @@ data:
             - "--container-runtime=containerd"
             - "--cluster-name=capzctrd-$(BUILD_ID)"
             - "--parallel-test-nodes=5"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:0.1192.1603391882"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:0.1192.1606393918"
             - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
             - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
             - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
@@ -318,7 +300,6 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
-        preset-kind: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -345,7 +326,7 @@ data:
             - "--container-runtime=containerd"
             - "--cluster-name=capzctrd1909-$(BUILD_ID)"
             - "--parallel-test-nodes=5"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:0.1192.1603391914"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:0.1192.1606393892"
             - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
             - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
             - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
@@ -359,7 +340,6 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
-        preset-kind: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -386,7 +366,7 @@ data:
             - "--container-runtime=containerd"
             - "--cluster-name=capzctrd1909-$(BUILD_ID)"
             - "--parallel-test-nodes=5"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:0.1192.1603391914"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:0.1192.1606393892"
             - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list"
             - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
             - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
@@ -400,7 +380,6 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
-        preset-kind: "true"
         preset-windows-private-registry-cred: "true"
       spec:
         containers:
@@ -428,7 +407,7 @@ data:
             - "--container-runtime=containerd"
             - "--cluster-name=capzctrd2004-$(BUILD_ID)"
             - "--parallel-test-nodes=5"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:0.1192.1603391887"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:0.1192.1606383585"
             - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-2004"
             - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
             - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
@@ -442,7 +421,6 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
-        preset-kind: "true"
         preset-windows-private-registry-cred: "true"
       spec:
         containers:
@@ -470,7 +448,7 @@ data:
             - "--container-runtime=containerd"
             - "--cluster-name=capzctrd2004-$(BUILD_ID)"
             - "--parallel-test-nodes=5"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:0.1192.1603391887"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:0.1192.1606383585"
             - "--repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-2004"
             - "--test-focus-regex=\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
             - "--test-skip-regex=Aggregator.*API.*Conformance|\\[LinuxOnly\\]|\\[Serial\\]|GMSA"
