@@ -1,8 +1,3 @@
-Param(
-    [parameter(Mandatory=$true)]
-    [string]$KubernetesVersion
-)
-
 $ErrorActionPreference = "Stop"
 
 . "$PSScriptRoot\..\common.ps1"
@@ -16,7 +11,7 @@ function Install-Containerd {
     mkdir -force $VAR_LOG_DIR
     mkdir -force "$ETC_DIR\cni\net.d"
 
-    $criContainerdVersion = "1.4.1"
+    $criContainerdVersion = "1.4.3"
     Start-FileDownload "https://github.com/containerd/containerd/releases/download/v${criContainerdVersion}/cri-containerd-cni-${criContainerdVersion}-windows-amd64.tar.gz" "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
     tar xzf $env:TEMP\cri-containerd-windows-amd64.tar.gz -C $CONTAINERD_DIR
     if($LASTEXITCODE) {
@@ -25,7 +20,7 @@ function Install-Containerd {
     Add-ToSystemPath $CONTAINERD_DIR
     Remove-Item -Force "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
 
-    $crictlVersion = "1.19.0"
+    $crictlVersion = "1.20.0"
     Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/v${crictlVersion}/crictl-v${crictlVersion}-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
     tar xzf $env:TEMP\crictl-windows-amd64.tar.gz -C $KUBERNETES_DIR
     if($LASTEXITCODE) {
@@ -69,12 +64,12 @@ function Start-ContainerImagesPull {
         (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
         "mcr.microsoft.com/windows/servercore:${windowsRelease}",
-        "docker.io/e2eteam/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
-        "docker.io/e2eteam/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
+        "${env:ACR_NAME}.azurecr.io/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
+        "${env:ACR_NAME}.azurecr.io/kube-proxy-windows:${env:KUBERNETES_VERSION}-windowsservercore-${windowsRelease}"
     )
     foreach($img in $images) {
         Start-ExecuteWithRetry {
-            ctr.exe -n k8s.io image pull $img
+            ctr.exe -n k8s.io image pull -u "${env:ACR_USER_NAME}:${env:ACR_USER_PASSWORD}" $img
             if($LASTEXITCODE) {
                 Throw "Failed to pull image: $img"
             }
@@ -86,7 +81,7 @@ function Start-ContainerImagesPull {
 Install-NSSM
 Install-CNI
 Install-Containerd
-Install-Kubelet -KubernetesVersion $KubernetesVersion `
+Install-Kubelet -KubernetesVersion $env:KUBERNETES_VERSION `
                 -StartKubeletScriptPath "$PSScriptRoot\StartKubelet.ps1" `
                 -ContainerRuntimeServiceName "containerd"
 Start-ContainerImagesPull

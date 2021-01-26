@@ -60,8 +60,7 @@ spec:
       serviceAccountName: kube-proxy
       initContainers:
       - name: init-kube-proxy
-        image: e2eteam/kube-proxy-windows:{{ kubernetes_version }}-{{ server_core_tag }}
-        imagePullPolicy: Always
+        image: k8swin.azurecr.io/kube-proxy-windows:{{ kubernetes_version }}-{{ server_core_tag }}
         command:
         - powershell
         args:
@@ -78,8 +77,7 @@ spec:
           mountPath: /var/lib/kube-proxy-windows
       containers:
       - name: kube-proxy
-        image: e2eteam/kube-proxy-windows:{{ kubernetes_version }}-{{ server_core_tag }}
-        imagePullPolicy: Always
+        image: k8swin.azurecr.io/kube-proxy-windows:{{ kubernetes_version }}-{{ server_core_tag }}
         command:
         - powershell
         args:

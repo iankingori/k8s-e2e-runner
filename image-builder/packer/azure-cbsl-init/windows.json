@@ -4,14 +4,16 @@
     "tenant_id": "{{ env `AZURE_TENANT_ID` }}",
     "client_id": "{{ env `AZURE_CLIENT_ID` }}",
     "client_secret": "{{ env `AZURE_CLIENT_SECRET` }}",
+    "acr_name": "{{ env `ACR_NAME` }}",
+    "acr_user_name": "{{ env `ACR_USER_NAME` }}",
+    "acr_user_password": "{{ env `ACR_USER_PASSWORD` }}",
 
-    "build_timestamp": "{{ timestamp }}",
+    "kubernetes_version": "{{ env `KUBERNETES_VERSION` }}",
 
     "resource_group_name": "{{ user `resource_group_name` }}",
 
     "sig_name": "{{ user `sig_name` }}",
     "sig_image_name": "{{ user `sig_image_name` }}",
-    "sig_image_version": "{{ user `sig_image_version` }}",
     "sig_image_replication_regions": "{{ user `sig_image_replication_regions` }}",
 
     "image_publisher": "{{ user `image_publisher` }}",
@@ -24,7 +26,7 @@
   "builders": [
     {
       "type": "azure-arm",
-      "name": "k8s-e2e-image-builder-{{ user `build_timestamp` }}",
+      "name": "k8s-e2e-image-builder-{{ timestamp }}",
 
       "subscription_id": "{{ user `subscription_id` }}",
       "tenant_id": "{{ user `tennant_id` }}",
@@ -35,13 +37,13 @@
         "resource_group": "{{ user `resource_group_name` }}",
         "gallery_name": "{{ user `sig_name` }}",
         "image_name": "{{ user `sig_image_name` }}",
-        "image_version": "0.{{ user `sig_image_version` }}.{{ user `build_timestamp` }}",
+        "image_version": "{{ user `kubernetes_version` | replace `v` `` 1 }}",
         "replication_regions": "{{ user `sig_image_replication_regions` }}"
       },
       "shared_image_gallery_timeout": "6h",
       "shared_image_gallery_replica_count": 1,
 
-      "managed_image_name": "{{ user `sig_image_name` }}-{{ user `build_timestamp` }}",
+      "managed_image_name": "{{ user `sig_image_name` }}-{{ isotime | clean_resource_name }}",
       "managed_image_resource_group_name": "{{ user `resource_group_name` }}",
 
       "os_type": "Windows",
@@ -51,7 +53,7 @@
 
       "vm_size": "{{ user `vm_size` }}",
       "location": "{{ user `location` }}",
-      "temp_resource_group_name": "build-{{ user `sig_image_name` }}-{{ user `build_timestamp` }}",
+      "temp_resource_group_name": "build-{{ user `sig_image_name` }}-{{ isotime | clean_resource_name }}",
 
       "communicator": "winrm",
       "winrm_use_ssl": true,
@@ -103,7 +105,13 @@
       "elevated_user": "packer",
       "elevated_password": "{{.WinRMPassword}}",
       "type": "powershell",
-      "inline": ["C:\\k8s-node-setup\\{{ user `container_runtime` }}\\PrepareNode.ps1 -KubernetesVersion {{ user `kubernetes_version` }}"]
+      "environment_vars": [
+        "KUBERNETES_VERSION={{ user `kubernetes_version` }}",
+        "ACR_NAME={{ user `acr_name` }}",
+        "ACR_USER_NAME={{ user `acr_user_name` }}",
+        "ACR_USER_PASSWORD={{ user `acr_user_password` }}"
+      ],
+      "inline": ["C:\\k8s-node-setup\\{{ user `container_runtime` }}\\PrepareNode.ps1"]
     },
     {
       "elevated_user": "packer",

@@ -1,8 +1,3 @@
-Param(
-    [parameter(Mandatory=$true)]
-    [string]$KubernetesVersion
-)
-
 $ErrorActionPreference = "Stop"
 
 . "$PSScriptRoot\..\common.ps1"
@@ -21,8 +16,8 @@ function Start-ContainerImagesPull {
         (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
         "mcr.microsoft.com/windows/servercore:${windowsRelease}",
-        "e2eteam/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
-        "e2eteam/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}",
+        "${env:ACR_NAME}.azurecr.io/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
+        "${env:ACR_NAME}.azurecr.io/kube-proxy-windows:${env:KUBERNETES_VERSION}-windowsservercore-${windowsRelease}",
         "e2eteam/busybox:1.29",
         "e2eteam/curl:1803",
         "e2eteam/java:openjdk-8-jre",
@@ -63,6 +58,10 @@ function Start-ContainerImagesPull {
         "e2eteam/serve-hostname:1.1",
         "e2eteam/webhook:1.13v1"
     )
+    docker login "${env:ACR_NAME}.azurecr.io" -u "${env:ACR_USER_NAME}" -p "${env:ACR_USER_PASSWORD}"
+    if($LASTEXITCODE) {
+        Throw "Failed to login to login to registry ${env:ACR_NAME}.azurecr.io"
+    }
     foreach($img in $images) {
         Start-ExecuteWithRetry {
             docker.exe image pull $img
@@ -71,13 +70,17 @@ function Start-ContainerImagesPull {
             }
         }
     }
+    docker logout "${env:ACR_NAME}.azurecr.io"
+    if($LASTEXITCODE) {
+        Throw "Failed to login from registry ${env:ACR_NAME}.azurecr.io"
+    }
 }
 
 
 Install-NSSM
 Install-CNI
 Set-DockerConfig
-Install-Kubelet -KubernetesVersion $KubernetesVersion `
+Install-Kubelet -KubernetesVersion $env:KUBERNETES_VERSION `
                 -StartKubeletScriptPath "$PSScriptRoot\StartKubelet.ps1" `
                 -ContainerRuntimeServiceName "docker"
 Start-ContainerImagesPull
