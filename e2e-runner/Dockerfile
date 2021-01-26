@@ -1,9 +1,9 @@
-FROM ubuntu:bionic
+FROM ubuntu:20.04
 
-ARG GO_VERSION=1.15
+ARG GO_VERSION=1.15.7
 ARG TF_VERSION=0.12.24
 ARG CAPI_VERSION=v0.3.8
-ARG KUBECTL_VERSION=v1.19.2
+ARG KUBECTL_VERSION=v1.20.2
 
 # Install system packages
 RUN apt-get update && \

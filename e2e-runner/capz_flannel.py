@@ -420,10 +420,11 @@ class CapzFlannelCI(ci.CI):
 
             all_ready = True
             for node_address in win_node_addresses:
-                cmd = ["timeout", "1m", "ssh", node_address,
-                       remote_script_path]
                 try:
-                    stdout, _ = utils.run_shell_cmd(cmd, sensitive=True)
+                    stdout, _ = utils.run_shell_cmd(
+                        cmd=["ssh", node_address, remote_script_path],
+                        sensitive=True,
+                        timeout=60)
                 except Exception:
                     all_ready = False
                     break

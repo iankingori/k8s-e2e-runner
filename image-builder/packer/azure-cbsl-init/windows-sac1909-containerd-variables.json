@@ -2,17 +2,13 @@
   "image_offer": "WindowsServer",
   "image_publisher": "MicrosoftWindowsServer",
   "image_sku": "datacenter-core-1909-with-containers-smalldisk-g2",
-
   "location": "westeurope",
   "vm_size": "Standard_D2s_v3",
 
   "resource_group_name": "adtv-capz-win",
-
-  "kubernetes_version": "v1.19.2",
   "container_runtime": "containerd",
 
   "sig_name": "capz_gallery",
   "sig_image_name": "ws-1909-containerd-cbsl-init",
-  "sig_image_version": "1192",
   "sig_image_replication_regions": "westeurope,eastus2,westus2,southcentralus"
 }
