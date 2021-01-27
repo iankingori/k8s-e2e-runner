@@ -5,11 +5,17 @@ ARG TF_VERSION=0.12.24
 ARG CAPI_VERSION=v0.3.8
 ARG KUBECTL_VERSION=v1.20.2
 
-# Install system packages
+# Install system APT packages & dependencies
 RUN apt-get update && \
     apt-get install -y \
         build-essential curl git libffi-dev libssl-dev \
         python3 python3-pip rsync unzip wget net-tools openssh-client vim
+
+# Install google-cloud-sdk from the Google Cloud APT PPA
+RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && \
+    apt-get update && \
+    apt-get install -y google-cloud-sdk
 
 # APT cleanup
 RUN apt-get autoclean && \
@@ -18,7 +24,7 @@ RUN apt-get autoclean && \
 
 # Install Python tools
 RUN pip3 install \
-        crudini toml configargparse pycrypto sh property-cached \
+        configargparse sh property-cached \
         ansible==2.9.13 pywinrm==0.4.1 \
         azure-common==1.1.25 azure-mgmt-resource==10.2.0 \
         azure-mgmt-compute==13.1.0 azure-mgmt-network==11.0.0
@@ -26,26 +32,10 @@ RUN pip3 install \
 # Install Golang
 ENV GOPATH "/go"
 ENV PATH "$PATH:/usr/local/go/bin:$GOPATH/bin"
-
 RUN curl -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm go${GO_VERSION}.linux-amd64.tar.gz && \
     mkdir -p "${GOPATH}/src"
-
-# Install gcloud cli
-ENV PATH=/google-cloud-sdk/bin:/workspace:${PATH} \
-    CLOUDSDK_CORE_DISABLE_PROMPTS=1
-
-RUN wget -q https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.tar.gz && \
-    tar xzf google-cloud-sdk.tar.gz -C / && \
-    rm google-cloud-sdk.tar.gz && \
-    /google-cloud-sdk/install.sh \
-        --disable-installation-options \
-        --bash-completion=false \
-        --path-update=false \
-        --usage-reporting=false && \
-    gcloud components install alpha beta && \
-    gcloud info | tee /gcloud-info.txt
 
 # Install terraform
 RUN wget -q https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip && \
