@@ -57,7 +57,7 @@ for CI_IMAGE in "${CI_IMAGES[@]}"; do
     # remove unused image tag
     ctr -n k8s.io image remove "k8s.gcr.io/${CI_IMAGE}-amd64:${CI_VERSION//+/_}"
     # cleanup cached node image
-    crictl rmi "k8s.gcr.io/${CI_IMAGE}:v1.18.3"
+    crictl rmi "k8s.gcr.io/${CI_IMAGE}:v1.20.2"
 done
 
 echo "* checking binary versions"

@@ -1,48 +1,29 @@
 import re
 import os
+import subprocess
 import time
 
 from distutils.util import strtobool
 
-import configargparse
 import sh
 import yaml
 
-import capz
-import ci
-import constants
-import log
-import utils
-
-p = configargparse.get_argument_parser()
-
-p.add("--container-runtime", default="docker",
-      choices=["docker", "containerd"],
-      help="Container runtime used by the Kubernetes agents.")
-p.add("--flannel-mode", default=constants.FLANNEL_MODE_OVERLAY,
-      choices=[constants.FLANNEL_MODE_OVERLAY,
-               constants.FLANNEL_MODE_L2BRIDGE],
-      help="Flannel mode used by the CI.")
-p.add("--base-container-image-tag",
-      default="ltsc2019", choices=["ltsc2019", "1909", "2004"],
-      help="The base container image used for the kube-proxy / flannel CNI. "
-      "This needs to be adjusted depending on the Windows minion Azure image.")
-p.add("--kubernetes-version", default=constants.DEFAULT_KUBERNETES_VERSION,
-      help="The Kubernetes version to deploy. If '--build=k8sbins' is "
-      "specified, this parameter is overwriten by the version of the newly "
-      "built k8s binaries")
-p.add("--cri-tools-repo",
-      default="https://github.com/kubernetes-sigs/cri-tools",
-      help="The cri-tools repository. It is used to build the crictl tool.")
-p.add("--cri-tools-branch",
-      default="master", help="The cri-tools branch.")
+from e2e_runner import (
+    base,
+    constants,
+    logger,
+    utils
+)
+from e2e_runner.deployer.capz import capz
 
 
-class CapzFlannelCI(ci.CI):
-    def __init__(self):
-        super(CapzFlannelCI, self).__init__()
+class CapzFlannelCI(base.CI):
+    def __init__(self, opts):
+        super(CapzFlannelCI, self).__init__(opts)
 
-        self.logging = log.getLogger(__name__)
+        self.capz_flannel_dir = os.path.dirname(__file__)
+
+        self.logging = logger.get_logger(__name__)
         self.kubectl = utils.get_kubectl_bin()
         self.patches = None
 
@@ -52,6 +33,7 @@ class CapzFlannelCI(ci.CI):
             os.environ["HOME"], "ci_artifacts")
 
         self.deployer = capz.CAPZProvisioner(
+            opts,
             flannel_mode=self.opts.flannel_mode,
             container_runtime=self.opts.container_runtime,
             kubernetes_version=self.kubernetes_version)
@@ -116,7 +98,7 @@ class CapzFlannelCI(ci.CI):
             return
 
         local_script_path = os.path.join(
-            os.getcwd(), "cluster-api/scripts/collect-logs.ps1")
+            self.e2e_runner_dir, "scripts/collect-logs.ps1")
         remote_script_path = os.path.join(
             "/tmp", os.path.basename(local_script_path))
         remote_cmd = remote_script_path
@@ -139,7 +121,7 @@ class CapzFlannelCI(ci.CI):
             return
 
         local_script_path = os.path.join(
-            os.getcwd(), "cluster-api/scripts/collect-logs.sh")
+            self.e2e_runner_dir, "scripts/collect-logs.sh")
         remote_script_path = os.path.join(
             "/tmp", os.path.basename(local_script_path))
         remote_cmd = "sudo bash %s" % remote_script_path
@@ -204,16 +186,16 @@ class CapzFlannelCI(ci.CI):
     def _install_patches(self):
         self.logging.info("Installing patches")
 
-        local_script_path = os.path.join(os.getcwd(), "installPatches.ps1")
+        local_script_path = os.path.join(
+            self.e2e_runner_dir, "scripts/install-patches.ps1")
         node_addresses = self.deployer.windows_private_addresses
 
-        self._upload_to(local_script_path,
-                        "/tmp/installPatches.ps1",
-                        node_addresses)
+        self._upload_to(
+            local_script_path, "/tmp/install-patches.ps1", node_addresses)
 
         async_cmds = []
         for node_address in node_addresses:
-            cmd_args = [node_address, "/tmp/installPatches.ps1", self.patches]
+            cmd_args = [node_address, "/tmp/install-patches.ps1", self.patches]
             log_prefix = "%s : " % node_address
             async_cmds.append(
                 utils.run_async_shell_cmd(sh.ssh, cmd_args, log_prefix))
@@ -387,7 +369,7 @@ class CapzFlannelCI(ci.CI):
         self.logging.info("Allocating source VIP for the Windows agents")
 
         local_script_path = os.path.join(
-            os.getcwd(), "cluster-api/scripts/allocate-source-vip.ps1")
+            self.e2e_runner_dir, "scripts/allocate-source-vip.ps1")
         remote_script_path = "/tmp/allocate-source-vip.ps1"
         win_node_addresses = self.deployer.windows_private_addresses
 
@@ -402,7 +384,7 @@ class CapzFlannelCI(ci.CI):
 
         win_node_addresses = self.deployer.windows_private_addresses
         local_script_path = os.path.join(
-            os.getcwd(), "cluster-api/scripts/confirm-ready-cni.ps1")
+            self.e2e_runner_dir, "scripts/confirm-ready-cni.ps1")
         remote_script_path = "/tmp/confirm-ready-cni.ps1"
 
         self._upload_to(
@@ -421,9 +403,8 @@ class CapzFlannelCI(ci.CI):
             all_ready = True
             for node_address in win_node_addresses:
                 try:
-                    stdout, _ = utils.run_shell_cmd(
-                        cmd=["ssh", node_address, remote_script_path],
-                        sensitive=True,
+                    stdout = subprocess.check_output(
+                        ["ssh", node_address, remote_script_path],
                         timeout=60)
                 except Exception:
                     all_ready = False
@@ -443,7 +424,7 @@ class CapzFlannelCI(ci.CI):
 
     def _add_kube_proxy_windows(self):
         template_file = os.path.join(
-            os.getcwd(), "cluster-api/kube-proxy/kube-proxy-windows.yaml.j2")
+            self.capz_flannel_dir, "kube-proxy/kube-proxy-windows.yaml.j2")
         server_core_tag = "windowsservercore-%s" % (
             self.opts.base_container_image_tag)
         context = {
@@ -458,23 +439,9 @@ class CapzFlannelCI(ci.CI):
         cmd = [self.kubectl, "apply", "-f", output_file]
         utils.retry_on_error()(utils.run_shell_cmd)(cmd)
 
-    def _set_vxlan_devices_mtu(self):
-        self.logging.info(
-            "Set the proper MTU for the k8s master vxlan devices")
-        ssh_key_path = (os.environ.get("SSH_KEY")
-                        or os.path.join(os.environ.get("HOME"), ".ssh/id_rsa"))
-        utils.retry_on_error()(utils.run_shell_cmd)([
-            "ssh", "-o", "StrictHostKeyChecking=no", "-o",
-            "UserKnownHostsFile=/dev/null", "-i", ssh_key_path,
-            "capi@%s" % self.deployer.master_public_address,
-            "'sudo bash -s' < %s" % os.path.join(
-                os.getcwd(),
-                "cluster-api/scripts/set-vxlan-devices-mtu.sh")
-        ])
-
     def _add_flannel_cni(self):
         template_file = os.path.join(
-            os.getcwd(), "cluster-api/flannel/kube-flannel.yaml.j2")
+            self.capz_flannel_dir, "flannel/kube-flannel.yaml.j2")
         context = {
             "cluster_network_subnet": self.deployer.cluster_network_subnet,
             "flannel_mode": self.opts.flannel_mode
@@ -493,7 +460,7 @@ class CapzFlannelCI(ci.CI):
             "mode": mode
         }
         kube_flannel_windows = "/tmp/kube-flannel-windows.yaml"
-        searchpath = os.path.join(os.getcwd(), "cluster-api/flannel")
+        searchpath = os.path.join(self.capz_flannel_dir, "flannel")
         utils.render_template("kube-flannel-windows.yaml.j2",
                               kube_flannel_windows, context, searchpath)
 
@@ -502,9 +469,6 @@ class CapzFlannelCI(ci.CI):
 
         cmd = [self.kubectl, "apply", "-f", kube_flannel_windows]
         utils.retry_on_error()(utils.run_shell_cmd)(cmd)
-
-        if self.opts.flannel_mode == constants.FLANNEL_MODE_OVERLAY:
-            self._set_vxlan_devices_mtu()
 
     def _setup_kubeconfig(self):
         os.environ["KUBECONFIG"] = self.deployer.capz_kubeconfig_path
@@ -712,10 +676,10 @@ class CapzFlannelCI(ci.CI):
 
         node_name, _ = self.deployer.run_cmd_on_k8s_node(
             "hostname", node_address)
-        node_name = node_name.strip()
+        node_name = node_name.decode().strip()
 
         local_logs_archive = os.path.join(
-            self.opts.log_path,
+            self.opts.artifacts_directory,
             "%s-%s" % (node_name, os.path.basename(remote_logs_archive)))
         self.deployer.download_from_k8s_node(
             remote_logs_archive, local_logs_archive, node_address)

@@ -3,7 +3,6 @@
 import errno
 import logging
 import json
-import tempfile
 import os
 import socket
 import time
@@ -11,64 +10,26 @@ import time
 import configargparse
 import sh
 
-p = configargparse.get_argument_parser()
 logger = logging.getLogger("bootstrap")
-
-JOB_REPO_CLONE_DST = os.path.join(tempfile.gettempdir(), "k8s-e2e-runner")
-DEFAULT_JOB_CONFIG_PATH = os.path.join(tempfile.gettempdir(), "job_config.txt")
-
-
-def call(cmd, args):
-    def process_stdout(line):
-        logger.info(line.strip())
-
-    def process_stderr(line):
-        logger.warning(line.strip())
-
-    proc = cmd(args, _out=process_stdout, _err=process_stderr, _bg=True)
-    proc.wait()
 
 
 def parse_args():
-    p.add("--job-config", help="Configuration for job to be ran. URL or file.")
-    p.add(
-        "--job-repo",
-        default="https://github.com/e2e-win/k8s-e2e-runner",
-        help="Respository for job runner.",
-    )
-    p.add("--job-branch", default="master", help="Branch for job runner.")
-    p.add("--service-account", help="Service account for gcloud login.")
-    p.add("--log-path", default="/tmp/ci_logs", help="Local logs path")
-    p.add("--gs", help="Log Google bucket")
+    p = configargparse.get_argument_parser()
+
+    p.add("--k8s-e2e-runner-repo",
+          default="https://github.com/e2e-win/k8s-e2e-runner.git",
+          help="Repository for the k8s-e2e-runner.")
+    p.add("--k8s-e2e-runner-branch", default="master",
+          help="Branch for the k8s-e2e-runner repository.")
+    p.add("--output-directory", default="/tmp/ci_output",
+          help="Local directory with the job logs and artifacts.")
+    p.add("--gcloud-service-account",
+          help="Service account for gcloud login.")
+    p.add("--gcloud-upload-bucket",
+          help="Google Cloud bucket used to upload the job artifacts.")
     p.add("job_args", nargs=configargparse.REMAINDER)
 
-    opts = p.parse_known_args()
-
-    return opts
-
-
-def gcloud_login(service_account):
-    logger.info("Logging in to gcloud.")
-    cmd_args = [
-        "auth", "activate-service-account", "--no-user-output-enabled",
-        "--key-file=%s" % service_account
-    ]
-    call(sh.gcloud, cmd_args)
-
-
-def get_job_config_file(job_config):
-    if job_config is None:
-        return None
-    if os.path.isfile(job_config):
-        return os.path.abspath(job_config)
-    download_file(job_config, DEFAULT_JOB_CONFIG_PATH)
-    return DEFAULT_JOB_CONFIG_PATH
-
-
-def get_cluster_name():
-    # The cluster name is composed of the first 8 chars of the prowjob in case
-    # it exists
-    return os.getenv("PROW_JOB_ID", "0000-0000-0000-0000")[:7]
+    return p.parse_known_args()
 
 
 def setup_logging(log_out_file):
@@ -90,14 +51,22 @@ def setup_logging(log_out_file):
     logger.addHandler(file_log)
 
 
-def clone_repo(repo, branch="master", dest_path=None):
-    cmd_args = ["clone", "-q", "--single-branch", "--branch", branch, repo]
-    if dest_path:
-        cmd_args.append(dest_path)
-    logger.info("Cloning git repo %s on branch %s in location %s", repo,
-                branch, dest_path if not None else os.getcwd())
-    call(sh.git, cmd_args)
-    logger.info("Succesfully cloned git repo.")
+def call(cmd, args):
+    def process_stdout(line):
+        logger.info(line.strip())
+
+    def process_stderr(line):
+        logger.warning(line.strip())
+
+    proc = cmd(args, _out=process_stdout, _err=process_stderr, _bg=True)
+    proc.wait()
+
+
+def gcloud_login(gcloud_service_account):
+    logger.info("Logging in to gcloud.")
+    call(sh.gcloud, ["auth", "activate-service-account",
+                     "--no-user-output-enabled",
+                     "--key-file={}".format(gcloud_service_account)])
 
 
 def mkdir_p(dir_path):
@@ -108,28 +77,21 @@ def mkdir_p(dir_path):
             raise
 
 
-def download_file(url, dst):
-    call(sh.wget, ["-q", url, "-O", dst])
-
-
-def create_log_paths(log_path, remote_base):
-    # TODO: Since we upload to gcloud we should make sure the user specifies
-    # an empty path
-
-    mkdir_p(log_path)
-    artifacts_path = os.path.join(log_path, "artifacts")
+def get_ci_paths(local_base_path, remote_base_path):
+    mkdir_p(local_base_path)
+    artifacts_path = os.path.join(local_base_path, "artifacts")
     mkdir_p(artifacts_path)
     job_name = os.environ.get("JOB_NAME", "defaultjob")
     build_id = os.environ.get("BUILD_ID", "0000-0000-0000-0000")
-    remote_job_path = os.path.join(remote_base, job_name)
+    remote_job_path = os.path.join(remote_base_path, job_name)
     remote_build_path = os.path.join(remote_job_path, build_id)
     paths = {
-        "build_log": os.path.join(log_path, "build-log.txt"),
+        "build_log": os.path.join(local_base_path, "build-log.txt"),
         "remote_build_log": os.path.join(remote_build_path, "build-log.txt"),
         "artifacts": artifacts_path,
         "remote_artifacts_path": os.path.join(remote_build_path, "artifacts"),
-        "finished": os.path.join(log_path, "finished.json"),
-        "started": os.path.join(log_path, "started.json"),
+        "finished": os.path.join(local_base_path, "finished.json"),
+        "started": os.path.join(local_base_path, "started.json"),
         "remote_build_path": remote_build_path,
         "remote_started": os.path.join(remote_build_path, "started.json"),
         "remote_finished": os.path.join(remote_build_path, "finished.json"),
@@ -178,9 +140,9 @@ def create_finished(path, success=True, meta=None):
 
 def main():
     opts = parse_args()[0]
-    log_paths = create_log_paths(opts.log_path, opts.gs)
-    logger.info("Log paths: %s", log_paths)
-    setup_logging(os.path.join(log_paths["build_log"]))
+    ci_paths = get_ci_paths(opts.output_directory, opts.gcloud_upload_bucket)
+    logger.info("CI paths: {}".format(ci_paths))
+    setup_logging(os.path.join(ci_paths["build_log"]))
 
     logger.info("Waiting for DNS")
     while True:
@@ -192,45 +154,40 @@ def main():
 
     success = True
     try:
-        gcloud_login(opts.service_account)
+        gcloud_login(opts.gcloud_service_account)
 
-        create_started(log_paths["started"])
-        upload_file(log_paths["started"], log_paths["remote_started"])
+        create_started(ci_paths["started"])
+        upload_file(ci_paths["started"], ci_paths["remote_started"])
 
-        create_latest_build(log_paths["latest_build"])
+        create_latest_build(ci_paths["latest_build"])
 
-        logger.info("Clonning job repo: %s on branch %s.", opts.job_repo,
-                    opts.job_branch)
-        clone_repo(opts.job_repo, opts.job_branch, JOB_REPO_CLONE_DST)
-        job_config_file = get_job_config_file(opts.job_config)
-        logger.info("Using job config file: %s", job_config_file)
-        cluster_name = get_cluster_name()
+        pip_git_pkg = \
+            "git+{0}@{1}#egg=e2e-runner&subdirectory=e2e-runner".format(
+                opts.k8s_e2e_runner_repo, opts.k8s_e2e_runner_branch)
+        logger.info("Installing the e2e-runner from {}".format(pip_git_pkg))
+        call(sh.pip3, ["install", pip_git_pkg])
 
-        # Reset logging format before running the runner main.py
+        # Reset logging format before running the runner CI
         for handler in logger.handlers:
             handler.setFormatter(logging.Formatter("%(message)s"))
 
         cmd_args = [
-            "main.py",
-            "--configfile=%s" % job_config_file,
-            "--cluster-name=%s" % cluster_name,
-            "--log-path=%s" % log_paths["artifacts"]
+            "run", "ci", "--quiet",
+            "--artifacts-directory={}".format(ci_paths["artifacts"])
         ]
         if len(opts.job_args) > 1:
             cmd_args += opts.job_args[1:]
 
-        os.chdir(os.path.join(JOB_REPO_CLONE_DST, "e2e-runner"))
-        call(sh.python3, cmd_args)
+        call(sh.e2e_runner, cmd_args)
     except Exception:
         success = False
     finally:
-        create_finished(log_paths["finished"], success)
-        upload_file(log_paths["finished"], log_paths["remote_finished"])
-        upload_file(log_paths["build_log"], log_paths["remote_build_log"])
-        upload_artifacts(log_paths["artifacts"],
-                         log_paths["remote_artifacts_path"])
-        upload_file(log_paths["latest_build"],
-                    log_paths["remote_latest_build"])
+        create_finished(ci_paths["finished"], success)
+        upload_file(ci_paths["finished"], ci_paths["remote_finished"])
+        upload_file(ci_paths["build_log"], ci_paths["remote_build_log"])
+        upload_artifacts(ci_paths["artifacts"],
+                         ci_paths["remote_artifacts_path"])
+        upload_file(ci_paths["latest_build"], ci_paths["remote_latest_build"])
 
 
 if __name__ == "__main__":

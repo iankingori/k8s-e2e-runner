@@ -5,74 +5,47 @@ import subprocess
 import time
 import tempfile
 
+from pathlib import Path
 from distutils.util import strtobool
 
-import configargparse
-import msrestazure
 import yaml
 
 import sh
-from azure.common.credentials import ServicePrincipalCredentials
+from azure.identity import ClientSecretCredential
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.network import models as net_models
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.compute import ComputeManagementClient
+from azure.mgmt.compute import models as compute_models
+from msrestazure import azure_exceptions
 from property_cached import cached_property
 
-import constants
-import deployer
-import log
-import utils
-
-p = configargparse.get_argument_parser()
-
-p.add("--cluster-name",
-      required=True,
-      help="The cluster name given to the cluster-api manifest. "
-      "This value is used for the Azure resource group name as well.")
-p.add("--cluster-network-subnet",
-      default="10.244.0.0/16",
-      help="The cluster network subnet given to the cluster-api manifest")
-p.add("--location", help="The Azure location for the spawned resource.")
-p.add("--vnet-cidr-block", default="10.0.0.0/8", help="The vNET CIDR block.")
-p.add("--control-plane-subnet-cidr-block", default="10.0.0.0/16",
-      help="The control plane subnet CIDR block.")
-p.add("--node-subnet-cidr-block", default="10.1.0.0/16",
-      help="The node subnet CIDR block.")
-p.add("--bootstrap-vm-size", default="Standard_D2s_v3",
-      help="Size of the bootstrap VM")
-p.add("--master-vm-size",
-      default="Standard_D2s_v3",
-      help="Size of master virtual machine.")
-p.add("--win-minion-count",
-      type=int,
-      default=2,
-      help="Number of Windows minions for the deployment.")
-p.add("--win-minion-size",
-      default="Standard_D2s_v3",
-      help="Size of Windows minions.")
-p.add("--win-minion-gallery-image",
-      help="The Windows minion shared gallery. The parameter shall be given "
-      "as: <IMG_GALLERY_RG>:<IMG_GALLERY_NAME>:<IMG_DEFINITION>:<IMG_VERSION>")
+from e2e_runner import (
+    base,
+    constants,
+    logger,
+    utils
+)
 
 
-class CAPZProvisioner(deployer.NoopDeployer):
-    def __init__(self, container_runtime="docker",
+class CAPZProvisioner(base.Deployer):
+    def __init__(self, opts, container_runtime="docker",
                  flannel_mode=constants.FLANNEL_MODE_OVERLAY,
                  kubernetes_version=constants.DEFAULT_KUBERNETES_VERSION):
         super(CAPZProvisioner, self).__init__()
 
-        self.logging = log.getLogger(__name__)
+        self.e2e_runner_dir = str(Path(__file__).parents[2])
+        self.capz_dir = os.path.dirname(__file__)
+
+        self.logging = logger.get_logger(__name__)
         self.kubectl = utils.get_kubectl_bin()
         self.flannel_mode = flannel_mode
         self.container_runtime = container_runtime
         self.bins_built = []
         self.ci_version = kubernetes_version
 
-        self.microk8s_kubeconfig_path = "/tmp/microk8s-kubeconfig.yaml"
+        self.mgmt_kubeconfig_path = "/tmp/mgmt-kubeconfig.yaml"
         self.capz_kubeconfig_path = "/tmp/capz-kubeconfig.yaml"
-
-        opts = p.parse_known_args()[0]
 
         self.cluster_name = opts.cluster_name
         self.cluster_network_subnet = opts.cluster_network_subnet
@@ -112,14 +85,13 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
         self._setup_infra()
         self._setup_bootstrap_vm()
-        self._setup_microk8s_kubeconfig()
-        self._wait_for_microk8s_api()
+        self._setup_mgmt_kubeconfig()
 
     @cached_property
     def master_public_address(self):
         output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "get", "cluster", "--kubeconfig",
-            self.microk8s_kubeconfig_path, self.cluster_name, "-o",
+            self.mgmt_kubeconfig_path, self.cluster_name, "-o",
             "custom-columns=MASTER_ADDRESS:.spec.controlPlaneEndpoint.host",
             "--no-headers"
         ])
@@ -129,7 +101,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
     def master_public_port(self):
         output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "get", "cluster", "--kubeconfig",
-            self.microk8s_kubeconfig_path, self.cluster_name, "-o",
+            self.mgmt_kubeconfig_path, self.cluster_name, "-o",
             "custom-columns=MASTER_PORT:.spec.controlPlaneEndpoint.port",
             "--no-headers"
         ])
@@ -182,20 +154,18 @@ class CAPZProvisioner(deployer.NoopDeployer):
         self._setup_capz_components()
         self._create_capz_cluster()
         self._wait_for_control_plane()
-
         if self.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
             self._connect_control_plane_to_node_subnet()
-
         self._setup_capz_kubeconfig()
 
     def down(self):
         self.logging.info("Deleting Azure resource group")
         client = self.resource_mgmt_client
         try:
-            delete_async_operation = client.resource_groups.delete(
+            delete_async_operation = client.resource_groups.begin_delete(
                 self.cluster_name)
             delete_async_operation.wait()
-        except msrestazure.azure_exceptions.CloudError as e:
+        except azure_exceptions.CloudError as e:
             cloud_error_data = e.error
             if cloud_error_data.error == "ResourceGroupNotFound":
                 self.logging.warning("Resource group %s does not exist",
@@ -258,7 +228,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             nic_parameters = nic.as_dict()
             nic_parameters["enable_ip_forwarding"] = True
             utils.retry_on_error()(
-                self.network_client.network_interfaces.create_or_update)(
+                self.network_client.network_interfaces.begin_create_or_update)(
                     self.cluster_name,
                     nic.name,
                     nic_parameters).result()
@@ -362,19 +332,19 @@ class CAPZProvisioner(deployer.NoopDeployer):
     def _get_agents_private_addresses(self, operating_system):
         output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "get", "machine", "--kubeconfig",
-            self.microk8s_kubeconfig_path, "-o", "yaml"
+            self.mgmt_kubeconfig_path, "-o", "yaml"
         ])
         addresses = []
         nodes = yaml.safe_load(output)
+        win_prefix = "{}-md-win".format(self.cluster_name)
         for node in nodes['items']:
-            if (operating_system == "linux" and
-                    node["metadata"]["name"].startswith("capi-win")):
-                continue
-
-            if (operating_system == "windows" and
-                    not node["metadata"]["name"].startswith("capi-win")):
-                continue
-
+            node_name = node['metadata']['name']
+            if operating_system == "windows":
+                if not node_name.startswith(win_prefix):
+                    continue
+            if operating_system == "linux":
+                if node_name.startswith(win_prefix):
+                    continue
             try:
                 node_addresses = [
                     n['address'] for n in node['status']['addresses']
@@ -384,10 +354,9 @@ class CAPZProvisioner(deployer.NoopDeployer):
                 self.logging.warning(
                     "Cannot find private address for node %s. Exception "
                     "details: %s. Skipping", node["metadata"]["name"], ex)
-
+                continue
             # pick the first node internal address
             addresses.append(node_addresses[0])
-
         return addresses
 
     def _parse_win_minion_image_gallery(self, win_minion_gallery_image):
@@ -406,10 +375,10 @@ class CAPZProvisioner(deployer.NoopDeployer):
         }
 
     def _get_azure_credentials(self):
-        credentials = ServicePrincipalCredentials(
+        credentials = ClientSecretCredential(
             client_id=os.environ["AZURE_CLIENT_ID"],
-            secret=os.environ["AZURE_CLIENT_SECRET"],
-            tenant=os.environ["AZURE_TENANT_ID"])
+            client_secret=os.environ["AZURE_CLIENT_SECRET"],
+            tenant_id=os.environ["AZURE_TENANT_ID"])
         subscription_id = os.environ["AZURE_SUBSCRIPTION_ID"]
         return credentials, subscription_id
 
@@ -424,9 +393,11 @@ class CAPZProvisioner(deployer.NoopDeployer):
     def _get_control_plane_route(self):
         routes = self.network_client.routes.list(
             self.cluster_name,
-            "%s-node-routetable" % self.cluster_name)
+            "{}-node-routetable".format(self.cluster_name))
         for route in routes:
-            if route.name.startswith("%s-control-plane" % self.cluster_name):
+            is_control_plane_route = route.name.startswith(
+                "{}-control-plane".format(self.cluster_name))
+            if is_control_plane_route:
                 return route
         return None
 
@@ -458,25 +429,26 @@ class CAPZProvisioner(deployer.NoopDeployer):
         }
         self.logging.info("Creating the second NIC")
         nic = utils.retry_on_error()(
-            self.network_client.network_interfaces.create_or_update)(
+            self.network_client.network_interfaces.begin_create_or_update)(
                 self.cluster_name, nic_name, nic_parameters).result()
 
         self.logging.info("Deallocating the control plane VM")
         utils.retry_on_error()(
-            self.compute_client.virtual_machines.deallocate)(
+            self.compute_client.virtual_machines.begin_deallocate)(
                 self.cluster_name, control_plane_vm.name).wait()
 
         self.logging.info("Attaching the second NIC to the control plane VM")
         vm_parameters = control_plane_vm.as_dict()
-        vm_parameters["network_profile"]["network_interfaces"].append(
+        vm_model = compute_models.VirtualMachine(**vm_parameters)
+        vm_model.network_profile["network_interfaces"].append(
             {"id": nic.id, "primary": False})
         utils.retry_on_error()(
-            self.compute_client.virtual_machines.create_or_update)(
-                self.cluster_name, control_plane_vm.name, vm_parameters).wait()
+            self.compute_client.virtual_machines.begin_create_or_update)(
+                self.cluster_name, control_plane_vm.name, vm_model).wait()
 
         self.logging.info("Starting the control plane VM")
         utils.retry_on_error()(
-            self.compute_client.virtual_machines.start)(
+            self.compute_client.virtual_machines.begin_start)(
                 self.cluster_name, control_plane_vm.name).wait()
         utils.wait_for_port_connectivity(self.master_public_address, 22)
 
@@ -488,9 +460,9 @@ class CAPZProvisioner(deployer.NoopDeployer):
         route_params["next_hop_ip_address"] = \
             nic.ip_configurations[0].private_ip_address
         utils.retry_on_error()(
-            self.network_client.routes.create_or_update)(
+            self.network_client.routes.begin_create_or_update)(
                 self.cluster_name,
-                "%s-node-routetable" % self.cluster_name,
+                "{}-node-routetable".format(self.cluster_name),
                 control_plane_route.name,
                 route_params).wait()
 
@@ -534,7 +506,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             "public_ip_address_version": "IPV4"
         }
         return utils.retry_on_error()(
-            self.network_client.public_ip_addresses.create_or_update)(
+            self.network_client.public_ip_addresses.begin_create_or_update)(
                 self.cluster_name,
                 self.bootstrap_vm_public_ip_name,
                 public_ip_parameters).result()
@@ -561,7 +533,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             }]
         }
         return utils.retry_on_error()(
-            self.network_client.network_interfaces.create_or_update)(
+            self.network_client.network_interfaces.begin_create_or_update)(
                 self.cluster_name,
                 self.bootstrap_vm_nic_name,
                 nic_parameters).result()
@@ -569,17 +541,20 @@ class CAPZProvisioner(deployer.NoopDeployer):
     def _init_bootstrap_vm(self):
         self.logging.info("Initializing the bootstrap VM")
         utils.retry_on_error()(
-            self.run_cmd_on_bootstrap_vm)(cmd=["mkdir -p www"],
-                                          timeout=60)
+            self.run_cmd_on_bootstrap_vm)(
+                cmd=["mkdir -p www",
+                     "sudo addgroup --system docker",
+                     "sudo usermod -aG docker capi"],
+                timeout=60)
         self.upload_to_bootstrap_vm(
-            os.path.join(os.getcwd(), "cluster-api/scripts"))
+            os.path.join(self.e2e_runner_dir, "scripts"))
 
         utils.retry_on_error()(
             self.run_cmd_on_bootstrap_vm)(
                 cmd=["bash ./www/scripts/init-bootstrap-vm.sh"],
                 timeout=(60 * 15))
 
-        self._setup_microk8s_kubeconfig()
+        self._setup_mgmt_kubeconfig()
 
     def _create_bootstrap_vm(self):
         self.logging.info("Setting up the bootstrap VM")
@@ -620,7 +595,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
         self.logging.info("Creating bootstrap VM")
         vm = utils.retry_on_error()(
-            self.compute_client.virtual_machines.create_or_update)(
+            self.compute_client.virtual_machines.begin_create_or_update)(
                 self.cluster_name,
                 self.bootstrap_vm_name,
                 vm_parameters).result()
@@ -647,17 +622,19 @@ class CAPZProvisioner(deployer.NoopDeployer):
         self.logging.info("Cleaning up the bootstrap VM")
 
         self.logging.info("Deleting bootstrap VM")
-        utils.retry_on_error()(self.compute_client.virtual_machines.delete)(
-            self.cluster_name, self.bootstrap_vm_name).wait()
+        utils.retry_on_error()(
+            self.compute_client.virtual_machines.begin_delete)(
+                self.cluster_name, self.bootstrap_vm_name).wait()
 
         self.logging.info("Deleting bootstrap VM NIC")
         utils.retry_on_error()(
-            self.network_client.network_interfaces.delete)(
+            self.network_client.network_interfaces.begin_delete)(
                 self.cluster_name, self.bootstrap_vm_nic_name).wait()
 
         self.logging.info("Deleting bootstrap VM public IP")
-        utils.retry_on_error()(self.network_client.public_ip_addresses.delete)(
-            self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
+        utils.retry_on_error()(
+            self.network_client.public_ip_addresses.begin_delete)(
+                self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
 
     def _create_resource_group(self):
         self.logging.info("Creating Azure resource group")
@@ -690,7 +667,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             }
         }
         return utils.retry_on_error()(
-            self.network_client.virtual_networks.create_or_update)(
+            self.network_client.virtual_networks.begin_create_or_update)(
                 self.cluster_name,
                 "{}-vnet".format(self.cluster_name),
                 vnet_params).result()
@@ -701,7 +678,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             "location": self.azure_location,
         }
         return utils.retry_on_error()(
-            self.network_client.route_tables.create_or_update)(
+            self.network_client.route_tables.begin_create_or_update)(
                 self.cluster_name,
                 "{}-node-routetable".format(self.cluster_name),
                 route_table_params).result()
@@ -731,19 +708,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
                 destination_application_security_groups=[],
                 access=net_models.SecurityRuleAccess.allow,
                 direction=net_models.SecurityRuleDirection.inbound,
-                name="Allow_CAPZ_K8s_API"),
-            net_models.SecurityRule(
-                protocol="Tcp",
-                priority="1002",
-                source_port_range="*",
-                source_address_prefix="0.0.0.0/0",
-                destination_port_range="16443",
-                destination_address_prefix="0.0.0.0/0",
-                destination_address_prefixes=[],
-                destination_application_security_groups=[],
-                access=net_models.SecurityRuleAccess.allow,
-                direction=net_models.SecurityRuleDirection.inbound,
-                name="Allow_MicroK8s_API")
+                name="Allow_K8s_API")
         ]
         secgroup_name = "{}-controlplane-nsg".format(self.cluster_name)
         secgroup_params = net_models.NetworkSecurityGroup(
@@ -751,8 +716,9 @@ class CAPZProvisioner(deployer.NoopDeployer):
             location=self.azure_location,
             security_rules=secgroup_rules)
 
+        nsg_client = self.network_client.network_security_groups
         return utils.retry_on_error()(
-            self.network_client.network_security_groups.create_or_update)(
+            nsg_client.begin_create_or_update)(
                 self.cluster_name, secgroup_name, secgroup_params).result()
 
     def _create_control_plane_subnet(self):
@@ -769,7 +735,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             },
         }
         return utils.retry_on_error()(
-            self.network_client.subnets.create_or_update)(
+            self.network_client.subnets.begin_create_or_update)(
                 self.cluster_name,
                 "{}-vnet".format(self.cluster_name),
                 "{}-controlplane-subnet".format(self.cluster_name),
@@ -781,8 +747,9 @@ class CAPZProvisioner(deployer.NoopDeployer):
             name=secgroup_name,
             location=self.azure_location)
 
+        nsg_client = self.network_client.network_security_groups
         return utils.retry_on_error()(
-            self.network_client.network_security_groups.create_or_update)(
+            nsg_client.begin_create_or_update)(
                 self.cluster_name, secgroup_name, secgroup_params).result()
 
     def _create_node_subnet(self):
@@ -799,7 +766,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             },
         }
         return utils.retry_on_error()(
-            self.network_client.subnets.create_or_update)(
+            self.network_client.subnets.begin_create_or_update)(
                 self.cluster_name,
                 "{}-vnet".format(self.cluster_name),
                 "{}-node-subnet".format(self.cluster_name),
@@ -839,19 +806,15 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
             cmd = [
                 self.kubectl, "get", "machine", "--kubeconfig",
-                self.microk8s_kubeconfig_path,
+                self.mgmt_kubeconfig_path,
                 "--output=custom-columns=NAME:.metadata.name", "--no-headers"
             ]
             output, _ = utils.retry_on_error()(
                 utils.run_shell_cmd)(cmd, sensitive=True)
             machines = output.decode().strip().split('\n')
-            # This value is given in the capz cluster.yaml config, and
-            # it's hardcoded since it's going to be part of the Windows
-            # agents hostnames, and together with the unique suffix added
-            # by the cluster-api Azure provider, the length must be <= 15
-            # characters.
             windows_machines = [
-                m for m in machines if m.startswith("capi-win-")
+                m for m in machines
+                if m.startswith("%s-md-win" % self.cluster_name)
             ]
             if len(windows_machines) == 0:
                 time.sleep(sleep_time)
@@ -861,7 +824,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             for windows_machine in windows_machines:
                 cmd = [
                     self.kubectl, "get", "machine", "--kubeconfig",
-                    self.microk8s_kubeconfig_path,
+                    self.mgmt_kubeconfig_path,
                     "--output=custom-columns=READY:.status.phase",
                     "--no-headers", windows_machine
                 ]
@@ -878,7 +841,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
                 cmd = [
                     self.kubectl, "get", "machine", "--kubeconfig",
-                    self.microk8s_kubeconfig_path,
+                    self.mgmt_kubeconfig_path,
                     "--output=custom-columns=NODE_NAME:.status.nodeRef.name",
                     windows_machine, "--no-headers"
                 ]
@@ -931,7 +894,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
         return True
 
     def _create_capz_cluster(self):
-        bootstrap_vm_address = "{}:30000".format(self.bootstrap_vm_private_ip)
+        bootstrap_vm_address = "{}:8081".format(self.bootstrap_vm_private_ip)
         context = {
             "cluster_name": self.cluster_name,
             "cluster_network_subnet": self.cluster_network_subnet,
@@ -960,55 +923,31 @@ class CAPZProvisioner(deployer.NoopDeployer):
         }
 
         self.logging.info("Create CAPZ cluster")
-        template_file = os.path.join(
-            os.getcwd(), "cluster-api/azure/cluster.yaml.j2")
         output_file = "/tmp/capz-cluster.yaml"
-        utils.render_template(template_file, output_file, context)
+        utils.render_template(
+            "cluster.yaml.j2", output_file, context, self.capz_dir)
         utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "apply", "--kubeconfig",
-            self.microk8s_kubeconfig_path, "-f", output_file
-        ])
-        self._wait_for_cluster()
-
-        self.logging.info("Create CAPZ control-plane")
-        template_file = os.path.join(
-            os.getcwd(), "cluster-api/azure/control-plane.yaml.j2")
-        output_file = "/tmp/control-plane.yaml"
-        utils.render_template(template_file, output_file, context)
-        utils.retry_on_error()(utils.run_shell_cmd)([
-            self.kubectl, "apply", "--kubeconfig",
-            self.microk8s_kubeconfig_path, "-f", output_file
+            self.mgmt_kubeconfig_path, "-f", output_file
         ])
 
-        self.logging.info("Create CAPZ Windows agents")
-        template_file = os.path.join(
-            os.getcwd(), "cluster-api/azure/windows-agents.yaml.j2")
-        output_file = "/tmp/windows-agents.yaml"
-        utils.render_template(template_file, output_file, context)
-        utils.retry_on_error()(utils.run_shell_cmd)([
-            self.kubectl, "apply", "--kubeconfig",
-            self.microk8s_kubeconfig_path, "-f", output_file
-        ])
-
-    def _setup_microk8s_kubeconfig(self):
-        self.logging.info("Setting up MicroK8s kubeconfig")
-
-        output, _ = utils.retry_on_error()(
-            self.run_cmd_on_bootstrap_vm)(cmd=["microk8s config"],
-                                          timeout=60, return_result=True)
-        kubecfg = yaml.safe_load(output)
-        microk8s_cluster = kubecfg["clusters"][0]["cluster"]
-        microk8s_cluster["server"] = "https://{}:16443".format(
+    def _setup_mgmt_kubeconfig(self):
+        self.logging.info("Setting up the management cluster kubeconfig")
+        utils.retry_on_error()(self.download_from_bootstrap_vm)(
+            ".kube/config", self.mgmt_kubeconfig_path)
+        with open(self.mgmt_kubeconfig_path, 'r') as f:
+            kubecfg = yaml.safe_load(f.read())
+        k8s_cluster = kubecfg["clusters"][0]["cluster"]
+        k8s_cluster["server"] = "https://{}:6443".format(
             self.bootstrap_vm_public_ip)
-
-        with open(self.microk8s_kubeconfig_path, 'w') as f:
-            f.write(yaml.dump(kubecfg))
+        with open(self.mgmt_kubeconfig_path, 'w') as f:
+            f.write(yaml.safe_dump(kubecfg))
 
     def _setup_capz_kubeconfig(self):
         self.logging.info("Setting up CAPZ kubeconfig")
 
         cmd = [
-            self.kubectl, "get", "--kubeconfig", self.microk8s_kubeconfig_path,
+            self.kubectl, "get", "--kubeconfig", self.mgmt_kubeconfig_path,
             "secret/%s-kubeconfig" % self.cluster_name,
             "--output=custom-columns=KUBECONFIG_B64:.data.value",
             "--no-headers"
@@ -1017,51 +956,6 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
         with open(self.capz_kubeconfig_path, 'w') as f:
             f.write(base64.b64decode(output).decode('ascii'))
-
-    def _wait_for_cluster(self, timeout=900):
-        self.logging.info(
-            "Waiting up to %.2f minutes for the cluster to provision.",
-            timeout / 60.0)
-
-        sleep_time = 5
-        start = time.time()
-        cluster_resource_name = "cluster.cluster.x-k8s.io/%s" % (
-            self.cluster_name)
-        while True:
-            elapsed = time.time() - start
-            if elapsed > timeout:
-                raise Exception("Cluster didn't provision within %.2f "
-                                "minutes" % (timeout / 60.0))
-
-            cmd = [
-                self.kubectl, "get", "cluster", "--kubeconfig",
-                self.microk8s_kubeconfig_path, self.cluster_name,
-                "--output=name"
-            ]
-            output, _ = utils.retry_on_error()(
-                utils.run_shell_cmd)(cmd, sensitive=True)
-            names = output.decode().strip().split('\n')
-            found = [c for c in names if c == cluster_resource_name]
-            if len(found) == 0:
-                time.sleep(sleep_time)
-                continue
-
-            cmd = [
-                self.kubectl, "get", "cluster", "--kubeconfig",
-                self.microk8s_kubeconfig_path, self.cluster_name,
-                "--output=custom-columns=CLUSTER_STATUS:.status.phase",
-                "--no-headers"
-            ]
-            output, _ = utils.retry_on_error()(
-                utils.run_shell_cmd)(cmd, sensitive=True)
-            cluster_status = output.decode().strip()
-
-            if cluster_status == "Provisioned":
-                self.logging.info("Cluster provisioned in %.2f minutes",
-                                  (time.time() - start) / 60.0)
-                break
-
-            time.sleep(sleep_time)
 
     def _wait_for_control_plane(self, timeout=2700):
         self.logging.info(
@@ -1078,7 +972,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
             cmd = [
                 self.kubectl, "get", "machine", "--kubeconfig",
-                self.microk8s_kubeconfig_path,
+                self.mgmt_kubeconfig_path,
                 "--output=custom-columns=NAME:.metadata.name", "--no-headers"
             ]
             output, _ = utils.retry_on_error()(
@@ -1096,7 +990,7 @@ class CAPZProvisioner(deployer.NoopDeployer):
             for control_plane_machine in control_plane_machines:
                 cmd = [
                     self.kubectl, "get", "machine", "--kubeconfig",
-                    self.microk8s_kubeconfig_path,
+                    self.mgmt_kubeconfig_path,
                     "--output=custom-columns=READY:.status.phase",
                     "--no-headers", control_plane_machine
                 ]
@@ -1116,49 +1010,22 @@ class CAPZProvisioner(deployer.NoopDeployer):
 
             time.sleep(sleep_time)
 
-    def _wait_for_microk8s_api(self, timeout=600):
-        self.logging.info(
-            "Waiting up to %.2f minutes for ready MicroK8s", timeout / 60.0)
-
-        sleep_time = 10
-        start = time.time()
-        cmd = [self.kubectl, "get", "pods",
-               "--kubeconfig", self.microk8s_kubeconfig_path]
-        while True:
-            elapsed = time.time() - start
-            if elapsed > timeout:
-                err_msg = "MicroK8s was not ready within %s minutes." % (
-                    timeout / 60.0)
-                self.logging.error(err_msg)
-                raise Exception(err_msg)
-            try:
-                utils.run_shell_cmd(cmd, sensitive=True)
-            except Exception:
-                time.sleep(sleep_time)
-                continue
-            break
-
     @utils.retry_on_error(max_attempts=10, sleep_seconds=30)
     def _setup_capz_components(self):
         self.logging.info("Setup the Azure Cluster API components")
-        capi_config = os.path.join(os.getcwd(),
-                                   "cluster-api/azure/config.yaml")
-        capi_version = "v0.3.8"
-        capz_provider_version = "v0.4.6"
         utils.run_shell_cmd([
             "clusterctl", "init",
-            "--kubeconfig", self.microk8s_kubeconfig_path,
-            "--core", ("cluster-api:%s" % capi_version),
-            "--bootstrap", ("kubeadm:%s" % capi_version),
-            "--control-plane", ("kubeadm:%s" % capi_version),
-            "--infrastructure", ("azure:%s" % capz_provider_version),
-            "--config", capi_config
+            "--kubeconfig", self.mgmt_kubeconfig_path,
+            "--core", ("cluster-api:%s" % constants.CAPI_VERSION),
+            "--bootstrap", ("kubeadm:%s" % constants.CAPI_VERSION),
+            "--control-plane", ("kubeadm:%s" % constants.CAPI_VERSION),
+            "--infrastructure", ("azure:%s" % constants.CAPZ_PROVIDER_VERSION)
         ])
 
         self.logging.info("Wait for the deployments to be available")
         utils.run_shell_cmd([
             self.kubectl, "wait", "--kubeconfig",
-            self.microk8s_kubeconfig_path, "--for=condition=Available",
+            self.mgmt_kubeconfig_path, "--for=condition=Available",
             "--timeout", "5m", "deployments", "--all", "--all-namespaces"
         ])
 

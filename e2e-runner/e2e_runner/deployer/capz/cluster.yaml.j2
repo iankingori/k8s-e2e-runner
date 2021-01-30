@@ -2,6 +2,8 @@
 apiVersion: cluster.x-k8s.io/v1alpha3
 kind: Cluster
 metadata:
+  labels:
+    cni: flannel-windows
   name: {{ cluster_name }}
   namespace: default
 spec:
@@ -35,3 +37,7 @@ spec:
         role: node
   resourceGroup: {{ cluster_name }}
   subscriptionID: {{ azure_subscription_id }}
+
+{% include "control-plane.yaml.j2" %}
+
+{% include "windows-agents.yaml.j2" %}
