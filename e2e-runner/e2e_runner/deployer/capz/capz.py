@@ -11,13 +11,13 @@ from distutils.util import strtobool
 import yaml
 
 import sh
+from azure.core import exceptions as azure_exceptions
 from azure.identity import ClientSecretCredential
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.network import models as net_models
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.compute import models as compute_models
-from msrestazure import azure_exceptions
 from property_cached import cached_property
 
 from e2e_runner import (
@@ -165,7 +165,7 @@ class CAPZProvisioner(base.Deployer):
             delete_async_operation = client.resource_groups.begin_delete(
                 self.cluster_name)
             delete_async_operation.wait()
-        except azure_exceptions.CloudError as e:
+        except azure_exceptions.ResourceNotFoundError as e:
             cloud_error_data = e.error
             if cloud_error_data.error == "ResourceGroupNotFound":
                 self.logging.warning("Resource group %s does not exist",
