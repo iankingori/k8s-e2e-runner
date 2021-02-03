@@ -143,6 +143,11 @@ class CAPZProvisioner(base.Deployer):
                             "src", "github.com",
                             "Microsoft", "windows-container-networking")
 
+    @property
+    def remote_test_infra_path(self):
+        return os.path.join(self.remote_go_path,
+                            "src", "github.com", "kubernetes", "test-infra")
+
     def remote_containerd_shim_path(self, fromVendor=False):
         if fromVendor:
             path_prefix = os.path.join(self.remote_containerd_path, "vendor")

@@ -140,6 +140,24 @@ class CapzFlannelCI(base.CI):
     def set_patches(self, patches=None):
         self.patches = patches
 
+    def _setup_kubetest(self):
+        self.logging.info("Setup Kubetest")
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=['mkdir -p {}'.format(
+                os.path.dirname(self.deployer.remote_test_infra_path))])
+        self.deployer.remote_clone_git_repo(
+            'https://github.com/kubernetes/test-infra.git',
+            'master',
+            self.deployer.remote_test_infra_path)
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=['GO111MODULE=on go install ./kubetest'],
+            cwd=self.deployer.remote_test_infra_path)
+        local_gopath_bin_path = os.path.join(utils.get_go_path(), "bin")
+        os.makedirs(local_gopath_bin_path, exist_ok=True)
+        self.deployer.download_from_bootstrap_vm(
+            '{}/bin/kubetest'.format(self.deployer.remote_go_path),
+            '{}/kubetest'.format(local_gopath_bin_path))
+
     def _prepare_tests(self):
         kubectl = utils.get_kubectl_bin()
         out, _ = utils.run_shell_cmd([
