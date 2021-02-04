@@ -269,8 +269,7 @@ class CapzFlannelCI(base.CI):
             self.deployer.master_public_port)
 
         self._setup_kubeconfig()
-        if self.opts.container_runtime == "docker":
-            self._prepull_images()
+        self._prepull_images()
 
     def _prepull_images(self, timeout=3600):
         prepull_yaml_path = "/tmp/prepull-windows-images.yaml"
