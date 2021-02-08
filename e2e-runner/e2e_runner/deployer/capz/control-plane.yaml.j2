@@ -85,6 +85,10 @@ spec:
     - curl -Lo /tmp/update-k8s.sh http://{{ bootstrap_vm_address }}/scripts/update-k8s.sh
     - bash /tmp/update-k8s.sh http://{{ bootstrap_vm_address }} {{ ci_version }}
 {%- endif %}
+{%- if flannel_mode == "overlay" %}
+    - curl -Lo /tmp/set-nics-mtu.sh http://{{ bootstrap_vm_address }}/scripts/set-nics-mtu.sh
+    - bash /tmp/set-nics-mtu.sh
+{%- endif %}
     useExperimentalRetryJoin: true
   version: {{ ci_version }}
   replicas: 1

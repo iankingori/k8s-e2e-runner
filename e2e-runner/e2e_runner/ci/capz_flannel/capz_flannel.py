@@ -456,6 +456,19 @@ class CapzFlannelCI(base.CI):
         cmd = [self.kubectl, "apply", "-f", output_file]
         utils.retry_on_error()(utils.run_shell_cmd)(cmd)
 
+    def _set_vxlan_devices_mtu(self):
+        self.logging.info(
+            "Set the proper MTU for the k8s master vxlan devices")
+        ssh_key_path = (os.environ.get("SSH_KEY")
+                        or os.path.join(os.environ.get("HOME"), ".ssh/id_rsa"))
+        utils.retry_on_error()(utils.run_shell_cmd)([
+            "ssh", "-o", "StrictHostKeyChecking=no", "-o",
+            "UserKnownHostsFile=/dev/null", "-i", ssh_key_path,
+            "capi@%s" % self.deployer.master_public_address,
+            "'sudo bash -s' < %s" % os.path.join(
+                self.e2e_runner_dir, "scripts/set-vxlan-devices-mtu.sh")
+        ])
+
     def _add_flannel_cni(self):
         template_file = os.path.join(
             self.capz_flannel_dir, "flannel/kube-flannel.yaml.j2")
@@ -486,6 +499,9 @@ class CapzFlannelCI(base.CI):
 
         cmd = [self.kubectl, "apply", "-f", kube_flannel_windows]
         utils.retry_on_error()(utils.run_shell_cmd)(cmd)
+
+        if self.opts.flannel_mode == constants.FLANNEL_MODE_OVERLAY:
+            self._set_vxlan_devices_mtu()
 
     def _setup_kubeconfig(self):
         os.environ["KUBECONFIG"] = self.deployer.capz_kubeconfig_path
