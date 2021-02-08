@@ -13,13 +13,12 @@ This repository contains the following:
     ```
     docker run --rm --entrypoint bash -it e2eteam/k8s-e2e-runner:latest
 
-    git clone https://github.com/e2e-win/k8s-e2e-runner
-    cd k8s-e2e-runner/e2e-runner
+    pip3 install git+https://github.com/e2e-win/k8s-e2e-runner.git#egg=e2e-runner&subdirectory=e2e-runner
     ```
 
-    At this point, the runner can be executed via `./main.py` and customize the job run via parameters. The full list of supported parameters can be found by running:
+    At this point, the runner CI can be executed via `e2e-runner run ci` and customize the job run via parameters. The full list of supported parameters can be found by running:
     ```
-    ./main.py --help
+    e2e-runner run ci --help
     ```
 
 * `image-builder`, contains the scripts needed to build custom K8s Windows worker images.
