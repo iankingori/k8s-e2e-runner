@@ -49,7 +49,7 @@ class RunCI(Command):
                        "master/gce/prepull.yaml",
                        help="Download link for the manifest file used to "
                        "pre-pull the container images on the nodes.")
-        p.add_argument("--hold",
+        p.add_argument("--hold", choices=["before", "after"],
                        help="Useful for debugging. Sleeps the process either "
                        "right before or right after running the tests.")
 
