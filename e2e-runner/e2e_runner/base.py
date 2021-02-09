@@ -3,31 +3,31 @@ import subprocess
 import stat
 import time
 
-import configargparse
+from e2e_runner import (
+    logger,
+    utils,
+)
 
-import deployer
-import log
-import utils
 
+class Deployer(object):
 
-p = configargparse.get_argument_parser()
+    def __init__(self):
+        self.logging = logger.get_logger(__name__)
 
-p.add("--repo-list", help="Repo list with registries for test images.",
-      default="https://raw.githubusercontent.com/kubernetes-sigs/"
-      "windows-testing/master/images/image-repo-list")
-p.add("--parallel-test-nodes", default=1)
-p.add("--test-dry-run", default="False")
-p.add("--test-focus-regex",
-      default="\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]")
-p.add("--test-skip-regex", default="\\[LinuxOnly\\]")
-p.add("--kubetest-link", default="")
+    def up(self):
+        self.logging("UP: NOOP")
+
+    def down(self):
+        self.logging("DOWN: NOOP")
 
 
 class CI(object):
-    def __init__(self):
-        self.opts = p.parse_known_args()[0]
-        self.logging = log.getLogger(__name__)
-        self.deployer = deployer.NoopDeployer()
+
+    def __init__(self, opts):
+        self.logging = logger.get_logger(__name__)
+        self.opts = opts
+        self.e2e_runner_dir = os.path.dirname(__file__)
+        self.deployer = Deployer()
 
     def up(self):
         self.logging.info("UP: Default NOOP")
@@ -58,7 +58,7 @@ class CI(object):
     def _setup_kubetest(self):
         self.logging.info("Setup Kubetest")
 
-        if self.opts.kubetest_link != "":
+        if self.opts.kubetest_link:
             kubetestbin = "/usr/bin/kubetest"
             utils.download_file(self.opts.kubetest_link, kubetestbin)
             os.chmod(kubetestbin, stat.S_IRWXU | stat.S_IRWXG)
@@ -119,9 +119,10 @@ class CI(object):
         cmd.append("--verbose-commands=true")
         cmd.append("--provider=skeleton")
         cmd.append("--test")
-        cmd.append("--dump=%s" % self.opts.log_path)
+        cmd.append("--dump=%s" % self.opts.artifacts_directory)
         cmd.append(
             ('--test_args=--ginkgo.flakeAttempts=1 '
+             '--test.timeout=12h '
              '--num-nodes=2 --ginkgo.noColor '
              '--ginkgo.dryRun=%(dryRun)s '
              '--node-os-distro=windows '

@@ -37,13 +37,13 @@
         "resource_group": "{{ user `resource_group_name` }}",
         "gallery_name": "{{ user `sig_name` }}",
         "image_name": "{{ user `sig_image_name` }}",
-        "image_version": "{{ user `kubernetes_version` | replace `v` `` 1 }}",
+        "image_version": "{{ user `sig_image_version` }}",
         "replication_regions": "{{ user `sig_image_replication_regions` }}"
       },
       "shared_image_gallery_timeout": "6h",
       "shared_image_gallery_replica_count": 1,
 
-      "managed_image_name": "{{ user `sig_image_name` }}-{{ isotime | clean_resource_name }}",
+      "managed_image_name": "{{ user `sig_image_name` }}-{{ user `kubernetes_version` }}-{{ isotime | clean_resource_name }}",
       "managed_image_resource_group_name": "{{ user `resource_group_name` }}",
 
       "os_type": "Windows",

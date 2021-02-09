@@ -1,3 +1,4 @@
+import configargparse
 import os
 import functools
 import subprocess
@@ -19,10 +20,9 @@ import six
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS1_v1_5
 
-import log
-import constants
+from e2e_runner import logger, constants
 
-logging = log.getLogger(__name__)
+logging = logger.get_logger(__name__)
 
 
 class CmdTimeoutExceededException(Exception):
@@ -72,8 +72,7 @@ def clone_repo(repo, branch="master", dest_path=None):
     cmd = ["git", "clone", "--single-branch", "--branch", branch, repo]
     if dest_path:
         cmd.append(dest_path)
-    logging.info("Cloning git repo %s on branch %s in location %s",
-                 repo, branch, dest_path if not None else os.getcwd())
+    logging.info("Cloning git repo %s on branch %s", repo, branch)
     _, err, ret = run_cmd(cmd, timeout=900, stderr=True)
     if ret != 0:
         raise Exception("Git Clone Failed with error: %s." % err)
@@ -532,3 +531,13 @@ def clone_git_repo(repo_url, branch_name, local_dir):
         return
 
     clone_repo(repo_url, branch_name, local_dir)
+
+
+def str2bool(v):
+    if v.lower() == 'true':
+        return True
+    elif v.lower() == 'false':
+        return False
+    else:
+        raise configargparse.ArgumentTypeError(
+            'Boolean value expected')

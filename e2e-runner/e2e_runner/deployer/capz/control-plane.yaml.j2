@@ -5,15 +5,12 @@ metadata:
   name: {{ cluster_name }}-control-plane
   namespace: default
 spec:
-  version: {{ ci_version }}
-  replicas: 1
   infrastructureTemplate:
     apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
     kind: AzureMachineTemplate
     name: {{ cluster_name }}-control-plane
   kubeadmConfigSpec:
     clusterConfiguration:
-      kubernetesVersion: {{ ci_version }}
       apiServer:
         extraArgs:
           cloud-config: /etc/kubernetes/azure.json
@@ -29,33 +26,38 @@ spec:
           allocate-node-cidrs: "true"
           cloud-config: /etc/kubernetes/azure.json
           cloud-provider: azure
+          cluster-name: {{ cluster_name }}
+          configure-cloud-routes: "true"
         extraVolumes:
         - hostPath: /etc/kubernetes/azure.json
           mountPath: /etc/kubernetes/azure.json
           name: cloud-config
           readOnly: true
+      etcd:
+        local:
+          dataDir: /var/lib/etcddisk/etcd
+    diskSetup:
+      filesystems:
+      - device: /dev/disk/azure/scsi1/lun0
+        extraOpts:
+        - -E
+        - lazy_itable_init=1,lazy_journal_init=1
+        filesystem: ext4
+        label: etcd_disk
+      - device: ephemeral0.1
+        filesystem: ext4
+        label: ephemeral0
+        replaceFS: ntfs
+      partitions:
+      - device: /dev/disk/azure/scsi1/lun0
+        layout: true
+        overwrite: false
+        tableType: gpt
     files:
-    - content: |
-        {
-          "cloud": "AzurePublicCloud",
-          "tenantId": "{{ azure_tenant_id }}",
-          "subscriptionId": "{{ azure_subscription_id }}",
-          "aadClientId": "{{ azure_client_id }}",
-          "aadClientSecret": "{{ azure_client_secret }}",
-          "resourceGroup": "{{ cluster_name }}",
-          "securityGroupName": "{{ cluster_name }}-node-nsg",
-          "location": "{{ azure_location }}",
-          "vmType": "standard",
-          "vnetName": "{{ cluster_name }}-vnet",
-          "vnetResourceGroup": "{{ cluster_name }}",
-          "subnetName": "{{ cluster_name }}-node-subnet",
-          "routeTableName": "{{ cluster_name }}-node-routetable",
-          "userAssignedID": "{{ cluster_name }}",
-          "loadBalancerSku": "standard",
-          "maximumLoadBalancerRuleCount": 250,
-          "useManagedIdentityExtension": false,
-          "useInstanceMetadata": true
-        }
+    - contentFrom:
+        secret:
+          key: control-plane-azure.json
+          name: {{ cluster_name }}-control-plane-azure-json
       owner: root:root
       path: /etc/kubernetes/azure.json
       permissions: "0644"
@@ -75,6 +77,9 @@ spec:
 {%- raw %}
         name: '{{ ds.meta_data["local_hostname"] }}'
 {%- endraw %}
+    mounts:
+    - - LABEL=etcd_disk
+      - /var/lib/etcddisk
     preKubeadmCommands:
 {%- if k8s_bins %}
     - curl -Lo /tmp/update-k8s.sh http://{{ bootstrap_vm_address }}/scripts/update-k8s.sh
@@ -84,9 +89,9 @@ spec:
     - curl -Lo /tmp/set-nics-mtu.sh http://{{ bootstrap_vm_address }}/scripts/set-nics-mtu.sh
     - bash /tmp/set-nics-mtu.sh
 {%- endif %}
-    - curl -Lo /tmp/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.sh
-    - bash /tmp/kubeadm-bootstrap.sh
     useExperimentalRetryJoin: true
+  version: {{ ci_version }}
+  replicas: 1
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
 kind: AzureMachineTemplate
@@ -96,6 +101,10 @@ metadata:
 spec:
   template:
     spec:
+      dataDisks:
+      - diskSizeGB: 128
+        lun: 0
+        nameSuffix: etcddisk
       location: {{ azure_location }}
       osDisk:
         diskSizeGB: 128
@@ -109,6 +118,6 @@ spec:
         marketplace:
           publisher: cncf-upstream
           offer: capi
-          sku: k8s-1dot18dot3-ubuntu-1804
-          version: "2020.05.20"
+          sku: k8s-1dot20dot2-ubuntu-1804
+          version: "2021.01.13"
 {%- endif %}

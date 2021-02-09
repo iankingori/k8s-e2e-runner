@@ -1,8 +1,7 @@
 FROM ubuntu:20.04
 
 ARG GO_VERSION=1.15.7
-ARG TF_VERSION=0.12.24
-ARG CAPI_VERSION=v0.3.8
+ARG CAPI_VERSION=v0.3.13
 ARG KUBECTL_VERSION=v1.20.2
 
 # Install system APT packages & dependencies
@@ -22,12 +21,9 @@ RUN apt-get autoclean && \
     apt-get autoremove && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python tools
-RUN pip3 install \
-        configargparse sh property-cached \
-        ansible==2.9.13 pywinrm==0.4.1 \
-        azure-common==1.1.25 azure-mgmt-resource==10.2.0 \
-        azure-mgmt-compute==13.1.0 azure-mgmt-network==11.0.0
+# Install Python dependencies
+ADD requirements.txt /tmp
+RUN pip3 install -r /tmp/requirements.txt
 
 # Install Golang
 ENV GOPATH "/go"
@@ -36,12 +32,6 @@ RUN curl -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm go${GO_VERSION}.linux-amd64.tar.gz && \
     mkdir -p "${GOPATH}/src"
-
-# Install terraform
-RUN wget -q https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip && \
-    unzip terraform_${TF_VERSION}_linux_amd64.zip && \
-    rm terraform_${TF_VERSION}_linux_amd64.zip && \
-    mv terraform /usr/local/bin
 
 # Install clusterctl
 RUN curl -Lo /usr/local/bin/clusterctl "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CAPI_VERSION}/clusterctl-linux-amd64" && \

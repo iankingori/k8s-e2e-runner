@@ -10,5 +10,6 @@
 
   "sig_name": "capz_gallery",
   "sig_image_name": "ws-ltsc2019-docker-cbsl-init",
+  "sig_image_version": "1.20.2",
   "sig_image_replication_regions": "westeurope,eastus2,westus2,southcentralus"
 }
