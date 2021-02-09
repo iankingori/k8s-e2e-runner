@@ -154,8 +154,6 @@ data:
           securityContext:
             privileged: true
           args:
-            - "--k8s-e2e-runner-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner.git"
-            - "--k8s-e2e-runner-branch=ci-updates"
             - "--gcloud-service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gcloud-upload-bucket=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -192,8 +190,6 @@ data:
           securityContext:
             privileged: true
           args:
-            - "--k8s-e2e-runner-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner.git"
-            - "--k8s-e2e-runner-branch=ci-updates"
             - "--gcloud-service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gcloud-upload-bucket=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -230,8 +226,6 @@ data:
           securityContext:
             privileged: true
           args:
-            - "--k8s-e2e-runner-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner.git"
-            - "--k8s-e2e-runner-branch=ci-updates"
             - "--gcloud-service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gcloud-upload-bucket=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -270,8 +264,6 @@ data:
           securityContext:
             privileged: true
           args:
-            - "--k8s-e2e-runner-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner.git"
-            - "--k8s-e2e-runner-branch=ci-updates"
             - "--gcloud-service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gcloud-upload-bucket=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -310,8 +302,6 @@ data:
           securityContext:
             privileged: true
           args:
-            - "--k8s-e2e-runner-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner.git"
-            - "--k8s-e2e-runner-branch=ci-updates"
             - "--gcloud-service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gcloud-upload-bucket=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -350,8 +340,6 @@ data:
           securityContext:
             privileged: true
           args:
-            - "--k8s-e2e-runner-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner.git"
-            - "--k8s-e2e-runner-branch=ci-updates"
             - "--gcloud-service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gcloud-upload-bucket=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -391,8 +379,6 @@ data:
           securityContext:
             privileged: true
           args:
-            - "--k8s-e2e-runner-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner.git"
-            - "--k8s-e2e-runner-branch=ci-updates"
             - "--gcloud-service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gcloud-upload-bucket=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
@@ -432,8 +418,6 @@ data:
           securityContext:
             privileged: true
           args:
-            - "--k8s-e2e-runner-repo=https://github.com/ionutbalutoiu/k8s-e2e-runner.git"
-            - "--k8s-e2e-runner-branch=ci-updates"
             - "--gcloud-service-account=$(GCLOUD_SERVICE_ACCOUNT)"
             - "--gcloud-upload-bucket=$(GCLOUD_UPLOAD_BUCKET)"
             - "--"
