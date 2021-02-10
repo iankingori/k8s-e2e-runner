@@ -5,6 +5,9 @@ $ETC_DIR = Join-Path $env:SystemDrive "etc"
 $NSSM_DIR = Join-Path $env:ProgramFiles "nssm"
 $OPT_DIR = Join-Path $env:SystemDrive "opt"
 
+$CNI_PLUGINS_VERSION = "0.9.1"
+$WINDOWS_CNI_PLUGINS_VERSION = "0.2.0"
+
 
 function Start-ExecuteWithRetry {
     Param(
@@ -184,8 +187,7 @@ function Install-Kubelet {
 function Install-CNI {
     mkdir -force "$OPT_DIR\cni\bin"
 
-    $cniVersion = "v0.8.7"
-    Start-FileDownload "https://github.com/containernetworking/plugins/releases/download/${cniVersion}/cni-plugins-windows-amd64-${cniVersion}.tgz" `
+    Start-FileDownload "https://github.com/containernetworking/plugins/releases/download/v${CNI_PLUGINS_VERSION}/cni-plugins-windows-amd64-v${CNI_PLUGINS_VERSION}.tgz" `
                        "$env:TEMP\cni-plugins.tgz"
     tar -xf $env:TEMP\cni-plugins.tgz -C "$OPT_DIR\cni\bin"
     if($LASTEXITCODE) {
@@ -193,8 +195,7 @@ function Install-CNI {
     }
     Remove-Item -Force $env:TEMP\cni-plugins.tgz
 
-    $cniVersion = "v0.2.0"
-    Start-FileDownload "https://github.com/microsoft/windows-container-networking/releases/download/${cniVersion}/windows-container-networking-cni-amd64-${cniVersion}.zip" `
+    Start-FileDownload "https://github.com/microsoft/windows-container-networking/releases/download/v${WINDOWS_CNI_PLUGINS_VERSION}/windows-container-networking-cni-amd64-v${WINDOWS_CNI_PLUGINS_VERSION}.zip" `
                        "$env:TEMP\windows-container-networking-cni.zip"
     tar -xf $env:TEMP\windows-container-networking-cni.zip -C $OPT_DIR\cni\bin
     if($LASTEXITCODE) {

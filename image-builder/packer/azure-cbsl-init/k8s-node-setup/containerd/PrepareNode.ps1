@@ -4,6 +4,9 @@ $ErrorActionPreference = "Stop"
 
 $CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
 
+$CRI_CONTAINERD_VERSION = "1.4.3"
+$CRICTL_VERSION = "1.20.0"
+
 
 function Install-Containerd {
     mkdir -force $CONTAINERD_DIR
@@ -11,8 +14,7 @@ function Install-Containerd {
     mkdir -force $VAR_LOG_DIR
     mkdir -force "$ETC_DIR\cni\net.d"
 
-    $criContainerdVersion = "1.4.3"
-    Start-FileDownload "https://github.com/containerd/containerd/releases/download/v${criContainerdVersion}/cri-containerd-cni-${criContainerdVersion}-windows-amd64.tar.gz" "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
+    Start-FileDownload "https://github.com/containerd/containerd/releases/download/v${CRI_CONTAINERD_VERSION}/cri-containerd-cni-${CRI_CONTAINERD_VERSION}-windows-amd64.tar.gz" "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
     tar xzf $env:TEMP\cri-containerd-windows-amd64.tar.gz -C $CONTAINERD_DIR
     if($LASTEXITCODE) {
         Throw "Failed to unzip containerd.zip"
@@ -20,8 +22,7 @@ function Install-Containerd {
     Add-ToSystemPath $CONTAINERD_DIR
     Remove-Item -Force "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
 
-    $crictlVersion = "1.20.0"
-    Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/v${crictlVersion}/crictl-v${crictlVersion}-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
+    Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/v${CRICTL_VERSION}/crictl-v${CRICTL_VERSION}-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
     tar xzf $env:TEMP\crictl-windows-amd64.tar.gz -C $KUBERNETES_DIR
     if($LASTEXITCODE) {
         Throw "Failed to unzip crictl.zip"
