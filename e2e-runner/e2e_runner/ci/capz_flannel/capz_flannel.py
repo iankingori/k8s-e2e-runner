@@ -625,7 +625,8 @@ class CapzFlannelCI(base.CI):
         script.append("cp {0} {1}".format(
             ctr_bin, artifacts_containerd_bin_dir))
 
-        crictl_bin = os.path.join(remote_cri_tools_path, "_output/crictl.exe")
+        crictl_bin = os.path.join(
+            remote_cri_tools_path, "build/bin/crictl.exe")
         script.append("cp {0} {1}".format(
             crictl_bin, artifacts_containerd_bin_dir))
 
