@@ -47,7 +47,7 @@ The current scripts support the following K8s Windows workers configurations:
                  --build-arg servercoreTag=${SERVER_CORE_TAG} \
                  --build-arg k8sVersion=${KUBERNETES_VERSION} \
                  --platform windows \
-                 --file e2e-runner/cluster-api/kube-proxy/kube-proxy-windows.Dockerfile \
+                 --file e2e-runner/e2e_runner/ci/capz_flannel/kube-proxy/kube-proxy-windows.Dockerfile \
                  https://github.com/e2e-win/k8s-e2e-runner.git
 
     az acr build --registry $ACR_NAME \
@@ -55,7 +55,7 @@ The current scripts support the following K8s Windows workers configurations:
                  --build-arg servercoreTag=${SERVER_CORE_TAG} \
                  --build-arg flannelVersion=${FLANNEL_VERSION} \
                  --platform windows \
-                 --file e2e-runner/cluster-api/flannel/kube-flannel-windows.Dockerfile \
+                 --file e2e-runner/e2e_runner/ci/capz_flannel/flannel/kube-flannel-windows.Dockerfile \
                  https://github.com/e2e-win/k8s-e2e-runner.git
     ```
 
