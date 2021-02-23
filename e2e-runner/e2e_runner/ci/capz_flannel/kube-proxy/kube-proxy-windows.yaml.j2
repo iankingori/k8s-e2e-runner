@@ -27,7 +27,6 @@ data:
     yq w -i /host/var/lib/kube-proxy/config.conf winkernel.enableDSR {{ enable_win_dsr }}
     yq w -i /host/var/lib/kube-proxy/config.conf featureGates.WinDSR {{ enable_win_dsr }}
 {%- endif %}
-    yq w -i /host/var/lib/kube-proxy/config.conf featureGates.IPv6DualStack false
     yq w -i /host/var/lib/kube-proxy/config.conf mode "kernelspace"
 
   run.ps1: |
