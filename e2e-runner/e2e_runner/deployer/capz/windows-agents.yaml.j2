@@ -40,12 +40,17 @@ spec:
       sshPublicKey: {{ azure_ssh_public_key_b64 }}
       vmSize: {{ win_minion_size }}
       image:
+{%- if win_minion_image_type == "shared-image-gallery" %}
         sharedGallery:
           gallery: {{ win_minion_image_gallery }}
           subscriptionID: {{ azure_subscription_id }}
           resourceGroup: {{ win_minion_image_rg }}
           name: {{ win_minion_image_definition }}
           version: {{ win_minion_image_version }}
+{%- endif %}
+{%- if win_minion_image_type == "managed-image" %}
+        id: {{ win_minion_image_id }}
+{%- endif %}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
 kind: KubeadmConfigTemplate

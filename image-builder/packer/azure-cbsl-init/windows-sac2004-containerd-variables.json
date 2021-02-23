@@ -4,12 +4,6 @@
   "image_sku": "datacenter-core-2004-with-containers-smalldisk-g2",
   "location": "westeurope",
   "vm_size": "Standard_D2s_v3",
-
-  "resource_group_name": "adtv-capz-win",
-  "container_runtime": "containerd",
-
-  "sig_name": "capz_gallery",
-  "sig_image_name": "ws-2004-containerd-cbsl-init",
-  "sig_image_version": "2021.02.19",
-  "sig_image_replication_regions": "westeurope,eastus2,westus2,southcentralus"
+  "image_name": "ws-2004-containerd-cbsl-init",
+  "container_runtime": "containerd"
 }

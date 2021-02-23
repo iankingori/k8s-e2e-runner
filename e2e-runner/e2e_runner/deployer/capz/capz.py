@@ -59,12 +59,9 @@ class CAPZProvisioner(base.Deployer):
 
         self.win_minion_count = opts.win_minion_count
         self.win_minion_size = opts.win_minion_size
-        parsed = self._parse_win_minion_image_gallery(
-            opts.win_minion_gallery_image)
-        self.win_minion_image_rg = parsed["resource_group"]
-        self.win_minion_image_gallery = parsed["gallery_name"]
-        self.win_minion_image_definition = parsed["image_definition"]
-        self.win_minion_image_version = parsed["image_version"]
+        self.win_minion_image_type = opts.win_minion_image_type
+        self.win_minion_gallery_image = opts.win_minion_gallery_image
+        self.win_minion_image_id = opts.win_minion_image_id
 
         self.bootstrap_vm_name = "k8s-bootstrap"
         self.bootstrap_vm_nic_name = "k8s-bootstrap-nic"
@@ -364,8 +361,8 @@ class CAPZProvisioner(base.Deployer):
             addresses.append(node_addresses[0])
         return addresses
 
-    def _parse_win_minion_image_gallery(self, win_minion_gallery_image):
-        split = win_minion_gallery_image.split(":")
+    def _parse_win_minion_image_gallery(self):
+        split = self.win_minion_gallery_image.split(":")
         if len(split) != 4:
             err_msg = ("Incorrect format for the --win-minion-image-gallery "
                        "parameter")
@@ -913,10 +910,7 @@ class CAPZProvisioner(base.Deployer):
             "master_vm_size": self.master_vm_size,
             "win_minion_count": self.win_minion_count,
             "win_minion_size": self.win_minion_size,
-            "win_minion_image_rg": self.win_minion_image_rg,
-            "win_minion_image_gallery": self.win_minion_image_gallery,
-            "win_minion_image_definition": self.win_minion_image_definition,
-            "win_minion_image_version": self.win_minion_image_version,
+            "win_minion_image_type": self.win_minion_image_type,
             "bootstrap_vm_address": bootstrap_vm_address,
             "ci_version": self.ci_version,
             "flannel_mode": self.flannel_mode,
@@ -926,6 +920,15 @@ class CAPZProvisioner(base.Deployer):
             "containerd_bins": "containerdbins" in self.bins_built,
             "containerd_shim_bins": "containerdshim" in self.bins_built,
         }
+
+        if self.win_minion_image_type == constants.SHARED_IMAGE_GALLERY_TYPE:
+            parsed = self._parse_win_minion_image_gallery()
+            context["win_minion_image_rg"] = parsed["resource_group"]
+            context["win_minion_image_gallery"] = parsed["gallery_name"]
+            context["win_minion_image_definition"] = parsed["image_definition"]
+            context["win_minion_image_version"] = parsed["image_version"]
+        elif self.win_minion_image_type == constants.MANAGED_IMAGE_TYPE:
+            context["win_minion_image_id"] = self.win_minion_image_id
 
         self.logging.info("Create CAPZ cluster")
         output_file = "/tmp/capz-cluster.yaml"

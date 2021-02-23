@@ -29,6 +29,8 @@ The current scripts support the following K8s Windows workers configurations:
     export AZURE_CLIENT_ID="<CLIENT_ID>"
     export AZURE_CLIENT_SECRET="<CLIENT_SECRET>"
 
+    export RESOURCE_GROUP_NAME="<TARGET_RESOURCE_GROUP_NAME>"
+
     export ACR_NAME="<ACR_NAME>"
     export ACR_USER_NAME="<ACR_USER_NAME>"
     export ACR_USER_PASSWORD="<ACR_USER_PASSWORD>"
@@ -65,4 +67,19 @@ The current scripts support the following K8s Windows workers configurations:
     packer build -var-file=windows-ltsc2019-docker-variables.json windows.json
     ```
 
-    When the `packer build` finishes, the image will be published to the Azure shared image gallery given in the variables file.
+    When the `packer build` finishes, the resulted Azure managed image is ready to be used.
+
+4. (Optional) Publish the managed image into a shared gallery, in case you want it to be used into multiple regions:
+
+    ```
+    IMAGE_ID="/subscriptions/<subscription ID>/resourceGroups/myResourceGroup/providers/Microsoft.Compute/images/myImage"
+
+    az sig image-version create \
+        --resource-group adtv-capz-win \
+        --gallery-name capz_gallery \
+        --gallery-image-definition ws-ltsc2019-containerd-cbsl-init \
+        --gallery-image-version 2021.02.19 \
+        --managed-image $IMAGE_ID \
+        --target-regions westeurope eastus2 westus2 southcentralus \
+        --replica-count 1
+    ```
