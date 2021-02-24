@@ -3,6 +3,9 @@ WINDOWS_ADMIN_USER = "azureuser"
 
 DEFAULT_KUBERNETES_VERSION = "v1.20.4"
 
+SHARED_IMAGE_GALLERY_TYPE = "shared-image-gallery"
+MANAGED_IMAGE_TYPE = "managed-image"
+
 FLANNEL_MODE_OVERLAY = "overlay"
 FLANNEL_MODE_L2BRIDGE = "host-gw"
 

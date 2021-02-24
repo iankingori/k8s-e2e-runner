@@ -130,6 +130,15 @@ class RunCI(Command):
                        help="Number of Windows minions for the deployment.")
         p.add_argument("--win-minion-size", default="Standard_D2s_v3",
                        help="Size of Windows minions.")
+        p.add_argument("--win-minion-image-type", type=str,
+                       default=constants.SHARED_IMAGE_GALLERY_TYPE,
+                       choices=[constants.SHARED_IMAGE_GALLERY_TYPE,
+                                constants.MANAGED_IMAGE_TYPE],
+                       help="The type of image used to provision Windows "
+                       "agents.")
+        p.add_argument("--win-minion-image-id",
+                       help="The Azure managed image to be used for the "
+                       "Windows agents.")
         p.add_argument("--win-minion-gallery-image",
                        help="The Windows minion shared gallery. The "
                        "parameter shall be given as: "
