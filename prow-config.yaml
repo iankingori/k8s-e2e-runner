@@ -46,6 +46,7 @@ data:
           secretKeyRef:
             key: AZURE_STORAGE_ACCOUNT_KEY
             name: prod-azcreds
+
     - labels:
         preset-service-account: "true"
       env:
@@ -62,6 +63,7 @@ data:
       - name: service-account
         mountPath: /etc/google
         readOnly: true
+
     - labels:
         preset-ssh-key: "true"
       env:
@@ -78,6 +80,7 @@ data:
       - name: ssh
         mountPath: /etc/ssh
         readOnly: true
+
     - labels:
         preset-kube-backup: "true"
       env:
@@ -99,17 +102,23 @@ data:
         secret:
           defaultMode: 0400
           secretName: ssh-key-default
+      volumeMounts:
+      - name: ssh
+        mountPath: /etc/ssh
+        readOnly: true
+
+    - labels:
+        preset-kubeconfig: "true"
+      volumes:
       - name: kubeconfig
         secret:
           defaultMode: 0400
           secretName: kubeconfig
       volumeMounts:
-      - name: ssh
-        mountPath: /etc/ssh
-        readOnly: true
       - name: kubeconfig
         mountPath: /root/.kube
         readOnly: true
+
     - labels:
         preset-windows-private-registry-cred: "true"
       env:
@@ -132,6 +141,7 @@ data:
       labels:
         preset-prod-azure-account: "true"
         preset-kube-backup: "true"
+        preset-kubeconfig: "true"
       spec:
         containers:
         - image: e2eteam/kube-backup:latest
@@ -146,6 +156,7 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
+        preset-kubeconfig: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -182,6 +193,7 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
+        preset-kubeconfig: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -218,6 +230,7 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
+        preset-kubeconfig: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -256,6 +269,7 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
+        preset-kubeconfig: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -294,6 +308,7 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
+        preset-kubeconfig: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -332,6 +347,7 @@ data:
         preset-ssh-key: "true"
         preset-prod-azure-account: "true"
         preset-service-account: "true"
+        preset-kubeconfig: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -371,6 +387,7 @@ data:
         preset-prod-azure-account: "true"
         preset-service-account: "true"
         preset-windows-private-registry-cred: "true"
+        preset-kubeconfig: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest
@@ -410,6 +427,7 @@ data:
         preset-prod-azure-account: "true"
         preset-service-account: "true"
         preset-windows-private-registry-cred: "true"
+        preset-kubeconfig: "true"
       spec:
         containers:
         - image: e2eteam/k8s-e2e-runner:latest

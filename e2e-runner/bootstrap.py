@@ -98,6 +98,8 @@ def get_ci_paths(local_base_path, remote_base_path):
         "remote_latest_build": os.path.join(remote_job_path,
                                             "latest-build.txt"),
         "latest_build": os.path.join("/tmp", "latest-build.txt"),
+        "pod_info": os.path.join(local_base_path, "podinfo.json"),
+        "remote_pod_info": os.path.join(remote_build_path, "podinfo.json"),
     }
     return paths
 
@@ -136,6 +138,25 @@ def create_finished(path, success=True, meta=None):
     }
     with open(path, "w") as f:
         json.dump(data, f)
+
+
+def create_pod_info(local_path):
+    output = sh.kubectl('get', 'prowjob', os.environ.get('PROW_JOB_ID'),
+                        '-o', 'json')
+    prowjob = json.loads(output.stdout)
+    output = sh.kubectl('get', 'pod', prowjob['status']['pod_name'],
+                        '-n', prowjob['spec']['namespace'],
+                        '-o', 'json')
+    pod = json.loads(output.stdout)
+    pod_info = {
+        'pod': {
+            'metadata': pod['metadata'],
+            'spec': pod['spec'],
+            'status': pod['status'],
+        }
+    }
+    with open(local_path, 'w') as f:
+        f.write(json.dumps(pod_info, sort_keys=True, indent=4))
 
 
 def main():
@@ -183,8 +204,11 @@ def main():
         success = False
     finally:
         create_finished(ci_paths["finished"], success)
+        create_pod_info(ci_paths["pod_info"])
+
         upload_file(ci_paths["finished"], ci_paths["remote_finished"])
         upload_file(ci_paths["build_log"], ci_paths["remote_build_log"])
+        upload_file(ci_paths["pod_info"], ci_paths["remote_pod_info"])
         upload_artifacts(ci_paths["artifacts"],
                          ci_paths["remote_artifacts_path"])
         upload_file(ci_paths["latest_build"], ci_paths["remote_latest_build"])
