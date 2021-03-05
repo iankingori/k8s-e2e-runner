@@ -140,12 +140,10 @@ class CAPZProvisioner(base.Deployer):
         return os.path.join(self.remote_go_path,
                             "src", "github.com", "kubernetes", "test-infra")
 
-    def remote_containerd_shim_path(self, fromVendor=False):
-        if fromVendor:
-            path_prefix = os.path.join(self.remote_containerd_path, "vendor")
-        else:
-            path_prefix = os.path.join(self.remote_go_path, "src")
-        return os.path.join(path_prefix, "github.com", "Microsoft", "hcsshim")
+    @property
+    def remote_containerd_shim_path(self):
+        return os.path.join(self.remote_go_path,
+                            "src", "github.com", "Microsoft", "hcsshim")
 
     def up(self):
         self._setup_capz_components()

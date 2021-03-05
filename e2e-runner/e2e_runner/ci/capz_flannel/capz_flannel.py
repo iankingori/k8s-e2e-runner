@@ -623,32 +623,18 @@ class CapzFlannelCI(base.CI):
         self.deployer.run_cmd_on_bootstrap_vm(script)
 
     def _build_containerd_shim(self):
-        fromVendor = False
-        if self.opts.containerd_shim_repo is None:
-            fromVendor = True
-
-        remote_containerd_shim_path = \
-            self.deployer.remote_containerd_shim_path(fromVendor)
-
-        if fromVendor:
-            self.deployer.run_cmd_on_bootstrap_vm(
-                cmd=["go get github.com/LK4D4/vndr"])
-
-            self.deployer.run_cmd_on_bootstrap_vm(
-                cmd=[("{}/bin/vndr -whitelist "
-                      "hcsshim github.com/Microsoft/hcsshim").format(
-                          self.deployer.remote_go_path)],
-                cwd=self.deployer.remote_containerd_path)
-        else:
-            self.deployer.remote_clone_git_repo(
-                self.opts.containerd_shim_repo,
-                self.opts.containerd_shim_branch, remote_containerd_shim_path)
+        remote_containerd_shim_path = self.deployer.remote_containerd_shim_path
+        self.deployer.remote_clone_git_repo(
+            self.opts.containerd_shim_repo,
+            self.opts.containerd_shim_branch, remote_containerd_shim_path)
 
         self.logging.info("Building containerd shim")
-        cmd = ["GOOS=windows go build -o {0} {1}".format(
-            constants.CONTAINERD_SHIM_BIN, constants.CONTAINERD_SHIM_DIR)]
+        build_cmd = ("GOOS=windows GO111MODULE=on "
+                     "go build -mod=vendor -o {0} {1}".format(
+                         constants.CONTAINERD_SHIM_BIN,
+                         constants.CONTAINERD_SHIM_DIR))
         self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=cmd, cwd=remote_containerd_shim_path)
+            cmd=[build_cmd], cwd=remote_containerd_shim_path)
 
         self.logging.info("Copying binaries to remote artifacts directory")
         artifacts_containerd_bin_dir = os.path.join(
