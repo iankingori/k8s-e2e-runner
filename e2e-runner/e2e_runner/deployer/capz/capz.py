@@ -122,11 +122,6 @@ class CAPZProvisioner(base.Deployer):
 
     @property
     def remote_containerd_path(self):
-        return os.path.join(
-            self.remote_go_path, "src", "github.com", "containerd", "cri")
-
-    @property
-    def remote_ctr_path(self):
         return os.path.join(self.remote_go_path,
                             "src", "github.com", "containerd", "containerd")
 

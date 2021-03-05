@@ -58,15 +58,11 @@ class RunCI(Command):
         p.add_argument('--k8s-branch', default='master')
 
         p.add_argument('--containerd-repo',
-                       default='https://github.com/containerd/cri')
+                       default='https://github.com/containerd/containerd')
         p.add_argument('--containerd-branch', default='master')
 
         p.add_argument('--containerd-shim-repo', default=None)
         p.add_argument('--containerd-shim-branch', default='master')
-
-        p.add_argument('--ctr-repo',
-                       default='https://github.com/containerd/containerd')
-        p.add_argument('--ctr-branch', default='master')
 
         p.add_argument('--sdn-repo', default='https://github.com/'
                        'microsoft/windows-container-networking')
