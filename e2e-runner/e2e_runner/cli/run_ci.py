@@ -58,15 +58,12 @@ class RunCI(Command):
         p.add_argument('--k8s-branch', default='master')
 
         p.add_argument('--containerd-repo',
-                       default='https://github.com/containerd/cri')
+                       default='https://github.com/containerd/containerd')
         p.add_argument('--containerd-branch', default='master')
 
-        p.add_argument('--containerd-shim-repo', default=None)
+        p.add_argument('--containerd-shim-repo',
+                       default='https://github.com/microsoft/hcsshim')
         p.add_argument('--containerd-shim-branch', default='master')
-
-        p.add_argument('--ctr-repo',
-                       default='https://github.com/containerd/containerd')
-        p.add_argument('--ctr-branch', default='master')
 
         p.add_argument('--sdn-repo', default='https://github.com/'
                        'microsoft/windows-container-networking')
@@ -153,15 +150,6 @@ class RunCI(Command):
         ci = factory.get_ci(args.ci)(args)
 
         try:
-            if args.build is not None:
-                vendoring_ctrdshim = ("containerdshim" in args.build and
-                                      args.containerd_shim_repo is None)
-                if vendoring_ctrdshim and "containerdbins" not in args.build:
-                    err_msg = ("Building containerdshim from vendoring repo "
-                               "without building containerd is not supported")
-                    self.logging.error(err_msg)
-                    raise Exception(err_msg)
-
             if args.build is not None:
                 ci.build(args.build)
 

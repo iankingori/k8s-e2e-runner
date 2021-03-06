@@ -182,7 +182,7 @@ data:
             - "--win-minion-count=2"
             - "--enable-win-dsr=True"
             - "--container-runtime=docker"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.02.23"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:latest"
             - "--cluster-name=capzflannel-l2br-$(BUILD_ID)"
 
     - cron: "0 3/12 * * *"
@@ -219,7 +219,7 @@ data:
             - "--win-minion-count=2"
             - "--enable-win-dsr=True"
             - "--container-runtime=docker"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.02.23"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:latest"
             - "--cluster-name=capzflannel-ovrl-$(BUILD_ID)"
 
     - cron: "0 6/12 * * *"
@@ -258,7 +258,7 @@ data:
             - "--win-minion-count=2"
             - "--enable-win-dsr=True"
             - "--container-runtime=containerd"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.02.23"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:latest"
             - "--cluster-name=capzctrd-$(BUILD_ID)"
 
     - cron: "0 9/12 * * *"
@@ -297,7 +297,7 @@ data:
             - "--win-minion-count=2"
             - "--enable-win-dsr=True"
             - "--container-runtime=containerd"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.02.23"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:latest"
             - "--cluster-name=capzctrd-$(BUILD_ID)"
 
     - cron: "0 2 * * *"
@@ -336,7 +336,7 @@ data:
             - "--enable-win-dsr=True"
             - "--container-runtime=containerd"
             - "--base-container-image-tag=1909"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.02.23"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:latest"
             - "--cluster-name=capzctrd1909-$(BUILD_ID)"
 
     - cron: "0 8 * * *"
@@ -375,7 +375,7 @@ data:
             - "--enable-win-dsr=True"
             - "--container-runtime=containerd"
             - "--base-container-image-tag=1909"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.02.23"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:latest"
             - "--cluster-name=capzctrd1909-$(BUILD_ID)"
 
     - cron: "0 14 * * *"
@@ -415,7 +415,7 @@ data:
             - "--enable-win-dsr=True"
             - "--container-runtime=containerd"
             - "--base-container-image-tag=2004"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.02.23"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:latest"
             - "--cluster-name=capzctrd2004-$(BUILD_ID)"
 
     - cron: "0 20 * * *"
@@ -455,5 +455,5 @@ data:
             - "--enable-win-dsr=True"
             - "--container-runtime=containerd"
             - "--base-container-image-tag=2004"
-            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.02.23"
+            - "--win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:latest"
             - "--cluster-name=capzctrd2004-$(BUILD_ID)"

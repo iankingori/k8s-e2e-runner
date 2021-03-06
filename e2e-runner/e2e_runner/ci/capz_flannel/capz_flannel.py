@@ -582,14 +582,11 @@ class CapzFlannelCI(base.CI):
         self.deployer.run_cmd_on_bootstrap_vm(script)
 
     def _build_containerd_binaries(self):
+        # Clone the git repositories
         remote_containerd_path = self.deployer.remote_containerd_path
         self.deployer.remote_clone_git_repo(
             self.opts.containerd_repo, self.opts.containerd_branch,
             remote_containerd_path)
-
-        remote_ctr_path = self.deployer.remote_ctr_path
-        self.deployer.remote_clone_git_repo(
-            self.opts.ctr_repo, self.opts.ctr_branch, remote_ctr_path)
 
         remote_cri_tools_path = os.path.join(
             self.deployer.remote_go_path,
@@ -598,18 +595,16 @@ class CapzFlannelCI(base.CI):
             self.opts.cri_tools_repo, self.opts.cri_tools_branch,
             remote_cri_tools_path)
 
-        self.logging.info("Building containerd with cri plugin")
+        # Build the binaries
+        self.logging.info("Building containerd binaries")
         self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=["GOOS=windows make"], cwd=remote_containerd_path)
-
-        self.logging.info("Building ctr")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=["GOOS=windows make bin/ctr.exe"], cwd=remote_ctr_path)
+            cmd=["GOOS=windows make binaries"], cwd=remote_containerd_path)
 
         self.logging.info("Building crictl")
         self.deployer.run_cmd_on_bootstrap_vm(
             cmd=["GOOS=windows make crictl"], cwd=remote_cri_tools_path)
 
+        # Copy the binaries to the artifacts directory
         self.logging.info("Copying binaries to remote artifacts directory")
         artifacts_containerd_bin_dir = os.path.join(
             self.deployer.remote_artifacts_dir, "containerd/bin")
@@ -617,13 +612,8 @@ class CapzFlannelCI(base.CI):
 
         containerd_bins = os.path.join(remote_containerd_path,
                                        constants.CONTAINERD_BINS_LOCATION)
-        script.append("cp {0}/containerd.exe {1}".format(
+        script.append("cp {0}/* {1}".format(
             containerd_bins, artifacts_containerd_bin_dir))
-
-        ctr_bin = os.path.join(remote_ctr_path,
-                               constants.CONTAINERD_CTR_LOCATION)
-        script.append("cp {0} {1}".format(
-            ctr_bin, artifacts_containerd_bin_dir))
 
         crictl_bin = os.path.join(
             remote_cri_tools_path, "build/bin/crictl.exe")
@@ -633,32 +623,18 @@ class CapzFlannelCI(base.CI):
         self.deployer.run_cmd_on_bootstrap_vm(script)
 
     def _build_containerd_shim(self):
-        fromVendor = False
-        if self.opts.containerd_shim_repo is None:
-            fromVendor = True
-
-        remote_containerd_shim_path = \
-            self.deployer.remote_containerd_shim_path(fromVendor)
-
-        if fromVendor:
-            self.deployer.run_cmd_on_bootstrap_vm(
-                cmd=["go get github.com/LK4D4/vndr"])
-
-            self.deployer.run_cmd_on_bootstrap_vm(
-                cmd=[("{}/bin/vndr -whitelist "
-                      "hcsshim github.com/Microsoft/hcsshim").format(
-                          self.deployer.remote_go_path)],
-                cwd=self.deployer.remote_containerd_path)
-        else:
-            self.deployer.remote_clone_git_repo(
-                self.opts.containerd_shim_repo,
-                self.opts.containerd_shim_branch, remote_containerd_shim_path)
+        remote_containerd_shim_path = self.deployer.remote_containerd_shim_path
+        self.deployer.remote_clone_git_repo(
+            self.opts.containerd_shim_repo,
+            self.opts.containerd_shim_branch, remote_containerd_shim_path)
 
         self.logging.info("Building containerd shim")
-        cmd = ["GOOS=windows go build -o {0} {1}".format(
-            constants.CONTAINERD_SHIM_BIN, constants.CONTAINERD_SHIM_DIR)]
+        build_cmd = ("GOOS=windows GO111MODULE=on "
+                     "go build -mod=vendor -o {0} {1}".format(
+                         constants.CONTAINERD_SHIM_BIN,
+                         constants.CONTAINERD_SHIM_DIR))
         self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=cmd, cwd=remote_containerd_shim_path)
+            cmd=[build_cmd], cwd=remote_containerd_shim_path)
 
         self.logging.info("Copying binaries to remote artifacts directory")
         artifacts_containerd_bin_dir = os.path.join(

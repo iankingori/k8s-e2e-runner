@@ -32,7 +32,7 @@ retrycmd_if_failure 5 10 5m sudo apt-get install -y \
 
 sudo systemctl start snapd
 
-retrycmd_if_failure 5 10 5m sudo snap install go --classic
+retrycmd_if_failure 5 10 5m sudo snap install go --channel=1.16/stable --classic
 
 retrycmd_if_failure 5 10 5m sudo apt-get install -y \
   apt-transport-https ca-certificates gnupg-agent software-properties-common
