@@ -19,7 +19,6 @@ $cmd = ("C:\k\kubelet.exe $global:KubeletArgs " +
         "--resolv-conf=`"`" " +
         "--log-dir=/var/log/kubelet " +
         "--logtostderr=false " +
-        "--feature-gates=`"IPv6DualStack=false`" " +
         "--image-pull-progress-deadline=20m")
 
 Invoke-Expression $cmd
