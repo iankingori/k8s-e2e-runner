@@ -1,7 +1,7 @@
 AZURE_LOCATIONS = ["eastus2", "westeurope", "westus2", "southcentralus"]
 WINDOWS_ADMIN_USER = "azureuser"
 
-DEFAULT_KUBERNETES_VERSION = "v1.20.4"
+DEFAULT_KUBERNETES_VERSION = "v1.20.5"
 
 SHARED_IMAGE_GALLERY_TYPE = "shared-image-gallery"
 MANAGED_IMAGE_TYPE = "managed-image"
