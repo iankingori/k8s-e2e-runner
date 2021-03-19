@@ -79,6 +79,7 @@ function Start-ContainerImagesPull {
 }
 
 
+Start-EnvironmentValidation
 Install-NSSM
 Install-CNI
 Install-Containerd
