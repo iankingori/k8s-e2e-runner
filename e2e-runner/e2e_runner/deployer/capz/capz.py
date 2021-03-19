@@ -171,6 +171,30 @@ class CAPZProvisioner(base.Deployer):
     def reclaim(self):
         self._setup_capz_kubeconfig()
 
+    def add_win_agents_kubelet_args(self, kubelet_args):
+        extra_kubelet_args = ' '.join(kubelet_args)
+        self.logging.info(
+            "Adding the following extra args to the Windows agents "
+            "kubelets: %s", extra_kubelet_args)
+        kubeadm_flags_env_file = '/var/lib/kubelet/kubeadm-flags.env'
+        local_kubeadm_flags_env_file = '/tmp/kubeadm-flags.env'
+        for win_address in self.windows_private_addresses:
+            self.download_from_k8s_node(
+                kubeadm_flags_env_file,
+                local_kubeadm_flags_env_file,
+                win_address)
+            with open(local_kubeadm_flags_env_file, 'r') as f:
+                flags = f.read().strip('KUBELET_KUBEADM_ARGS="\n')
+            flags += ' {}'.format(extra_kubelet_args)
+            kubeadm_flags_env = 'KUBELET_KUBEADM_ARGS="{}"\n'.format(flags)
+            with open(local_kubeadm_flags_env_file, 'w') as f:
+                f.write(kubeadm_flags_env)
+            self.upload_to_k8s_node(
+                local_kubeadm_flags_env_file,
+                kubeadm_flags_env_file,
+                win_address)
+            self.run_cmd_on_k8s_node('nssm restart kubelet', win_address)
+
     def setup_ssh_config(self):
         ssh_dir = os.path.join(os.environ["HOME"], ".ssh")
         os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
