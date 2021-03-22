@@ -1,0 +1,92 @@
+plank:
+  default_decoration_configs:
+    "*":
+      timeout: 6h
+      grace_period: 15m
+      gcs_configuration:
+        bucket: gs://k8s-ovn
+        path_strategy: explicit
+        default_org: kubernetes
+        default_repo: kubernetes
+      gcs_credentials_secret: service-account
+      skip_cloning: true
+      utility_images:
+        clonerefs: gcr.io/k8s-prow/clonerefs:v20210319-2181a9e7d7
+        entrypoint: gcr.io/k8s-prow/entrypoint:v20210319-2181a9e7d7
+        initupload: gcr.io/k8s-prow/initupload:v20210319-2181a9e7d7
+        sidecar: gcr.io/k8s-prow/sidecar:v20210319-2181a9e7d7
+
+sinker:
+  max_prowjob_age: 48h
+  max_pod_age: 48h
+  terminated_pod_ttl: 30m
+
+prowjob_namespace: default
+pod_namespace: test-pods
+log_level: debug
+
+presets:
+- labels:
+    preset-prod-azure-account: "true"
+  env:
+  - name: AZURE_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        key: AZURE_CLIENT_ID
+        name: prod-azcreds
+  - name: AZURE_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        key: AZURE_CLIENT_SECRET
+        name: prod-azcreds
+  - name: AZURE_SUB_ID
+    valueFrom:
+      secretKeyRef:
+        key: AZURE_SUB_ID
+        name: prod-azcreds
+  - name: AZURE_TENANT_ID
+    valueFrom:
+      secretKeyRef:
+        key: AZURE_TENANT_ID
+        name: prod-azcreds
+  - name: AZURE_STORAGE_ACCOUNT
+    valueFrom:
+      secretKeyRef:
+        key: AZURE_STORAGE_ACCOUNT
+        name: prod-azcreds
+  - name: AZURE_STORAGE_ACCOUNT_KEY
+    valueFrom:
+      secretKeyRef:
+        key: AZURE_STORAGE_ACCOUNT_KEY
+        name: prod-azcreds
+
+- labels:
+    preset-ssh-key: "true"
+  env:
+  - name: SSH_KEY
+    value: /etc/ssh/id_rsa
+  - name: SSH_KEY_PUB
+    value: /etc/ssh/id_rsa.pub
+  volumes:
+  - name: ssh
+    secret:
+      defaultMode: 0400
+      secretName: ssh-key-default
+  volumeMounts:
+  - name: ssh
+    mountPath: /etc/ssh
+    readOnly: true
+
+- labels:
+    preset-windows-private-registry-cred: "true"
+  env:
+  - name: DOCKER_CONFIG_FILE
+    value: /etc/docker-cred/config.json
+  volumes:
+  - name: windows-private-registry-cred
+    secret:
+      secretName: windows-private-registry-docker-config
+  volumeMounts:
+  - name: windows-private-registry-cred
+    mountPath: /etc/docker-cred/
+    readOnly: true
