@@ -19,8 +19,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows
         - --build=k8sbins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -50,8 +50,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows
         - --build=k8sbins
         - capz_flannel
         - --flannel-mode=overlay
@@ -81,8 +81,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=k8sbins
         - --build=containerdbins
         - --build=containerdshim
@@ -114,8 +114,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=k8sbins
         - --build=containerdbins
         - --build=containerdshim
@@ -147,8 +147,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-stable.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
         - --k8s-branch=v1.20.5
         - capz_flannel
@@ -180,8 +180,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-stable.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
         - --k8s-branch=v1.20.5
         - capz_flannel
@@ -214,8 +214,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-2004
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-stable.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
         - --k8s-branch=v1.20.5
         - capz_flannel
@@ -248,8 +248,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-2004
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-stable.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
         - --k8s-branch=v1.20.5
         - capz_flannel
@@ -281,8 +281,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows
         - --build=k8sbins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -312,8 +312,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows
         - --build=k8sbins
         - capz_flannel
         - --flannel-mode=overlay
@@ -343,8 +343,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-stable.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
         - --k8s-branch=v1.20.5
         - capz_flannel
@@ -375,8 +375,8 @@ periodics:
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-stable.yaml
-        - --test-focus-regex='\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption'
-        - --test-skip-regex='Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows'
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
+        - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
         - --k8s-branch=v1.20.5
         - capz_flannel
