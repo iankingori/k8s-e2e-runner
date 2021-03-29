@@ -1,0 +1,80 @@
+{{- if .Values.ingressRoute.enabled -}}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: default
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: deck
+  namespace: default
+spec:
+  entryPoints:
+  - web
+  routes:
+  - kind: Rule
+    match: Host(`{{ .Values.ingressRoute.hostname }}`)
+    services:
+    - name: deck
+      port: 80
+    middlewares:
+      - name: https-redirect
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: deck-secure
+  namespace: default
+spec:
+  entryPoints:
+  - websecure
+  routes:
+  - kind: Rule
+    match: Host(`{{ .Values.ingressRoute.hostname }}`)
+    services:
+    - name: deck
+      port: 80
+  tls:
+    certResolver: le
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: hook
+  namespace: default
+spec:
+  entryPoints:
+  - web
+  routes:
+  - kind: Rule
+    match: Host(`{{ .Values.ingressRoute.hostname }}`) && PathPrefix(`/hook`)
+    services:
+    - name: hook
+      port: 8888
+    middlewares:
+      - name: https-redirect
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: hook-secure
+  namespace: default
+spec:
+  entryPoints:
+  - websecure
+  routes:
+  - kind: Rule
+    match: Host(`{{ .Values.ingressRoute.hostname }}`) && PathPrefix(`/hook`)
+    services:
+    - name: hook
+      port: 8888
+  tls:
+    certResolver: le
+{{- end }}
