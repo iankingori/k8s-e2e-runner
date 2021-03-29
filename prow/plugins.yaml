@@ -1,1 +1,17 @@
-# TODO: Add 'updateconfig' prow config.
+---
+plugins:
+  e2e-win/k8s-e2e-runner:
+    plugins:
+      - config-updater
+
+config_updater:
+  maps:
+    prow/config.yaml:
+      name: config
+
+    prow/plugins.yaml:
+      name: plugins
+
+    prow/jobs/*.yaml:
+      name: job-config
+      gzip: true
