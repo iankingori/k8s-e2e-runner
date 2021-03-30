@@ -1,4 +1,16 @@
 periodics:
+- name: kube-backup
+  interval: 24h
+  always_run: true
+  labels:
+    preset-prod-azure-account: "true"
+    preset-kube-backup: "true"
+    preset-kubeconfig: "true"
+  spec:
+    containers:
+    - image: e2eteam/kube-backup:latest
+      imagePullPolicy: Always
+
 - name: ci-kubernetes-e2e-flannel-l2bridge-master-windows
   cron: "0 0/12 * * *"
   always_run: true
