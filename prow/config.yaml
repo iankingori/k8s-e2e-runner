@@ -90,3 +90,41 @@ presets:
   - name: windows-private-registry-cred
     mountPath: /etc/docker-cred/
     readOnly: true
+
+- labels:
+    preset-kube-backup: "true"
+  env:
+  - name: BACKUP_KEEP_DAYS
+    value: "90"
+  - name: BACKUP_CONFIGMAPS
+    value: "config,plugins,job-config"
+  - name: BACKUP_SECRETS
+    value: "default/hmac-token,default/oauth-token,test-pods/azcreds,test-pods/prod-azcreds,test-pods/service-account,test-pods/ssh-key-default,test-pods/aks-azure-cred,test-pods/aks-azure-cred-upstream,test-pods/aks-azure-ssh,test-pods/aks-azure-storage,test-pods/aks-docker-pass,test-pods/aks-service-account,test-pods/aks-ssh-key-secret,test-pods/kubeconfig"
+  - name: ENCRYPTION_KEY
+    value: /etc/ssh/id_rsa.pub
+  - name: AZURE_STORAGE_CONTAINER_PROW_BKP
+    valueFrom:
+      secretKeyRef:
+        key: AZURE_STORAGE_CONTAINER_PROW_BKP
+        name: prod-azcreds
+  volumes:
+  - name: ssh
+    secret:
+      defaultMode: 0400
+      secretName: ssh-key-default
+  volumeMounts:
+  - name: ssh
+    mountPath: /etc/ssh
+    readOnly: true
+
+- labels:
+    preset-kubeconfig: "true"
+  volumes:
+  - name: kubeconfig
+    secret:
+      defaultMode: 0400
+      secretName: kubeconfig
+  volumeMounts:
+  - name: kubeconfig
+    mountPath: /root/.kube
+    readOnly: true
