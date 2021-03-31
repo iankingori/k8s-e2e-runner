@@ -31,7 +31,8 @@ from e2e_runner import (
 class CAPZProvisioner(base.Deployer):
     def __init__(self, opts, container_runtime="docker",
                  flannel_mode=constants.FLANNEL_MODE_OVERLAY,
-                 kubernetes_version=constants.DEFAULT_KUBERNETES_VERSION):
+                 kubernetes_version=constants.DEFAULT_KUBERNETES_VERSION,
+                 resource_group_tags={}):
         super(CAPZProvisioner, self).__init__()
 
         self.e2e_runner_dir = str(Path(__file__).parents[2])
@@ -56,6 +57,7 @@ class CAPZProvisioner(base.Deployer):
         self.control_plane_subnet_cidr_block = \
             opts.control_plane_subnet_cidr_block
         self.node_subnet_cidr_block = opts.node_subnet_cidr_block
+        self.resource_group_tags = resource_group_tags
 
         self.win_minion_count = opts.win_minion_count
         self.win_minion_size = opts.win_minion_size
@@ -657,9 +659,13 @@ class CAPZProvisioner(base.Deployer):
 
     def _create_resource_group(self):
         self.logging.info("Creating Azure resource group")
+        resource_group_params = {
+            'location': self.azure_location,
+            'tags': self.resource_group_tags,
+        }
         self.resource_mgmt_client.resource_groups.create_or_update(
             self.cluster_name,
-            {'location': self.azure_location})
+            resource_group_params)
 
         sleep_time = 5
         max_wait = 600  # Maximum 10 mins wait time

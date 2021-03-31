@@ -3,6 +3,7 @@ import os
 import subprocess
 import time
 
+from datetime import datetime
 from distutils.util import strtobool
 
 import sh
@@ -36,7 +37,22 @@ class CapzFlannelCI(base.CI):
             opts,
             flannel_mode=self.opts.flannel_mode,
             container_runtime=self.opts.container_runtime,
-            kubernetes_version=self.kubernetes_version)
+            kubernetes_version=self.kubernetes_version,
+            resource_group_tags=self.resource_group_tags)
+
+    @property
+    def resource_group_tags(self):
+        tags = {
+            'creationTimestamp': datetime.utcnow().isoformat(),
+            'ciName': 'k8s-sig-win-networking-prow-flannel-e2e',
+        }
+        build_id = os.environ.get('BUILD_ID')
+        if build_id:
+            tags['buildID'] = build_id
+        job_name = os.environ.get('JOB_NAME')
+        if job_name:
+            tags['jobName'] = job_name
+        return tags
 
     def build(self, bins_to_build):
         builder_mapping = {
