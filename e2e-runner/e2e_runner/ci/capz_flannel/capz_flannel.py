@@ -70,6 +70,9 @@ class CapzFlannelCI(base.CI):
             builder_mapping.get(bins, noop_func)()
             self.deployer.bins_built.append(bins)
 
+        self._setup_e2e_tests()
+        self._setup_kubetest()
+
     def up(self):
         start = time.time()
 
@@ -104,6 +107,19 @@ class CapzFlannelCI(base.CI):
         self.logging.info("The cluster provisioned in %.2f minutes",
                           (time.time() - start) / 60.0)
         self._validate_cluster()
+
+        # The below deployer properties are cached, after their first call.
+        # However, they use the management CAPI cluster (from the bootstrap
+        # VM) to find the appropriate values when first called. Therefore,
+        # make sure we cache them before cleaning up the bootstrap VM.
+        self.deployer.master_public_address
+        self.deployer.master_public_port
+        self.deployer.linux_private_addresses
+        self.deployer.windows_private_addresses
+
+        # Once the CAPZ cluster is deployed, we don't need the
+        # bootstrap VM anymore.
+        self.deployer.cleanup_bootstrap_vm()
 
     def down(self):
         self.deployer.down()
@@ -179,6 +195,27 @@ class CapzFlannelCI(base.CI):
             '{}/bin/kubetest'.format(self.deployer.remote_go_path),
             '{}/kubetest'.format(local_gopath_bin_path))
 
+    def _setup_e2e_tests(self):
+        self.logging.info("Setup Kubernetes E2E tests")
+        self.deployer.remote_clone_git_repo(
+            self.opts.k8s_repo, self.opts.k8s_branch,
+            self.deployer.remote_k8s_path)
+
+        self.logging.info("Building tests")
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=['make WHAT="test/e2e/e2e.test"'],
+            cwd=self.deployer.remote_k8s_path)
+
+        self.logging.info("Building ginkgo")
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=['make WHAT="vendor/github.com/onsi/ginkgo/ginkgo"'],
+            cwd=self.deployer.remote_k8s_path)
+
+        local_k8s_path = utils.get_k8s_folder()
+        os.makedirs(local_k8s_path, exist_ok=True)
+        self.deployer.download_from_bootstrap_vm(
+            "{}/".format(self.deployer.remote_k8s_path), local_k8s_path)
+
     def _prepare_tests(self):
         kubectl = utils.get_kubectl_bin()
         out, _ = utils.run_shell_cmd([
@@ -200,27 +237,6 @@ class CapzFlannelCI(base.CI):
         self.logging.info("Downloading repo-list")
         utils.download_file(self.opts.repo_list, "/tmp/repo-list")
         os.environ["KUBE_TEST_REPO_LIST"] = "/tmp/repo-list"
-
-        self.deployer.remote_clone_git_repo(
-            self.opts.k8s_repo, self.opts.k8s_branch,
-            self.deployer.remote_k8s_path)
-
-        self.logging.info("Building tests")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=['make WHAT="test/e2e/e2e.test"'],
-            cwd=self.deployer.remote_k8s_path)
-
-        self.logging.info("Building ginkgo")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=['make WHAT="vendor/github.com/onsi/ginkgo/ginkgo"'],
-            cwd=self.deployer.remote_k8s_path)
-
-        local_k8s_path = utils.get_k8s_folder()
-        os.makedirs(local_k8s_path, exist_ok=True)
-        self.deployer.download_from_bootstrap_vm(
-            "{}/".format(self.deployer.remote_k8s_path), local_k8s_path)
-
-        self._setup_kubetest()
 
     def _install_patches(self):
         if len(self.patches) == 0:

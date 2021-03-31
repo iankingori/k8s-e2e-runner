@@ -350,6 +350,24 @@ class CAPZProvisioner(base.Deployer):
 
         return False
 
+    def cleanup_bootstrap_vm(self):
+        self.logging.info("Cleaning up the bootstrap VM")
+
+        self.logging.info("Deleting bootstrap VM")
+        utils.retry_on_error()(
+            self.compute_client.virtual_machines.begin_delete)(
+                self.cluster_name, self.bootstrap_vm_name).wait()
+
+        self.logging.info("Deleting bootstrap VM NIC")
+        utils.retry_on_error()(
+            self.network_client.network_interfaces.begin_delete)(
+                self.cluster_name, self.bootstrap_vm_nic_name).wait()
+
+        self.logging.info("Deleting bootstrap VM public IP")
+        utils.retry_on_error()(
+            self.network_client.public_ip_addresses.begin_delete)(
+                self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
+
     def _get_agents_private_addresses(self, operating_system):
         output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "get", "machine", "--kubeconfig",
@@ -639,24 +657,6 @@ class CAPZProvisioner(base.Deployer):
 
         return vm
 
-    def _cleanup_bootstrap_vm(self):
-        self.logging.info("Cleaning up the bootstrap VM")
-
-        self.logging.info("Deleting bootstrap VM")
-        utils.retry_on_error()(
-            self.compute_client.virtual_machines.begin_delete)(
-                self.cluster_name, self.bootstrap_vm_name).wait()
-
-        self.logging.info("Deleting bootstrap VM NIC")
-        utils.retry_on_error()(
-            self.network_client.network_interfaces.begin_delete)(
-                self.cluster_name, self.bootstrap_vm_nic_name).wait()
-
-        self.logging.info("Deleting bootstrap VM public IP")
-        utils.retry_on_error()(
-            self.network_client.public_ip_addresses.begin_delete)(
-                self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
-
     def _create_resource_group(self):
         self.logging.info("Creating Azure resource group")
         resource_group_params = {
@@ -814,7 +814,7 @@ class CAPZProvisioner(base.Deployer):
         try:
             self._create_bootstrap_vm()
         except Exception as ex:
-            self._cleanup_bootstrap_vm()
+            self.cleanup_bootstrap_vm()
             raise ex
 
     def _wait_for_windows_agents(self, check_nodes_ready=True, timeout=3600):
