@@ -53,6 +53,7 @@ def get_azure_credentials():
     for env_var in required_env_vars:
         if not os.environ.get(env_var):
             raise ValueError("Env variable %s is not set" % env_var)
+        os.environ[env_var] = os.environ.get(env_var).strip()
     credentials = ClientSecretCredential(
         client_id=os.environ["AZURE_CLIENT_ID"],
         client_secret=os.environ["AZURE_CLIENT_SECRET"],
