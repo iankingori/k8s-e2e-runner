@@ -26,7 +26,7 @@ class CapzFlannelCI(base.CI):
 
         self.logging = logger.get_logger(__name__)
         self.kubectl = utils.get_kubectl_bin()
-        self.patches = None
+        self.patches = []
 
         self.kubernetes_version = self.opts.kubernetes_version
         self.ci_version = self.kubernetes_version
@@ -87,8 +87,7 @@ class CapzFlannelCI(base.CI):
         ]
         self.deployer.add_win_agents_kubelet_args(extra_kubelet_args)
 
-        if self.patches is not None:
-            self._install_patches()
+        self._install_patches()
 
         if "k8sbins" in self.deployer.bins_built:
             self._upload_kube_proxy_windows_bin()
@@ -159,7 +158,7 @@ class CapzFlannelCI(base.CI):
                     "Cannot collect logs from node %s. Exception details: "
                     "%s. Skipping", node_address, ex)
 
-    def set_patches(self, patches=None):
+    def set_patches(self, patches=[]):
         self.patches = patches
 
     def _setup_kubetest(self):
@@ -224,7 +223,11 @@ class CapzFlannelCI(base.CI):
         self._setup_kubetest()
 
     def _install_patches(self):
+        if len(self.patches) == 0:
+            return
+
         self.logging.info("Installing patches")
+        patches = " ".join(self.patches)
 
         local_script_path = os.path.join(
             self.e2e_runner_dir, "scripts/install-patches.ps1")
@@ -235,7 +238,7 @@ class CapzFlannelCI(base.CI):
 
         async_cmds = []
         for node_address in node_addresses:
-            cmd_args = [node_address, "/tmp/install-patches.ps1", self.patches]
+            cmd_args = [node_address, "/tmp/install-patches.ps1", patches]
             log_prefix = "%s : " % node_address
             async_cmds.append(
                 utils.run_async_shell_cmd(sh.ssh, cmd_args, log_prefix))

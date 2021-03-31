@@ -18,13 +18,13 @@ class RunCI(Command):
 
         p.add_argument('--artifacts-directory', default='/tmp/ci_artifacts',
                        help='Local path to place all the artifacts.')
-        p.add_argument('--install-patch', action='append',
+        p.add_argument('--install-patch', action='append', default=[],
                        help='URLs of KBs to install on Windows nodes.')
         p.add_argument('--up', type=utils.str2bool, default=False,
                        help='Deploy test cluster.')
         p.add_argument('--down', type=utils.str2bool, default=False,
                        help='Destroy cluster on finish.')
-        p.add_argument('--build', action='append',
+        p.add_argument('--build', action='append', default=[],
                        choices=['k8sbins', 'containerdbins',
                                 'containerdshim', 'sdncnibins'],
                        help='Binaries to build.')
@@ -154,11 +154,8 @@ class RunCI(Command):
         ci = factory.get_ci(args.ci)(args)
 
         try:
-            if args.build is not None:
-                ci.build(args.build)
-
-            if args.install_patch is not None:
-                ci.set_patches(" ".join(args.install_patch))
+            ci.build(args.build)
+            ci.set_patches(args.install_patch)
 
             if args.up is True:
                 ci.up()
