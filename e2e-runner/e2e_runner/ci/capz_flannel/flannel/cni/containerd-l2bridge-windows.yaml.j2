@@ -1,7 +1,7 @@
   cni-conf.json: |
     {
       "name": "cbr0",
-      "cniVersion": "0.2.0",
+      "cniVersion": "0.3.0",
       "type": "flannel",
       "capabilities": {
         "dns": true
@@ -11,14 +11,6 @@
         "master": "eth0",
         "optionalFlags": {
           "forceBridgeGateway": true
-        },
-        "dns": {
-          "nameservers": [
-            "10.96.0.10"
-          ],
-          "search": [
-            "svc.cluster.local"
-          ]
         },
         "AdditionalArgs": [
           {
