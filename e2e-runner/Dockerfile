@@ -38,6 +38,7 @@ ENV KUBECTL_PATH "/usr/local/bin/kubectl"
 
 WORKDIR /workspace
 
+ADD cleanup-azure-rgs.py /workspace
 ADD entrypoint.sh /workspace
 RUN chmod +x entrypoint.sh
 

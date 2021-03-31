@@ -1061,7 +1061,7 @@ class CAPZProvisioner(base.Deployer):
         ])
 
     def _set_azure_variables(self):
-        # Define the requried env variables list
+        # Define the required env variables list
         required_env_vars = [
             "AZURE_SUBSCRIPTION_ID", "AZURE_TENANT_ID", "AZURE_CLIENT_ID",
             "AZURE_CLIENT_SECRET", "AZURE_SSH_PUBLIC_KEY"
