@@ -31,7 +31,8 @@ from e2e_runner import (
 class CAPZProvisioner(base.Deployer):
     def __init__(self, opts, container_runtime="docker",
                  flannel_mode=constants.FLANNEL_MODE_OVERLAY,
-                 kubernetes_version=constants.DEFAULT_KUBERNETES_VERSION):
+                 kubernetes_version=constants.DEFAULT_KUBERNETES_VERSION,
+                 resource_group_tags={}):
         super(CAPZProvisioner, self).__init__()
 
         self.e2e_runner_dir = str(Path(__file__).parents[2])
@@ -56,6 +57,7 @@ class CAPZProvisioner(base.Deployer):
         self.control_plane_subnet_cidr_block = \
             opts.control_plane_subnet_cidr_block
         self.node_subnet_cidr_block = opts.node_subnet_cidr_block
+        self.resource_group_tags = resource_group_tags
 
         self.win_minion_count = opts.win_minion_count
         self.win_minion_size = opts.win_minion_size
@@ -348,6 +350,24 @@ class CAPZProvisioner(base.Deployer):
 
         return False
 
+    def cleanup_bootstrap_vm(self):
+        self.logging.info("Cleaning up the bootstrap VM")
+
+        self.logging.info("Deleting bootstrap VM")
+        utils.retry_on_error()(
+            self.compute_client.virtual_machines.begin_delete)(
+                self.cluster_name, self.bootstrap_vm_name).wait()
+
+        self.logging.info("Deleting bootstrap VM NIC")
+        utils.retry_on_error()(
+            self.network_client.network_interfaces.begin_delete)(
+                self.cluster_name, self.bootstrap_vm_nic_name).wait()
+
+        self.logging.info("Deleting bootstrap VM public IP")
+        utils.retry_on_error()(
+            self.network_client.public_ip_addresses.begin_delete)(
+                self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
+
     def _get_agents_private_addresses(self, operating_system):
         output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "get", "machine", "--kubeconfig",
@@ -637,29 +657,15 @@ class CAPZProvisioner(base.Deployer):
 
         return vm
 
-    def _cleanup_bootstrap_vm(self):
-        self.logging.info("Cleaning up the bootstrap VM")
-
-        self.logging.info("Deleting bootstrap VM")
-        utils.retry_on_error()(
-            self.compute_client.virtual_machines.begin_delete)(
-                self.cluster_name, self.bootstrap_vm_name).wait()
-
-        self.logging.info("Deleting bootstrap VM NIC")
-        utils.retry_on_error()(
-            self.network_client.network_interfaces.begin_delete)(
-                self.cluster_name, self.bootstrap_vm_nic_name).wait()
-
-        self.logging.info("Deleting bootstrap VM public IP")
-        utils.retry_on_error()(
-            self.network_client.public_ip_addresses.begin_delete)(
-                self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
-
     def _create_resource_group(self):
         self.logging.info("Creating Azure resource group")
+        resource_group_params = {
+            'location': self.azure_location,
+            'tags': self.resource_group_tags,
+        }
         self.resource_mgmt_client.resource_groups.create_or_update(
             self.cluster_name,
-            {'location': self.azure_location})
+            resource_group_params)
 
         sleep_time = 5
         max_wait = 600  # Maximum 10 mins wait time
@@ -808,7 +814,7 @@ class CAPZProvisioner(base.Deployer):
         try:
             self._create_bootstrap_vm()
         except Exception as ex:
-            self._cleanup_bootstrap_vm()
+            self.cleanup_bootstrap_vm()
             raise ex
 
     def _wait_for_windows_agents(self, check_nodes_ready=True, timeout=3600):
@@ -1055,7 +1061,7 @@ class CAPZProvisioner(base.Deployer):
         ])
 
     def _set_azure_variables(self):
-        # Define the requried env variables list
+        # Define the required env variables list
         required_env_vars = [
             "AZURE_SUBSCRIPTION_ID", "AZURE_TENANT_ID", "AZURE_CLIENT_ID",
             "AZURE_CLIENT_SECRET", "AZURE_SSH_PUBLIC_KEY"

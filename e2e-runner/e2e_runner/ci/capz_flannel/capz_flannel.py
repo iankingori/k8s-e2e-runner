@@ -3,6 +3,7 @@ import os
 import subprocess
 import time
 
+from datetime import datetime
 from distutils.util import strtobool
 
 import sh
@@ -25,7 +26,7 @@ class CapzFlannelCI(base.CI):
 
         self.logging = logger.get_logger(__name__)
         self.kubectl = utils.get_kubectl_bin()
-        self.patches = None
+        self.patches = []
 
         self.kubernetes_version = self.opts.kubernetes_version
         self.ci_version = self.kubernetes_version
@@ -36,7 +37,22 @@ class CapzFlannelCI(base.CI):
             opts,
             flannel_mode=self.opts.flannel_mode,
             container_runtime=self.opts.container_runtime,
-            kubernetes_version=self.kubernetes_version)
+            kubernetes_version=self.kubernetes_version,
+            resource_group_tags=self.resource_group_tags)
+
+    @property
+    def resource_group_tags(self):
+        tags = {
+            'creationTimestamp': datetime.utcnow().isoformat(),
+            'ciName': 'k8s-sig-win-networking-prow-flannel-e2e',
+        }
+        build_id = os.environ.get('BUILD_ID')
+        if build_id:
+            tags['buildID'] = build_id
+        job_name = os.environ.get('JOB_NAME')
+        if job_name:
+            tags['jobName'] = job_name
+        return tags
 
     def build(self, bins_to_build):
         builder_mapping = {
@@ -53,6 +69,9 @@ class CapzFlannelCI(base.CI):
             self.logging.info("Building %s binaries", bins)
             builder_mapping.get(bins, noop_func)()
             self.deployer.bins_built.append(bins)
+
+        self._setup_e2e_tests()
+        self._setup_kubetest()
 
     def up(self):
         start = time.time()
@@ -71,8 +90,7 @@ class CapzFlannelCI(base.CI):
         ]
         self.deployer.add_win_agents_kubelet_args(extra_kubelet_args)
 
-        if self.patches is not None:
-            self._install_patches()
+        self._install_patches()
 
         if "k8sbins" in self.deployer.bins_built:
             self._upload_kube_proxy_windows_bin()
@@ -89,6 +107,19 @@ class CapzFlannelCI(base.CI):
         self.logging.info("The cluster provisioned in %.2f minutes",
                           (time.time() - start) / 60.0)
         self._validate_cluster()
+
+        # The below deployer properties are cached, after their first call.
+        # However, they use the management CAPI cluster (from the bootstrap
+        # VM) to find the appropriate values when first called. Therefore,
+        # make sure we cache them before cleaning up the bootstrap VM.
+        self.deployer.master_public_address
+        self.deployer.master_public_port
+        self.deployer.linux_private_addresses
+        self.deployer.windows_private_addresses
+
+        # Once the CAPZ cluster is deployed, we don't need the
+        # bootstrap VM anymore.
+        self.deployer.cleanup_bootstrap_vm()
 
     def down(self):
         self.deployer.down()
@@ -143,7 +174,7 @@ class CapzFlannelCI(base.CI):
                     "Cannot collect logs from node %s. Exception details: "
                     "%s. Skipping", node_address, ex)
 
-    def set_patches(self, patches=None):
+    def set_patches(self, patches=[]):
         self.patches = patches
 
     def _setup_kubetest(self):
@@ -163,6 +194,27 @@ class CapzFlannelCI(base.CI):
         self.deployer.download_from_bootstrap_vm(
             '{}/bin/kubetest'.format(self.deployer.remote_go_path),
             '{}/kubetest'.format(local_gopath_bin_path))
+
+    def _setup_e2e_tests(self):
+        self.logging.info("Setup Kubernetes E2E tests")
+        self.deployer.remote_clone_git_repo(
+            self.opts.k8s_repo, self.opts.k8s_branch,
+            self.deployer.remote_k8s_path)
+
+        self.logging.info("Building tests")
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=['make WHAT="test/e2e/e2e.test"'],
+            cwd=self.deployer.remote_k8s_path)
+
+        self.logging.info("Building ginkgo")
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=['make WHAT="vendor/github.com/onsi/ginkgo/ginkgo"'],
+            cwd=self.deployer.remote_k8s_path)
+
+        local_k8s_path = utils.get_k8s_folder()
+        os.makedirs(local_k8s_path, exist_ok=True)
+        self.deployer.download_from_bootstrap_vm(
+            "{}/".format(self.deployer.remote_k8s_path), local_k8s_path)
 
     def _prepare_tests(self):
         kubectl = utils.get_kubectl_bin()
@@ -186,29 +238,12 @@ class CapzFlannelCI(base.CI):
         utils.download_file(self.opts.repo_list, "/tmp/repo-list")
         os.environ["KUBE_TEST_REPO_LIST"] = "/tmp/repo-list"
 
-        self.deployer.remote_clone_git_repo(
-            self.opts.k8s_repo, self.opts.k8s_branch,
-            self.deployer.remote_k8s_path)
-
-        self.logging.info("Building tests")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=['make WHAT="test/e2e/e2e.test"'],
-            cwd=self.deployer.remote_k8s_path)
-
-        self.logging.info("Building ginkgo")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=['make WHAT="vendor/github.com/onsi/ginkgo/ginkgo"'],
-            cwd=self.deployer.remote_k8s_path)
-
-        local_k8s_path = utils.get_k8s_folder()
-        os.makedirs(local_k8s_path, exist_ok=True)
-        self.deployer.download_from_bootstrap_vm(
-            "{}/".format(self.deployer.remote_k8s_path), local_k8s_path)
-
-        self._setup_kubetest()
-
     def _install_patches(self):
+        if len(self.patches) == 0:
+            return
+
         self.logging.info("Installing patches")
+        patches = " ".join(self.patches)
 
         local_script_path = os.path.join(
             self.e2e_runner_dir, "scripts/install-patches.ps1")
@@ -219,7 +254,7 @@ class CapzFlannelCI(base.CI):
 
         async_cmds = []
         for node_address in node_addresses:
-            cmd_args = [node_address, "/tmp/install-patches.ps1", self.patches]
+            cmd_args = [node_address, "/tmp/install-patches.ps1", patches]
             log_prefix = "%s : " % node_address
             async_cmds.append(
                 utils.run_async_shell_cmd(sh.ssh, cmd_args, log_prefix))
