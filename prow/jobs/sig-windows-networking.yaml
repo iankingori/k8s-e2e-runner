@@ -16,6 +16,7 @@ periodics:
   always_run: true
   labels:
     preset-prod-azure-account: "true"
+    preset-kubeconfig: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 import logging
+import json
 import os
 
 from datetime import datetime
 
 import configargparse
+import sh
 
 from azure.identity import ClientSecretCredential
 from azure.mgmt.resource import ResourceManagementClient
@@ -30,6 +32,8 @@ def setup_logging():
 def parse_args():
     p = configargparse.get_argument_parser(
         name="Azure resource groups cleanup script.")
+    p.add("--dry-run", action="store_true",
+          help="Flag to be used when testing.")
     p.add("--filter-tag-name", type=str,
           default="ciName",
           help="The filter tag name used when listing the resource groups.")
@@ -62,6 +66,46 @@ def get_azure_credentials():
     return credentials, subscription_id
 
 
+def is_prowjob_finished(build_id):
+    if not build_id:
+        logger.warning("The resource group doesn't have the build id tag.")
+        return False
+    output = sh.kubectl('get', 'prowjob', '-o', 'json',
+                        '-l', 'prow.k8s.io/build-id={}'.format(build_id))
+    prowjob = json.loads(output.stdout)
+    state = prowjob['items'][0]['status'].get('state')
+    if state != 'pending':
+        logger.info("The prowjob is not running anymore.")
+        return True
+    return False
+
+
+def is_rg_older(creation_timestamp_tag, max_age_minutes):
+    if not creation_timestamp_tag:
+        logger.warning("The resource group doesn't have the creation "
+                       "timestamp tag.")
+        return False
+    creation_date = datetime.fromisoformat(creation_timestamp_tag)
+    now_date = datetime.fromisoformat(datetime.utcnow().isoformat())
+    age_minutes = (now_date - creation_date).seconds / 60
+    if age_minutes > max_age_minutes:
+        logger.info("Resource group is older than the max allowed age.")
+        return True
+    logger.info(
+        "Resource group age (%s minutes) is not bigger than "
+        "maximum allowed age (%s minutes).", age_minutes, max_age_minutes)
+    return False
+
+
+def delete_resource_group(client, rg_name, dry_run=False):
+    if not dry_run:
+        logger.info("Deleting the resource group %s.", rg_name)
+        client.resource_groups.begin_delete(rg_name)
+    else:
+        logger.info("Dry-run: The resource group %s would be deleted.",
+                    rg_name)
+
+
 def main():
     setup_logging()
     args = parse_args()[0]
@@ -75,24 +119,13 @@ def main():
     for rg in client.resource_groups.list(filter=filter):
         logger.info("Found resource group: %s.", rg.name)
 
-        creation_timestamp = rg.tags.get('creationTimestamp')
-        if not creation_timestamp:
-            logger.warning("The resource group doesn't have the creation "
-                           "timestamp tag. Skipping it.")
+        if is_prowjob_finished(rg.tags.get('buildID')):
+            delete_resource_group(client, rg.name, args.dry_run)
             continue
 
-        creation_date = datetime.fromisoformat(creation_timestamp)
-        now_date = datetime.fromisoformat(datetime.utcnow().isoformat())
-        age_minutes = (now_date - creation_date).seconds / 60
-
-        if age_minutes > args.max_age_minutes:
-            logger.info("Deleting the resource group.")
-            client.resource_groups.begin_delete(rg.name)
-        else:
-            logger.info(
-                "Resource group age (%s minutes) is not bigger than "
-                "maximum allowed age (%s minutes).", age_minutes,
-                args.max_age_minutes)
+        if is_rg_older(rg.tags.get('creationTimestamp'), args.max_age_minutes):
+            delete_resource_group(client, rg.name, args.dry_run)
+            continue
 
 
 if __name__ == "__main__":
