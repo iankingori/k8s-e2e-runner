@@ -11,22 +11,6 @@ periodics:
     - image: e2eteam/kube-backup:latest
       imagePullPolicy: Always
 
-- name: clean-azure-resource-groups
-  interval: 30m
-  always_run: true
-  labels:
-    preset-prod-azure-account: "true"
-    preset-kubeconfig: "true"
-  spec:
-    containers:
-    - image: e2eteam/k8s-e2e-runner:latest
-      imagePullPolicy: Always
-      command:
-        - /workspace/cleanup-azure-rgs.py
-      args:
-        # Cleanup resource groups older than 12h.
-        - --max-age-minutes=720
-
 - name: ci-kubernetes-e2e-flannel-l2bridge-master-windows
   cron: "0 0/12 * * *"
   always_run: true

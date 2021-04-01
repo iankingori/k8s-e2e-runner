@@ -1,0 +1,54 @@
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: cleanup-azure-rgs
+  namespace: test-pods
+spec:
+  schedule: "*/30 * * * *"
+  successfulJobsHistoryLimit: 48
+  failedJobsHistoryLimit: 48
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cleanup-azure-rgs
+            image: e2eteam/k8s-e2e-runner:latest
+            imagePullPolicy: Always
+            command:
+            - /workspace/cleanup-azure-rgs.py
+            args:
+            # Cleanup resource groups older than 12h.
+            - --max-age-minutes=720
+            env:
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  key: AZURE_CLIENT_ID
+                  name: prod-azcreds
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: AZURE_CLIENT_SECRET
+                  name: prod-azcreds
+            - name: AZURE_SUB_ID
+              valueFrom:
+                secretKeyRef:
+                  key: AZURE_SUB_ID
+                  name: prod-azcreds
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  key: AZURE_TENANT_ID
+                  name: prod-azcreds
+            volumeMounts:
+            - name: kubeconfig
+              mountPath: /root/.kube
+              readOnly: true
+          restartPolicy: Never
+          volumes:
+          - name: kubeconfig
+            secret:
+              defaultMode: 0400
+              secretName: kubeconfig
