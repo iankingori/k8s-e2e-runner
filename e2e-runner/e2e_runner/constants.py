@@ -18,5 +18,5 @@ CONTAINERD_BINS_LOCATION = "bin"
 CONTAINERD_SHIM_DIR = "./cmd/containerd-shim-runhcs-v1"
 CONTAINERD_SHIM_BIN = "containerd-shim-runhcs-v1.exe"
 
-CAPI_VERSION = "v0.3.13"
-CAPZ_PROVIDER_VERSION = "v0.4.11"
+CAPI_VERSION = "v0.3.15"
+CAPZ_PROVIDER_VERSION = "v0.4.13"
