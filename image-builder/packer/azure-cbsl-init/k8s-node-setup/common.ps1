@@ -143,7 +143,7 @@ function Install-Kubelet {
 
     Start-FileDownload "https://dl.k8s.io/$KubernetesVersion/bin/windows/amd64/kubelet.exe" "$KUBERNETES_DIR\kubelet.exe"
     Start-FileDownload "https://dl.k8s.io/$KubernetesVersion/bin/windows/amd64/kubeadm.exe" "$KUBERNETES_DIR\kubeadm.exe"
-    Start-FileDownload "https://github.com/rancher/wins/releases/download/v0.0.4/wins.exe" "$KUBERNETES_DIR\wins.exe"
+    Start-FileDownload "https://github.com/rancher/wins/releases/download/v0.1.0/wins.exe" "$KUBERNETES_DIR\wins.exe"
 
     Write-Output "Registering wins Windows service"
     wins.exe srv app run --register

@@ -17,8 +17,8 @@ data:
     mkdir -force /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount
 
     $cniJson = get-content /etc/kube-flannel-windows/cni-conf.json | ConvertFrom-Json
-    $serviceSubnet = yq r /etc/kubeadm-config/ClusterConfiguration networking.serviceSubnet
-    $podSubnet = yq r /etc/kubeadm-config/ClusterConfiguration networking.podSubnet
+    $serviceSubnet = yq eval '.networking.serviceSubnet' /etc/kubeadm-config/ClusterConfiguration
+    $podSubnet = yq eval '.networking.podSubnet' /etc/kubeadm-config/ClusterConfiguration
     $networkJson = wins cli net get | ConvertFrom-Json
 
 {%- if container_runtime == "containerd" and mode == "overlay" %}
