@@ -206,18 +206,3 @@ function Install-CNI {
     Start-FileDownload "https://capzwin.blob.core.windows.net/bin/sdnoverlay.exe" "$OPT_DIR\cni\bin\sdnoverlay.exe"
     Start-FileDownload "https://capzwin.blob.core.windows.net/bin/sdnbridge.exe" "$OPT_DIR\cni\bin\sdnbridge.exe"
 }
-
-function Start-EnvironmentValidation {
-    $requiredEnvVars = @(
-        "KUBERNETES_VERSION",
-        "ACR_NAME",
-        "ACR_USER_NAME",
-        "ACR_USER_PASSWORD"
-    )
-    foreach($envVar in $requiredEnvVars) {
-        $var = Get-Item "env:${envVar}" -ErrorAction SilentlyContinue
-        if(!$var) {
-            Throw "Required environment variable $envVar is not set."
-        }
-    }
-}

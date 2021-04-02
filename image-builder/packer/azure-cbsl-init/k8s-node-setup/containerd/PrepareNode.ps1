@@ -1,3 +1,13 @@
+Param(
+    [string]$KubernetesVersion="v1.20.5",
+    [Parameter(Mandatory=$true)]
+    [string]$AcrName,
+    [Parameter(Mandatory=$true)]
+    [string]$AcrUserName,
+    [Parameter(Mandatory=$true)]
+    [string]$AcrUserPassword
+)
+
 $ErrorActionPreference = "Stop"
 
 . "$PSScriptRoot\..\common.ps1"
@@ -65,12 +75,12 @@ function Start-ContainerImagesPull {
         (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
         "mcr.microsoft.com/windows/servercore:${windowsRelease}",
-        "${env:ACR_NAME}.azurecr.io/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
-        "${env:ACR_NAME}.azurecr.io/kube-proxy-windows:${env:KUBERNETES_VERSION}-windowsservercore-${windowsRelease}"
+        "${AcrName}.azurecr.io/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
+        "${AcrName}.azurecr.io/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
     )
     foreach($img in $images) {
         Start-ExecuteWithRetry {
-            ctr.exe -n k8s.io image pull -u "${env:ACR_USER_NAME}:${env:ACR_USER_PASSWORD}" $img
+            ctr.exe -n k8s.io image pull -u "${AcrUserName}:${AcrUserPassword}" $img
             if($LASTEXITCODE) {
                 Throw "Failed to pull image: $img"
             }
@@ -79,11 +89,10 @@ function Start-ContainerImagesPull {
 }
 
 
-Start-EnvironmentValidation
 Install-NSSM
 Install-CNI
 Install-Containerd
-Install-Kubelet -KubernetesVersion $env:KUBERNETES_VERSION `
+Install-Kubelet -KubernetesVersion $KubernetesVersion `
                 -StartKubeletScriptPath "$PSScriptRoot\StartKubelet.ps1" `
                 -ContainerRuntimeServiceName "containerd"
 Start-ContainerImagesPull

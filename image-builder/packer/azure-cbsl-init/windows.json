@@ -89,13 +89,9 @@
       "elevated_user": "packer",
       "elevated_password": "{{.WinRMPassword}}",
       "type": "powershell",
-      "environment_vars": [
-        "KUBERNETES_VERSION={{ user `kubernetes_version` }}",
-        "ACR_NAME={{ user `acr_name` }}",
-        "ACR_USER_NAME={{ user `acr_user_name` }}",
-        "ACR_USER_PASSWORD={{ user `acr_user_password` }}"
-      ],
-      "inline": ["C:\\k8s-node-setup\\{{ user `container_runtime` }}\\PrepareNode.ps1"]
+      "inline": [
+        "C:\\k8s-node-setup\\{{ user `container_runtime` }}\\PrepareNode.ps1 -KubernetesVersion {{ user `kubernetes_version` }} -AcrName {{ user `acr_name` }} -AcrUserName {{ user `acr_user_name` }} -AcrUserPassword {{ user `acr_user_password` }}"
+      ]
     },
     {
       "elevated_user": "packer",

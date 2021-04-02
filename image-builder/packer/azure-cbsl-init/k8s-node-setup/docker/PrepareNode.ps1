@@ -1,3 +1,13 @@
+Param(
+    [string]$KubernetesVersion="v1.20.5",
+    [Parameter(Mandatory=$true)]
+    [string]$AcrName,
+    [Parameter(Mandatory=$true)]
+    [string]$AcrUserName,
+    [Parameter(Mandatory=$true)]
+    [string]$AcrUserPassword
+)
+
 $ErrorActionPreference = "Stop"
 
 . "$PSScriptRoot\..\common.ps1"
@@ -16,12 +26,12 @@ function Start-ContainerImagesPull {
         (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
         "mcr.microsoft.com/windows/servercore:${windowsRelease}",
-        "${env:ACR_NAME}.azurecr.io/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
-        "${env:ACR_NAME}.azurecr.io/kube-proxy-windows:${env:KUBERNETES_VERSION}-windowsservercore-${windowsRelease}"
+        "${AcrName}.azurecr.io/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
+        "${AcrName}.azurecr.io/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
     )
-    docker login "${env:ACR_NAME}.azurecr.io" -u "${env:ACR_USER_NAME}" -p "${env:ACR_USER_PASSWORD}"
+    docker login "${AcrName}.azurecr.io" -u "${AcrName}" -p "${AcrUserPassword}"
     if($LASTEXITCODE) {
-        Throw "Failed to login to login to registry ${env:ACR_NAME}.azurecr.io"
+        Throw "Failed to login to login to registry ${AcrName}.azurecr.io"
     }
     foreach($img in $images) {
         Start-ExecuteWithRetry {
@@ -31,18 +41,17 @@ function Start-ContainerImagesPull {
             }
         }
     }
-    docker logout "${env:ACR_NAME}.azurecr.io"
+    docker logout "${AcrName}.azurecr.io"
     if($LASTEXITCODE) {
-        Throw "Failed to login from registry ${env:ACR_NAME}.azurecr.io"
+        Throw "Failed to login from registry ${AcrName}.azurecr.io"
     }
 }
 
 
-Start-EnvironmentValidation
 Install-NSSM
 Install-CNI
 Set-DockerConfig
-Install-Kubelet -KubernetesVersion $env:KUBERNETES_VERSION `
+Install-Kubelet -KubernetesVersion $KubernetesVersion `
                 -StartKubeletScriptPath "$PSScriptRoot\StartKubelet.ps1" `
                 -ContainerRuntimeServiceName "docker"
 Start-ContainerImagesPull
