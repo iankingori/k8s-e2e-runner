@@ -70,7 +70,7 @@ def is_prowjob_finished(build_id):
     if not build_id:
         logger.warning("The resource group doesn't have the build id tag.")
         return False
-    output = sh.kubectl('get', 'prowjob', '-o', 'json',
+    output = sh.kubectl('get', 'prowjob', '-n', 'default', '-o', 'json',
                         '-l', 'prow.k8s.io/build-id={}'.format(build_id))
     prowjob = json.loads(output.stdout)
     state = prowjob['items'][0]['status'].get('state')
@@ -99,10 +99,10 @@ def is_rg_older(creation_timestamp_tag, max_age_minutes):
 
 def delete_resource_group(client, rg_name, dry_run=False):
     if not dry_run:
-        logger.info("Deleting the resource group %s.", rg_name)
+        logger.info('Deleting the resource group "%s".', rg_name)
         client.resource_groups.begin_delete(rg_name)
     else:
-        logger.info("Dry-run: The resource group %s would be deleted.",
+        logger.info('Dry-run: The resource group "%s" would be deleted.',
                     rg_name)
 
 
@@ -115,9 +115,9 @@ def main():
 
     filter = "tagName eq '{}' and tagValue eq '{}'".format(
         args.filter_tag_name, args.filter_tag_value)
-    logger.info("Listing resource groups filtered by the given tag.")
+    logger.info("Listing Prow Azure resource groups.")
     for rg in client.resource_groups.list(filter=filter):
-        logger.info("Found resource group: %s.", rg.name)
+        logger.info('Found resource group "%s".', rg.name)
 
         if is_prowjob_finished(rg.tags.get('buildID')):
             delete_resource_group(client, rg.name, args.dry_run)
