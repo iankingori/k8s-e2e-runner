@@ -200,9 +200,6 @@ spec:
         args:
         - --ip-masq
         - --kube-subnet-mgr
-{%- if flannel_mode == "host-gw" %}
-        - --iface=eth1
-{%- endif %}
         resources:
           requests:
             cpu: "100m"

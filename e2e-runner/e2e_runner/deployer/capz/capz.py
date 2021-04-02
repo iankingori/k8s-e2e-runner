@@ -17,8 +17,12 @@ from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.network import models as net_models
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.compute import ComputeManagementClient
-from azure.mgmt.compute import models as compute_models
 from property_cached import cached_property
+from tenacity import (
+    Retrying,
+    stop_after_delay,
+    wait_exponential,
+)
 
 from e2e_runner import (
     base,
@@ -151,8 +155,6 @@ class CAPZProvisioner(base.Deployer):
         self._setup_capz_components()
         self._create_capz_cluster()
         self._wait_for_control_plane()
-        if self.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
-            self._connect_control_plane_to_node_subnet()
         self._setup_capz_kubeconfig()
 
     def down(self):
@@ -368,22 +370,69 @@ class CAPZProvisioner(base.Deployer):
             self.network_client.public_ip_addresses.begin_delete)(
                 self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
 
+    def connect_agents_to_controlplane_subnet(self):
+        self.logging.info("Connecting agents VMs to the control-plane subnet")
+        control_plane_subnet = utils.retry_on_error()(
+            self.network_client.subnets.get)(
+                self.cluster_name,
+                "{}-vnet".format(self.cluster_name),
+                "{}-controlplane-subnet".format(self.cluster_name))
+        subnet_id = control_plane_subnet.id
+        for vm in self._get_agents_vms():
+            self.logging.info("Connecting VM {}".format(vm.name))
+            self.logging.info("Shutting down VM")
+            utils.retry_on_error()(
+                self.compute_client.virtual_machines.begin_deallocate)(
+                    self.cluster_name, vm.name).wait()
+            self.logging.info("Updating VM NIC subnet")
+            nic_id = vm.network_profile.network_interfaces[0].id
+            vm_nic = self._get_vm_nic(nic_id)
+            nic_parameters = vm_nic.as_dict()
+            nic_model = net_models.NetworkInterface(**nic_parameters)
+            nic_model.ip_configurations[0]['subnet']['id'] = subnet_id
+            utils.retry_on_error()(
+                self.network_client.network_interfaces.begin_create_or_update)(
+                    self.cluster_name, vm_nic.name, nic_model).wait()
+            self.logging.info("Starting VM")
+            utils.retry_on_error()(
+                self.compute_client.virtual_machines.begin_start)(
+                    self.cluster_name, vm.name).wait()
+            self.logging.info("Updating the node routetable")
+            old_nic_address = vm_nic.ip_configurations[0].private_ip_address
+            route = self._get_vm_route(old_nic_address)
+            route_params = route.as_dict()
+            vm_nic = self._get_vm_nic(nic_id)  # Refresh NIC info
+            nic_address = vm_nic.ip_configurations[0].private_ip_address
+            route_params["next_hop_ip_address"] = nic_address
+            utils.retry_on_error()(
+                self.network_client.routes.begin_create_or_update)(
+                    self.cluster_name,
+                    "{}-node-routetable".format(self.cluster_name),
+                    route.name,
+                    route_params).wait()
+            self.logging.info(
+                "Waiting until VM address is refreshed in the CAPZ cluster")
+            for attempt in Retrying(
+                    stop=stop_after_delay(10 * 60),
+                    wait=wait_exponential(multiplier=3, min=2, max=10),
+                    reraise=True):
+                with attempt:
+                    addresses = self._get_agents_private_addresses("windows")
+                    assert nic_address in addresses
+
     def _get_agents_private_addresses(self, operating_system):
-        output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
-            self.kubectl, "get", "machine", "--kubeconfig",
-            self.mgmt_kubeconfig_path, "-o", "yaml"
-        ])
+        cmd = [
+            self.kubectl, "get", "nodes", "--kubeconfig",
+            self.capz_kubeconfig_path, "-o", "yaml"
+        ]
+        output, _ = utils.retry_on_error()(
+            utils.run_shell_cmd)(cmd, sensitive=True)
         addresses = []
         nodes = yaml.safe_load(output)
-        win_prefix = "{}-md-win".format(self.cluster_name)
         for node in nodes['items']:
-            node_name = node['metadata']['name']
-            if operating_system == "windows":
-                if not node_name.startswith(win_prefix):
-                    continue
-            if operating_system == "linux":
-                if node_name.startswith(win_prefix):
-                    continue
+            node_os = node['status']['nodeInfo']['operatingSystem']
+            if node_os != operating_system:
+                continue
             try:
                 node_addresses = [
                     n['address'] for n in node['status']['addresses']
@@ -422,88 +471,29 @@ class CAPZProvisioner(base.Deployer):
         return credentials, subscription_id
 
     @utils.retry_on_error()
-    def _get_control_plane_vm(self):
+    def _get_agents_vms(self):
         for vm in self.compute_client.virtual_machines.list(self.cluster_name):
-            if vm.name.startswith("%s-control-plane" % self.cluster_name):
-                return vm
-        return None
+            if vm.storage_profile.os_disk.os_type == 'Windows':
+                yield vm
 
     @utils.retry_on_error()
-    def _get_control_plane_route(self):
+    def _get_vm_nic(self, nic_id):
+        nics = self.network_client.network_interfaces.list(self.cluster_name)
+        for nic in nics:
+            if nic.id == nic_id:
+                return nic
+        raise Exception("The VM NIC was not found: {}".format(nic_id))
+
+    @utils.retry_on_error()
+    def _get_vm_route(self, ip_address):
         routes = self.network_client.routes.list(
             self.cluster_name,
             "{}-node-routetable".format(self.cluster_name))
         for route in routes:
-            is_control_plane_route = route.name.startswith(
-                "{}-control-plane".format(self.cluster_name))
-            if is_control_plane_route:
+            if route.next_hop_ip_address == ip_address:
                 return route
-        return None
-
-    def _connect_control_plane_to_node_subnet(self):
-        self.logging.info(
-            "Adding second NIC from node subnet to control plane")
-
-        control_plane_vm = self._get_control_plane_vm()
-        if not control_plane_vm:
-            raise Exception("The control plane VM was not found")
-
-        if len(control_plane_vm.network_profile.network_interfaces) > 1:
-            self.logging.info(
-                "The second NIC is already attached to the control plane")
-            return
-
-        nic_name = "%s-control-plane-node-nic" % self.cluster_name
-        node_subnet = utils.retry_on_error()(
-            self.network_client.subnets.get)(
-                self.cluster_name,
-                "%s-vnet" % self.cluster_name,
-                "%s-node-subnet" % self.cluster_name)
-        nic_parameters = {
-            "location": self.azure_location,
-            "ip_configurations": [{
-                "name": "%s-ipconfig" % nic_name,
-                "subnet": {"id": node_subnet.id}
-            }]
-        }
-        self.logging.info("Creating the second NIC")
-        nic = utils.retry_on_error()(
-            self.network_client.network_interfaces.begin_create_or_update)(
-                self.cluster_name, nic_name, nic_parameters).result()
-
-        self.logging.info("Deallocating the control plane VM")
-        utils.retry_on_error()(
-            self.compute_client.virtual_machines.begin_deallocate)(
-                self.cluster_name, control_plane_vm.name).wait()
-
-        self.logging.info("Attaching the second NIC to the control plane VM")
-        vm_parameters = control_plane_vm.as_dict()
-        vm_model = compute_models.VirtualMachine(**vm_parameters)
-        vm_model.network_profile["network_interfaces"].append(
-            {"id": nic.id, "primary": False})
-        utils.retry_on_error()(
-            self.compute_client.virtual_machines.begin_create_or_update)(
-                self.cluster_name, control_plane_vm.name, vm_model).wait()
-
-        self.logging.info("Starting the control plane VM")
-        utils.retry_on_error()(
-            self.compute_client.virtual_machines.begin_start)(
-                self.cluster_name, control_plane_vm.name).wait()
-        utils.wait_for_port_connectivity(self.master_public_address, 22)
-
-        self.logging.info("Updating the control plane route")
-        control_plane_route = self._get_control_plane_route()
-        if not control_plane_route:
-            raise Exception("The control plane route was not found")
-        route_params = control_plane_route.as_dict()
-        route_params["next_hop_ip_address"] = \
-            nic.ip_configurations[0].private_ip_address
-        utils.retry_on_error()(
-            self.network_client.routes.begin_create_or_update)(
-                self.cluster_name,
-                "{}-node-routetable".format(self.cluster_name),
-                control_plane_route.name,
-                route_params).wait()
+        raise Exception(
+            "The VM route with next_hop {} was not found".format(ip_address))
 
     def _wait_for_bootstrap_vm(self, timeout=900):
         self.logging.info("Waiting up to %.2f minutes for VM %s to provision",
