@@ -55,7 +55,8 @@ class RunCI(Command):
 
         p.add_argument('--k8s-repo',
                        default='https://github.com/kubernetes/kubernetes')
-        p.add_argument('--k8s-branch', default='master')
+        p.add_argument('--k8s-branch',
+                       default=constants.DEFAULT_KUBERNETES_VERSION)
 
         p.add_argument('--containerd-repo',
                        default='https://github.com/containerd/containerd')
