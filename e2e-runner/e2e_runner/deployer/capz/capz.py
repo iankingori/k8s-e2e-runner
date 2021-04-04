@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 import random
 import subprocess
@@ -21,7 +22,10 @@ from property_cached import cached_property
 from tenacity import (
     Retrying,
     stop_after_delay,
+    stop_after_attempt,
     wait_exponential,
+    retry_if_exception_type,
+    retry,
 )
 
 from e2e_runner import (
@@ -33,6 +37,11 @@ from e2e_runner import (
 
 
 class CAPZProvisioner(base.Deployer):
+    DOCKER_CNI_UNINITIALIZED_MSG = (
+        'runtime network not ready: NetworkReady=false '
+        'reason:NetworkPluginNotReady message:docker: '
+        'network plugin is not ready: cni config uninitialized')
+
     def __init__(self, opts, container_runtime="docker",
                  flannel_mode=constants.FLANNEL_MODE_OVERLAY,
                  kubernetes_version=constants.DEFAULT_KUBERNETES_VERSION,
@@ -256,9 +265,51 @@ class CAPZProvisioner(base.Deployer):
                     nic.name,
                     nic_parameters).result()
 
-    def wait_for_agents(self, check_nodes_ready=True, timeout=3600):
-        self._wait_for_windows_agents(check_nodes_ready=check_nodes_ready,
-                                      timeout=timeout)
+    def wait_for_agents(self, timeout=3600):
+        self.logging.info("Waiting up to %.2f minutes for CAPZ machines",
+                          timeout / 60.0)
+        ready_nodes = []
+        for attempt in Retrying(
+                stop=stop_after_delay(timeout),
+                wait=wait_exponential(multiplier=1, max=30),
+                retry=retry_if_exception_type(AssertionError),
+                reraise=True):
+            with attempt:
+                machines = self._get_mgmt_capz_machines_names()
+                for machine in machines:
+                    is_control_plane = machine.startswith(
+                        '{}-control-plane'.format(self.cluster_name))
+                    if is_control_plane:
+                        continue
+                    if self._get_mgmt_capz_machine_phase(machine) != "Running":
+                        continue
+                    node_name = self._get_mgmt_capz_machine_node(machine)
+                    if node_name not in self._get_capz_nodes():
+                        continue
+                    if self.container_runtime == "docker":
+                        # Kubernetes Docker agents don't have a default CNI
+                        # configured. Therefore the agents will not report
+                        # ready until a CNI is initialized.
+                        r = self._get_capz_node_ready_condition(node_name)
+                        if not r:
+                            continue
+                        if r['message'] == self.DOCKER_CNI_UNINITIALIZED_MSG:
+                            ready_nodes.append(node_name)
+                    else:
+                        if self._is_k8s_node_ready(node_name):
+                            ready_nodes.append(node_name)
+                assert len(ready_nodes) == self.win_minion_count
+        self.logging.info("All CAPZ agents are ready")
+        capz_nodes = self._get_capz_nodes()
+        self.logging.info("CAPZ nodes: %s", capz_nodes)
+        self.logging.info("Ready nodes: %s", ready_nodes)
+        # Cleanup nodes that are registered in the CAPZ cluster, but they
+        # are not within the 'ready_nodes' list. These are usually failed
+        # machines that were not properly cleaned up by CAPZ.
+        extra_nodes = list(set(self._get_capz_nodes()) - set(ready_nodes))
+        for node in extra_nodes:
+            logging.warning("Cleaning up CAPZ node %s", node)
+            self._delete_capz_node(node)
 
     def upload_to_bootstrap_vm(self, local_path, remote_path="www/"):
         self.logging.info("Uploading %s to bootstrap VM", local_path)
@@ -805,105 +856,117 @@ class CAPZProvisioner(base.Deployer):
             self.cleanup_bootstrap_vm()
             raise ex
 
-    def _wait_for_windows_agents(self, check_nodes_ready=True, timeout=3600):
-        self.logging.info("Waiting up to %.2f minutes for the Windows agents",
-                          timeout / 60.0)
+    @retry(stop=stop_after_attempt(5),
+           wait=wait_exponential(multiplier=1, max=60),
+           reraise=True)
+    def _get_mgmt_capz_machines_names(self):
+        cmd = [
+            self.kubectl, "get", "machine",
+            "--kubeconfig", self.mgmt_kubeconfig_path,
+            "--output=custom-columns=NAME:.metadata.name",
+            "--no-headers"
+        ]
+        output, _ = utils.run_shell_cmd(cmd, sensitive=True)
+        return output.decode().strip().split('\n')
 
-        sleep_time = 5
-        start = time.time()
-        while True:
-            elapsed = time.time() - start
-            if elapsed > timeout:
-                raise Exception("The Windows agents didn't become ready "
-                                "within %.2f minutes" % (timeout / 60.0))
+    @retry(stop=stop_after_attempt(5),
+           wait=wait_exponential(multiplier=1, max=60),
+           reraise=True)
+    def _get_capz_nodes(self):
+        cmd = [
+            self.kubectl, "get", "nodes",
+            "--kubeconfig", self.capz_kubeconfig_path,
+            "-l", "!node-role.kubernetes.io/control-plane",
+            "--output=custom-columns=NAME:.metadata.name",
+            "--no-headers"
+        ]
+        output, _ = utils.run_shell_cmd(cmd, sensitive=True)
+        return output.decode().strip().split('\n')
 
-            cmd = [
-                self.kubectl, "get", "machine", "--kubeconfig",
-                self.mgmt_kubeconfig_path,
-                "--output=custom-columns=NAME:.metadata.name", "--no-headers"
-            ]
-            output, _ = utils.retry_on_error()(
-                utils.run_shell_cmd)(cmd, sensitive=True)
-            machines = output.decode().strip().split('\n')
-            windows_machines = [
-                m for m in machines
-                if m.startswith("%s-md-win" % self.cluster_name)
-            ]
-            if len(windows_machines) == 0:
-                time.sleep(sleep_time)
-                continue
+    @retry(stop=stop_after_attempt(5),
+           wait=wait_exponential(multiplier=1, max=60),
+           reraise=True)
+    def _get_mgmt_capz_machine_phase(self, machine_name):
+        cmd = [
+            self.kubectl, "get", "machine",
+            "--kubeconfig", self.mgmt_kubeconfig_path,
+            "--output=custom-columns=READY:.status.phase",
+            "--no-headers", machine_name
+        ]
+        output, _ = utils.run_shell_cmd(cmd, sensitive=True)
+        return output.decode().strip()
 
-            all_ready = True
-            for windows_machine in windows_machines:
-                cmd = [
-                    self.kubectl, "get", "machine", "--kubeconfig",
-                    self.mgmt_kubeconfig_path,
-                    "--output=custom-columns=READY:.status.phase",
-                    "--no-headers", windows_machine
-                ]
-                output, _ = utils.retry_on_error()(
-                    utils.run_shell_cmd)(cmd, sensitive=True)
-                status_phase = output.decode().strip()
+    @retry(stop=stop_after_attempt(5),
+           wait=wait_exponential(multiplier=1, max=60),
+           reraise=True)
+    def _get_mgmt_capz_machine_node(self, machine_name):
+        cmd = [
+            self.kubectl, "get", "machine",
+            "--kubeconfig", self.mgmt_kubeconfig_path,
+            "--output=custom-columns=NODE_NAME:.status.nodeRef.name",
+            "--no-headers", machine_name
+        ]
+        output, _ = utils.run_shell_cmd(cmd, sensitive=True)
+        return output.decode().strip()
 
-                if status_phase != "Running":
-                    all_ready = False
-                    continue
+    @retry(stop=stop_after_attempt(5),
+           wait=wait_exponential(multiplier=1, max=60),
+           reraise=True)
+    def _delete_capz_node(self, node_name):
+        cmd = [
+            self.kubectl, "delete", "node",
+            "--kubeconfig", self.capz_kubeconfig_path,
+            node_name
+        ]
+        utils.run_shell_cmd(cmd, sensitive=True)
 
-                if not check_nodes_ready:
-                    continue
+    @retry(stop=stop_after_attempt(5),
+           wait=wait_exponential(multiplier=1, max=60),
+           reraise=True)
+    def _get_capz_node_status(self, node_name):
+        cmd = [
+            self.kubectl, "get", "node", "--output", "yaml",
+            "--kubeconfig", self.capz_kubeconfig_path,
+            node_name
+        ]
+        output, _ = utils.run_shell_cmd(cmd, sensitive=True)
+        node = yaml.safe_load(output.decode())
+        if "status" not in node:
+            return None
+        return node["status"]
 
-                cmd = [
-                    self.kubectl, "get", "machine", "--kubeconfig",
-                    self.mgmt_kubeconfig_path,
-                    "--output=custom-columns=NODE_NAME:.status.nodeRef.name",
-                    windows_machine, "--no-headers"
-                ]
-                output, _ = utils.retry_on_error()(
-                    utils.run_shell_cmd)(cmd, sensitive=True)
-                node_name = output.decode("ascii").strip()
+    def _get_capz_node_status_conditions(self, node_name,
+                                         condition_type="Ready"):
+        node_status = self._get_capz_node_status(node_name)
+        if not node_status:
+            return []
+        return [
+            c for c in node_status["conditions"] if c["type"] == condition_type
+        ]
 
-                all_ready = self._is_k8s_node_ready(node_name)
-
-            if all_ready:
-                self.logging.info("All the Windows agents are ready")
-                break
-
-            time.sleep(sleep_time)
+    def _get_capz_node_ready_condition(self, node_name):
+        ready_conditions = self._get_capz_node_status_conditions(
+            node_name, "Ready")
+        if len(ready_conditions) == 0:
+            return None
+        return ready_conditions[0]
 
     def _is_k8s_node_ready(self, node_name=None):
         if not node_name:
             self.logging.warning("Empty node_name parameter")
             return False
-
-        cmd = [
-            self.kubectl, "get", "--kubeconfig", self.capz_kubeconfig_path,
-            "node", "-o", "yaml", node_name
-        ]
-        output, _ = utils.retry_on_error()(
-            utils.run_shell_cmd)(cmd, sensitive=True)
-        node = yaml.safe_load(output.decode('ascii'))
-
-        if "status" not in node:
-            self.logging.info("Node %s didn't report status yet", node_name)
-            return False
-
-        ready_condition = [
-            c for c in node["status"]["conditions"] if c["type"] == "Ready"
-        ]
-        if len(ready_condition) == 0:
+        ready_condition = self._get_capz_node_ready_condition(node_name)
+        if not ready_condition:
             self.logging.info("Node %s didn't report ready condition yet",
                               node_name)
             return False
-
         try:
-            is_ready = strtobool(ready_condition[0]["status"])
+            is_ready = strtobool(ready_condition["status"])
         except ValueError:
             is_ready = False
-
         if not is_ready:
             self.logging.info("Node %s is not ready yet", node_name)
             return False
-
         return True
 
     def _create_capz_cluster(self):
