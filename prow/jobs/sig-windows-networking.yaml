@@ -27,7 +27,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.04.03
         - --cluster-name=capzflannel-l2br-$(BUILD_ID)
 
 - name: ci-kubernetes-e2e-flannel-overlay-master-windows
@@ -58,7 +58,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.04.03
         - --cluster-name=capzflannel-ovrl-$(BUILD_ID)
 
 - name: ci-kubernetes-e2e-sdnbridge-ctrd-master-windows
@@ -91,7 +91,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: ci-kubernetes-e2e-sdnoverlay-ctrd-master-windows
@@ -124,7 +124,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: containerd-windows-sac1909-sdnbridge
@@ -157,7 +157,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=1909
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd1909-$(BUILD_ID)
 
 - name: containerd-windows-sac1909-sdnoverlay
@@ -190,7 +190,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=1909
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd1909-$(BUILD_ID)
 
 - name: containerd-windows-sac2004-sdnbridge
@@ -224,7 +224,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=2004
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd2004-$(BUILD_ID)
 
 - name: containerd-windows-sac2004-sdnoverlay
@@ -258,7 +258,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=2004
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd2004-$(BUILD_ID)
 
 - name: ci-kubernetes-e2e-winbridge-docker-dsr-disabled-master-windows
@@ -289,7 +289,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=False
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.04.03
         - --cluster-name=capzdocker-ltsc2019-$(BUILD_ID)
 
 - name: ci-kubernetes-e2e-winoverlay-docker-dsr-disabled-master-windows
@@ -320,7 +320,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=False
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.04.03
         - --cluster-name=capzdocker-ltsc2019-$(BUILD_ID)
 
 - name: ci-kubernetes-e2e-sdnbridge-ctrd-stable-windows
@@ -352,7 +352,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: ci-kubernetes-e2e-sdnoverlay-ctrd-stable-windows
@@ -384,5 +384,5 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.03.19
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
