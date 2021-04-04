@@ -12,6 +12,6 @@ RUN mkdir -force C:\k\flannel; \
     curl.exe -LO https://github.com/coreos/flannel/releases/download/${env:flannelVersion}/flanneld.exe
 
 RUN mkdir C:\utils; \
-    curl.exe -Lo C:\utils\wins.exe https://github.com/rancher/wins/releases/download/v0.0.4/wins.exe; \
-    curl.exe -Lo C:\utils\yq.exe https://github.com/mikefarah/yq/releases/download/2.4.1/yq_windows_amd64.exe; \
+    curl.exe -Lo C:\utils\wins.exe https://github.com/rancher/wins/releases/download/v0.1.0/wins.exe; \
+    curl.exe -Lo C:\utils\yq.exe https://github.com/mikefarah/yq/releases/download/v4.6.3/yq_windows_amd64.exe; \
     "[Environment]::SetEnvironmentVariable('PATH', $env:PATH + ';C:\utils', [EnvironmentVariableTarget]::Machine)"

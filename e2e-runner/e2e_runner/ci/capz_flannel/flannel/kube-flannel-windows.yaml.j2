@@ -17,8 +17,8 @@ data:
     mkdir -force /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount
 
     $cniJson = get-content /etc/kube-flannel-windows/cni-conf.json | ConvertFrom-Json
-    $serviceSubnet = yq r /etc/kubeadm-config/ClusterConfiguration networking.serviceSubnet
-    $podSubnet = yq r /etc/kubeadm-config/ClusterConfiguration networking.podSubnet
+    $serviceSubnet = yq eval '.networking.serviceSubnet' /etc/kubeadm-config/ClusterConfiguration
+    $podSubnet = yq eval '.networking.podSubnet' /etc/kubeadm-config/ClusterConfiguration
     $networkJson = wins cli net get | ConvertFrom-Json
 
 {%- if container_runtime == "containerd" and mode == "overlay" %}
@@ -51,7 +51,12 @@ data:
     cp -force /var/run/secrets/kubernetes.io/serviceaccount/* /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount/
 
   run.ps1: |
-    wins cli process run --path /k/flannel/flanneld.exe --args "--kube-subnet-mgr --ip-masq --kubeconfig-file /k/flannel/kubeconfig.yml" --envs "POD_NAME=$env:POD_NAME POD_NAMESPACE=$env:POD_NAMESPACE"
+    $ErrorActionPreference = "Stop"
+
+    mkdir -force /host/k/flannel
+    cp -force /k/flannel/flanneld.exe /host/k/flannel/
+
+    wins cli process run --path /k/flannel/flanneld.exe --envs "POD_NAME=$env:POD_NAME POD_NAMESPACE=$env:POD_NAMESPACE" --args "--kube-subnet-mgr --ip-masq --kubeconfig-file /k/flannel/kubeconfig.yml"
 
 {% include ("cni/" + container_runtime + "-" + mode + "-windows.yaml.j2") %}
 
@@ -126,6 +131,8 @@ spec:
         volumeMounts:
         - name: wins
           mountPath: \\.\pipe\rancher_wins
+        - name: host
+          mountPath: /host
         - name: flannel-windows-cfg
           mountPath: /etc/kube-flannel-windows/
         env:

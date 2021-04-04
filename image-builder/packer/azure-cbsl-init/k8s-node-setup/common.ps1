@@ -143,7 +143,7 @@ function Install-Kubelet {
 
     Start-FileDownload "https://dl.k8s.io/$KubernetesVersion/bin/windows/amd64/kubelet.exe" "$KUBERNETES_DIR\kubelet.exe"
     Start-FileDownload "https://dl.k8s.io/$KubernetesVersion/bin/windows/amd64/kubeadm.exe" "$KUBERNETES_DIR\kubeadm.exe"
-    Start-FileDownload "https://github.com/rancher/wins/releases/download/v0.0.4/wins.exe" "$KUBERNETES_DIR\wins.exe"
+    Start-FileDownload "https://github.com/rancher/wins/releases/download/v0.1.0/wins.exe" "$KUBERNETES_DIR\wins.exe"
 
     Write-Output "Registering wins Windows service"
     wins.exe srv app run --register
@@ -205,19 +205,4 @@ function Install-CNI {
 
     Start-FileDownload "https://capzwin.blob.core.windows.net/bin/sdnoverlay.exe" "$OPT_DIR\cni\bin\sdnoverlay.exe"
     Start-FileDownload "https://capzwin.blob.core.windows.net/bin/sdnbridge.exe" "$OPT_DIR\cni\bin\sdnbridge.exe"
-}
-
-function Start-EnvironmentValidation {
-    $requiredEnvVars = @(
-        "KUBERNETES_VERSION",
-        "ACR_NAME",
-        "ACR_USER_NAME",
-        "ACR_USER_PASSWORD"
-    )
-    foreach($envVar in $requiredEnvVars) {
-        $var = Get-Item "env:${envVar}" -ErrorAction SilentlyContinue
-        if(!$var) {
-            Throw "Required environment variable $envVar is not set."
-        }
-    }
 }

@@ -17,18 +17,18 @@ data:
 
     $networkName = (Get-Content /host/etc/cni/net.d/10-flannel.conf | ConvertFrom-Json).name
 
-    yq w -i /host/var/lib/kube-proxy/config.conf winkernel.networkName $networkName
+    yq eval -i ".winkernel.networkName = `"`"${networkName}`"`"" /host/var/lib/kube-proxy/config.conf
 {%- if flannel_mode == "overlay" %}
     $sourceVip = ((cat /host/k/sourceVip.json | ConvertFrom-Json).ip4.ip -split '/')[0]
-    yq w -i /host/var/lib/kube-proxy/config.conf winkernel.sourceVip $sourceVip
-    yq w -i /host/var/lib/kube-proxy/config.conf featureGates.WinOverlay true
+    yq eval -i ".winkernel.sourceVip = `"`"${sourceVip}`"`"" /host/var/lib/kube-proxy/config.conf
+    yq eval -i '.featureGates.WinOverlay = true' /host/var/lib/kube-proxy/config.conf
 {%- endif %}
 {%- if enable_win_dsr == "true" %}
-    yq w -i /host/var/lib/kube-proxy/config.conf winkernel.enableDSR {{ enable_win_dsr }}
-    yq w -i /host/var/lib/kube-proxy/config.conf featureGates.WinDSR {{ enable_win_dsr }}
+    yq eval -i '.winkernel.enableDSR = true' /host/var/lib/kube-proxy/config.conf
+    yq eval -i '.featureGates.WinDSR = true' /host/var/lib/kube-proxy/config.conf
 {%- endif %}
-    yq w -i /host/var/lib/kube-proxy/config.conf featureGates.IPv6DualStack {{ enable_ipv6dualstack }}
-    yq w -i /host/var/lib/kube-proxy/config.conf mode "kernelspace"
+    yq eval -i '.featureGates.IPv6DualStack = {{ enable_ipv6dualstack }}' /host/var/lib/kube-proxy/config.conf
+    yq eval -i '.mode = ""kernelspace""' /host/var/lib/kube-proxy/config.conf
 
   run.ps1: |
     $ErrorActionPreference = "Stop"

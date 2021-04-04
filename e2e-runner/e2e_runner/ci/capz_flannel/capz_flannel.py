@@ -79,6 +79,7 @@ class CapzFlannelCI(base.CI):
         self.deployer.up()
         self.deployer.wait_for_agents(check_nodes_ready=False, timeout=7200)
         if self.opts.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
+            self.deployer.connect_agents_to_controlplane_subnet()
             self.deployer.enable_ip_forwarding()
 
         self.deployer.setup_ssh_config()
