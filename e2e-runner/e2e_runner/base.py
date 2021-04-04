@@ -66,7 +66,7 @@ class CI(object):
 
         # Clone repository using git and then install. Workaround for:
         # https://github.com/kubernetes/test-infra/issues/14712
-        utils.clone_repo(
+        utils.clone_git_repo(
             "https://github.com/kubernetes/test-infra", "master",
             "/tmp/test-infra")
         utils.run_shell_cmd(
