@@ -6,6 +6,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -21,6 +22,7 @@ periodics:
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows
+        - --k8s-branch=master
         - --build=k8sbins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -37,6 +39,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -52,6 +55,7 @@ periodics:
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows
+        - --k8s-branch=master
         - --build=k8sbins
         - capz_flannel
         - --flannel-mode=overlay
@@ -68,6 +72,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -83,6 +88,7 @@ periodics:
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
+        - --k8s-branch=master
         - --build=k8sbins
         - --build=containerdbins
         - --build=containerdshim
@@ -101,6 +107,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -116,6 +123,7 @@ periodics:
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
+        - --k8s-branch=master
         - --build=k8sbins
         - --build=containerdbins
         - --build=containerdshim
@@ -150,7 +158,6 @@ periodics:
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
-        - --k8s-branch=v1.20.5
         - capz_flannel
         - --flannel-mode=host-gw
         - --win-minion-count=2
@@ -183,7 +190,6 @@ periodics:
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
-        - --k8s-branch=v1.20.5
         - capz_flannel
         - --flannel-mode=overlay
         - --win-minion-count=2
@@ -217,7 +223,6 @@ periodics:
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
-        - --k8s-branch=v1.20.5
         - capz_flannel
         - --flannel-mode=host-gw
         - --win-minion-count=2
@@ -251,7 +256,6 @@ periodics:
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
-        - --k8s-branch=v1.20.5
         - capz_flannel
         - --flannel-mode=overlay
         - --win-minion-count=2
@@ -268,6 +272,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -283,6 +288,7 @@ periodics:
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows
+        - --k8s-branch=master
         - --build=k8sbins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -299,6 +305,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -314,6 +321,7 @@ periodics:
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|Kubectl.logs.should.be.able.to.retrieve.and.filter.logs|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows
+        - --k8s-branch=master
         - --build=k8sbins
         - capz_flannel
         - --flannel-mode=overlay
@@ -346,7 +354,6 @@ periodics:
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
-        - --k8s-branch=v1.20.5
         - capz_flannel
         - --flannel-mode=host-gw
         - --win-minion-count=2
@@ -378,7 +385,6 @@ periodics:
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-scheduling\].SchedulerPreemption
         - --test-skip-regex=Aggregator.*API.*Conformance|\[LinuxOnly\]|\[Serial\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
-        - --k8s-branch=v1.20.5
         - capz_flannel
         - --flannel-mode=overlay
         - --win-minion-count=2
