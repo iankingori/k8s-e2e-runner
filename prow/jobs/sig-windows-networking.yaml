@@ -6,6 +6,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -37,6 +38,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -68,6 +70,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -101,6 +104,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -268,6 +272,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
@@ -299,6 +304,7 @@ periodics:
   labels:
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
   spec:
     containers:
     - image: e2eteam/k8s-e2e-runner:latest
