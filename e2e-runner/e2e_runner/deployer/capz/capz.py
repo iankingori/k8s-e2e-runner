@@ -398,8 +398,7 @@ class CAPZProvisioner(base.Deployer):
                 self.compute_client.virtual_machines.begin_start)(
                     self.cluster_name, vm.name).wait()
             self.logging.info("Updating the node routetable")
-            old_nic_address = vm_nic.ip_configurations[0].private_ip_address
-            route = self._get_vm_route(old_nic_address)
+            route = self._get_vm_route(vm.name)
             route_params = route.as_dict()
             vm_nic = self._get_vm_nic(nic_id)  # Refresh NIC info
             nic_address = vm_nic.ip_configurations[0].private_ip_address
@@ -485,15 +484,14 @@ class CAPZProvisioner(base.Deployer):
         raise Exception("The VM NIC was not found: {}".format(nic_id))
 
     @utils.retry_on_error()
-    def _get_vm_route(self, ip_address):
+    def _get_vm_route(self, vm_name):
         routes = self.network_client.routes.list(
             self.cluster_name,
             "{}-node-routetable".format(self.cluster_name))
         for route in routes:
-            if route.next_hop_ip_address == ip_address:
+            if route.name == vm_name:
                 return route
-        raise Exception(
-            "The VM route with next_hop {} was not found".format(ip_address))
+        raise Exception("The VM {} route was not found".format(vm_name))
 
     def _wait_for_bootstrap_vm(self, timeout=900):
         self.logging.info("Waiting up to %.2f minutes for VM %s to provision",
