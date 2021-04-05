@@ -77,7 +77,7 @@ class CapzFlannelCI(base.CI):
         start = time.time()
 
         self.deployer.up()
-        self.deployer.wait_for_agents(check_nodes_ready=False, timeout=7200)
+        self.deployer.wait_for_agents(timeout=7200)
         if self.opts.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
             self.deployer.connect_agents_to_controlplane_subnet()
             self.deployer.enable_ip_forwarding()
@@ -103,7 +103,6 @@ class CapzFlannelCI(base.CI):
         self._add_kube_proxy_windows()
 
         self._wait_for_ready_pods()
-        self.deployer.wait_for_agents(check_nodes_ready=True)
 
         self.logging.info("The cluster provisioned in %.2f minutes",
                           (time.time() - start) / 60.0)

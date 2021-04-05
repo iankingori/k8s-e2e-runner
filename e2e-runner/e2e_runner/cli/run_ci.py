@@ -1,3 +1,5 @@
+import os
+
 from cliff.command import Command
 
 from e2e_runner import (
@@ -151,7 +153,7 @@ class RunCI(Command):
         self.logging.info("Starting with CI: %s.", args.ci)
         self.logging.info("Creating artifacts dir: %s.",
                           args.artifacts_directory)
-        utils.mkdir_p(args.artifacts_directory)
+        os.makedirs(args.artifacts_directory, exist_ok=True)
         ci = factory.get_ci(args.ci)(args)
 
         try:
