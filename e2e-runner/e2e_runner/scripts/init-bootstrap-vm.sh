@@ -3,6 +3,7 @@ set -o nounset
 set -o pipefail
 set -o errexit
 
+GO_VERSION="1.16"
 KIND_BIN_URL="https://github.com/kubernetes-sigs/kind/releases/download/v0.10.0/kind-linux-amd64"
 
 function retrycmd_if_failure() {
@@ -23,16 +24,18 @@ function retrycmd_if_failure() {
   set -o errexit
 }
 
-sudo apt-get purge -y snapd
-
 retrycmd_if_failure 5 10 5m sudo apt-get update
 retrycmd_if_failure 5 10 5m sudo apt-get install -y \
-  snapd build-essential curl wget git libffi-dev libssl-dev \
+  build-essential curl wget git libffi-dev libssl-dev \
   rsync unzip net-tools openssh-client vim jq
 
-sudo systemctl start snapd
-
-retrycmd_if_failure 5 10 5m sudo snap install go --channel=1.16/stable --classic
+retrycmd_if_failure 5 10 5m curl -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
+rm go${GO_VERSION}.linux-amd64.tar.gz
+sudo ln -fs /usr/local/go/bin/go /usr/local/bin/go
+echo '' >> $HOME/.bashrc
+echo 'export GOPATH=$HOME/go' >> $HOME/.bashrc
+echo 'export PATH="$GOPATH/bin:$PATH"' >> $HOME/.bashrc
 
 retrycmd_if_failure 5 10 5m sudo apt-get install -y \
   apt-transport-https ca-certificates gnupg-agent software-properties-common
