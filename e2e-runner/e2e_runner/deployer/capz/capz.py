@@ -1,5 +1,4 @@
 import base64
-import logging
 import os
 import random
 import subprocess
@@ -298,16 +297,6 @@ class CAPZProvisioner(base.Deployer):
                             ready_nodes.append(node_name)
                 assert len(ready_nodes) == self.win_minion_count
         self.logging.info("All CAPZ agents are ready")
-        capz_nodes = self._get_capz_nodes()
-        self.logging.info("CAPZ nodes: %s", capz_nodes)
-        self.logging.info("Ready nodes: %s", ready_nodes)
-        # Cleanup nodes that are registered in the CAPZ cluster, but they
-        # are not within the 'ready_nodes' list. These are usually failed
-        # machines that were not properly cleaned up by CAPZ.
-        extra_nodes = list(set(self._get_capz_nodes()) - set(ready_nodes))
-        for node in extra_nodes:
-            logging.warning("Cleaning up CAPZ node %s", node)
-            self._delete_capz_node(node)
 
     def upload_to_bootstrap_vm(self, local_path, remote_path="www/"):
         self.logging.info("Uploading %s to bootstrap VM", local_path)
