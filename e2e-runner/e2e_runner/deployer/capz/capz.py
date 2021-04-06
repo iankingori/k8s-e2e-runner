@@ -37,10 +37,6 @@ from e2e_runner import (
 
 
 class CAPZProvisioner(base.Deployer):
-    DOCKER_CNI_UNINITIALIZED_MSG = (
-        'runtime network not ready: NetworkReady=false '
-        'reason:NetworkPluginNotReady message:docker: '
-        'network plugin is not ready: cni config uninitialized')
 
     def __init__(self, opts, container_runtime="docker",
                  flannel_mode=constants.FLANNEL_MODE_OVERLAY,
@@ -290,10 +286,12 @@ class CAPZProvisioner(base.Deployer):
                         # Kubernetes Docker agents don't have a default CNI
                         # configured. Therefore the agents will not report
                         # ready until a CNI is initialized.
+                        # Therefore, at least we verify that the ready
+                        # condition is reported by the agents.
                         r = self._get_capz_node_ready_condition(node_name)
                         if not r:
                             continue
-                        if r['message'] == self.DOCKER_CNI_UNINITIALIZED_MSG:
+                        if r.get('reason') == 'KubeletNotReady':
                             ready_nodes.append(node_name)
                     else:
                         if self._is_k8s_node_ready(node_name):
