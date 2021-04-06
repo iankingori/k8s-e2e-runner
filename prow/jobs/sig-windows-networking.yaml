@@ -1,5 +1,5 @@
 periodics:
-- name: ci-kubernetes-e2e-flannel-l2bridge-master-windows
+- name: k8s-e2e-ltsc2019-docker-flannel-winbridge-master
   cron: "0 0/12 * * *"
   always_run: true
   decorate: true
@@ -32,7 +32,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.04.03
         - --cluster-name=capzflannel-l2br-$(BUILD_ID)
 
-- name: ci-kubernetes-e2e-flannel-overlay-master-windows
+- name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-master
   cron: "0 3/12 * * *"
   always_run: true
   decorate: true
@@ -65,7 +65,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.04.03
         - --cluster-name=capzflannel-ovrl-$(BUILD_ID)
 
-- name: ci-kubernetes-e2e-sdnbridge-ctrd-master-windows
+- name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master
   cron: "0 6/12 * * *"
   always_run: true
   decorate: true
@@ -100,7 +100,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd-$(BUILD_ID)
 
-- name: ci-kubernetes-e2e-sdnoverlay-ctrd-master-windows
+- name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
   cron: "0 9/12 * * *"
   always_run: true
   decorate: true
@@ -135,7 +135,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd-$(BUILD_ID)
 
-- name: ci-kubernetes-e2e-winbridge-docker-dsr-disabled-master-windows
+- name: k8s-e2e-ltsc2019-docker-flannel-winbridge-dsr-disabled-master
   cron: "0 1 * * *"
   always_run: true
   decorate: true
@@ -168,7 +168,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.04.03
         - --cluster-name=capzdocker-ltsc2019-$(BUILD_ID)
 
-- name: ci-kubernetes-e2e-winoverlay-docker-dsr-disabled-master-windows
+- name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-dsr-disabled-master
   cron: "0 7 * * *"
   always_run: true
   decorate: true
@@ -201,7 +201,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.04.03
         - --cluster-name=capzdocker-ltsc2019-$(BUILD_ID)
 
-- name: ci-kubernetes-e2e-sdnbridge-ctrd-stable-windows
+- name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
   cron: "0 13 * * *"
   always_run: true
   decorate: true
@@ -232,7 +232,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
-- name: ci-kubernetes-e2e-sdnoverlay-ctrd-stable-windows
+- name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
   cron: "0 19 * * *"
   always_run: true
   decorate: true
@@ -263,7 +263,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
-- name: containerd-windows-sac1909-sdnbridge
+- name: k8s-e2e-sac1909-containerd-flannel-sdnbridge-stable
   cron: "0 2 * * *"
   always_run: true
   decorate: true
@@ -295,7 +295,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd1909-$(BUILD_ID)
 
-- name: containerd-windows-sac1909-sdnoverlay
+- name: k8s-e2e-sac1909-containerd-flannel-sdnoverlay-stable
   cron: "0 8 * * *"
   always_run: true
   decorate: true
@@ -327,7 +327,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd1909-$(BUILD_ID)
 
-- name: containerd-windows-sac2004-sdnbridge
+- name: k8s-e2e-sac2004-containerd-flannel-sdnbridge-stable
   cron: "0 14 * * *"
   always_run: true
   decorate: true
@@ -360,7 +360,7 @@ periodics:
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.04.03
         - --cluster-name=capzctrd2004-$(BUILD_ID)
 
-- name: containerd-windows-sac2004-sdnoverlay
+- name: k8s-e2e-sac2004-containerd-flannel-sdnoverlay-stable
   cron: "0 20 * * *"
   always_run: true
   decorate: true
