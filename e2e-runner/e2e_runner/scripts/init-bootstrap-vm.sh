@@ -32,10 +32,9 @@ retrycmd_if_failure 5 10 5m sudo apt-get install -y \
 retrycmd_if_failure 5 10 5m curl -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
 rm go${GO_VERSION}.linux-amd64.tar.gz
-sudo ln -fs /usr/local/go/bin/go /usr/local/bin/go
-echo '' >> $HOME/.bashrc
-echo 'export GOPATH=$HOME/go' >> $HOME/.bashrc
-echo 'export PATH="$GOPATH/bin:$PATH"' >> $HOME/.bashrc
+eval `cat /etc/environment`
+echo "PATH=\"$PATH:/usr/local/go/bin:$HOME/go/bin\"" | sudo tee /etc/environment
+echo "GOPATH=\"$HOME/go\"" | sudo tee -a /etc/environment
 
 retrycmd_if_failure 5 10 5m sudo apt-get install -y \
   apt-transport-https ca-certificates gnupg-agent software-properties-common
