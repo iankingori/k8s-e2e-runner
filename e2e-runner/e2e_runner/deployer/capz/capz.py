@@ -263,13 +263,13 @@ class CAPZProvisioner(base.Deployer):
     def wait_for_agents(self, timeout=3600):
         self.logging.info("Waiting up to %.2f minutes for CAPZ machines",
                           timeout / 60.0)
-        ready_nodes = []
         for attempt in Retrying(
                 stop=stop_after_delay(timeout),
                 wait=wait_exponential(multiplier=1, max=30),
                 retry=retry_if_exception_type(AssertionError),
                 reraise=True):
             with attempt:
+                ready_nodes = []
                 machines = self._get_mgmt_capz_machines_names()
                 for machine in machines:
                     is_control_plane = machine.startswith(
@@ -296,6 +296,7 @@ class CAPZProvisioner(base.Deployer):
                         if self._is_k8s_node_ready(node_name):
                             ready_nodes.append(node_name)
                 assert len(ready_nodes) == self.win_minion_count
+                assert set(ready_nodes) == set(self._get_capz_nodes())
         self.logging.info("All CAPZ agents are ready")
 
     def upload_to_bootstrap_vm(self, local_path, remote_path="www/"):
