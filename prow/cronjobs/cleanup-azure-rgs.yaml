@@ -21,8 +21,8 @@ spec:
             command:
             - /workspace/cleanup-azure-rgs.py
             args:
-            # Cleanup resource groups older than 12h.
-            - --max-age-minutes=720
+            # Cleanup resource groups older than 8h.
+            - --max-age-minutes=480
             env:
             - name: AZURE_CLIENT_ID
               valueFrom:
