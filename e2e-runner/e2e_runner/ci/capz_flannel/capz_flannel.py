@@ -122,7 +122,7 @@ class CapzFlannelCI(base.CI):
         self.deployer.cleanup_bootstrap_vm()
 
     def down(self):
-        self.deployer.down()
+        self.deployer.down(wait=False)
 
     def reclaim(self):
         self.deployer.reclaim()

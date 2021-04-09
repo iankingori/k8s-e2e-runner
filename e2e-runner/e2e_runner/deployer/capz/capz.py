@@ -161,13 +161,14 @@ class CAPZProvisioner(base.Deployer):
         self._wait_for_control_plane()
         self._setup_capz_kubeconfig()
 
-    def down(self):
+    def down(self, wait=True):
         self.logging.info("Deleting Azure resource group")
         client = self.resource_mgmt_client
         try:
             delete_async_operation = client.resource_groups.begin_delete(
                 self.cluster_name)
-            delete_async_operation.wait()
+            if wait:
+                delete_async_operation.wait()
         except azure_exceptions.ResourceNotFoundError as e:
             cloud_error_data = e.error
             if cloud_error_data.error == "ResourceGroupNotFound":
