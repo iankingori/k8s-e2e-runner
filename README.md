@@ -23,4 +23,6 @@ This repository contains the following:
 
 * `image-builder`, contains the scripts needed to build custom K8s Windows worker images.
 
+* `prow`, contains all the necessary manifests, and configs for the `sig-windows-networking` Prow infrastructure.
+
 * `tools/kube-backup`, used to periodically backup the existing prow environment, and push it into an Azure storage account.
