@@ -6,5 +6,4 @@ cliff
 configargparse
 jinja2
 sh
-property-cached
 tenacity

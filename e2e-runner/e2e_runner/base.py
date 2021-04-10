@@ -57,13 +57,11 @@ class CI(object):
 
     def _setup_kubetest(self):
         self.logging.info("Setup Kubetest")
-
         if self.opts.kubetest_link:
             kubetestbin = "/usr/bin/kubetest"
             utils.download_file(self.opts.kubetest_link, kubetestbin)
             os.chmod(kubetestbin, stat.S_IRWXU | stat.S_IRWXG)
             return
-
         # Clone repository using git and then install. Workaround for:
         # https://github.com/kubernetes/test-infra/issues/14712
         utils.clone_git_repo(
@@ -83,7 +81,7 @@ class CI(object):
             "beta.kubernetes.io/os=linux", "--no-headers", "-o",
             "custom-columns=NAME:.metadata.name"
         ])
-        linux_nodes = out.decode("ascii").strip().split("\n")
+        linux_nodes = out.decode().strip().split("\n")
         for node in linux_nodes:
             utils.run_shell_cmd([
                 kubectl, "taint", "nodes", "--overwrite", node,
@@ -93,21 +91,17 @@ class CI(object):
                 kubectl, "label", "nodes", "--overwrite", node,
                 "node-role.kubernetes.io/master=NoSchedule"
             ])
-
         self.logging.info("Downloading repo-list")
         utils.download_file(self.opts.repo_list, "/tmp/repo-list")
         os.environ["KUBE_TEST_REPO_LIST"] = "/tmp/repo-list"
-
         self.logging.info("Building tests")
         utils.run_shell_cmd(
             cmd=["make", 'WHAT="test/e2e/e2e.test"'],
             cwd=utils.get_k8s_folder())
-
         self.logging.info("Building ginkgo")
         utils.run_shell_cmd(
             cmd=["make", 'WHAT="vendor/github.com/onsi/ginkgo/ginkgo"'],
             cwd=utils.get_k8s_folder())
-
         self._setup_kubetest()
 
     def _run_tests(self):
@@ -139,17 +133,13 @@ class CI(object):
     def test(self):
         self._prepare_test_env()
         self._prepare_tests()
-
         # Hold before tests
         if self.opts.hold == "before":
             self.logging.info("Holding before tests...")
             time.sleep(1000000)
-
         ret = self._run_tests()
-
         # Hold after tests
         if self.opts.hold == "after":
             self.logging.info("Holding after tests...")
             time.sleep(1000000)
-
         return ret
