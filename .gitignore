@@ -2,4 +2,4 @@
 __pycache__
 e2e_runner.egg-info
 
-/image-builder/azure-cbsl-init/*.offline
+image-builder/packer/azure-cbsl-init/packer-manifest.json
