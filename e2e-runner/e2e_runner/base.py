@@ -116,7 +116,7 @@ class CI(object):
         cmd.append("--dump=%s" % self.opts.artifacts_directory)
         cmd.append(
             ('--test_args=--ginkgo.flakeAttempts=1 '
-             '--test.timeout=12h '
+             '--test.timeout=2h '
              '--num-nodes=2 --ginkgo.noColor '
              '--ginkgo.dryRun=%(dryRun)s '
              '--node-os-distro=windows '
