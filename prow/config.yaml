@@ -1,7 +1,7 @@
 plank:
   default_decoration_configs:
     "*":
-      timeout: 8h
+      timeout: 6h
       grace_period: 15m
       gcs_configuration:
         bucket: gs://k8s-ovn
