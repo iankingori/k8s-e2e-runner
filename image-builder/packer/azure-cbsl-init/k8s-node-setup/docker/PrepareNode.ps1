@@ -1,5 +1,5 @@
 Param(
-    [string]$KubernetesVersion="v1.20.5",
+    [string]$KubernetesVersion="v1.21.0",
     [Parameter(Mandatory=$true)]
     [string]$AcrName,
     [Parameter(Mandatory=$true)]
@@ -26,7 +26,7 @@ function Start-ContainerImagesPull {
         (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
         "mcr.microsoft.com/windows/servercore:${windowsRelease}",
-        "${AcrName}.azurecr.io/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
+        "${AcrName}.azurecr.io/flannel-windows:v${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",
         "${AcrName}.azurecr.io/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
     )
     docker login "${AcrName}.azurecr.io" -u "${AcrName}" -p "${AcrUserPassword}"

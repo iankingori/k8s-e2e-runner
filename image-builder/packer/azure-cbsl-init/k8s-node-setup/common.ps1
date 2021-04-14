@@ -7,6 +7,10 @@ $OPT_DIR = Join-Path $env:SystemDrive "opt"
 
 $CNI_PLUGINS_VERSION = "0.9.1"
 $WINDOWS_CNI_PLUGINS_VERSION = "0.2.0"
+$WINS_VERSION = "0.1.0"
+$FLANNEL_VERSION = "0.13.0"
+
+$NSSM_URL = "https://k8stestinfrabinaries.blob.core.windows.net/nssm-mirror/nssm-2.24.zip"
 
 
 function Start-ExecuteWithRetry {
@@ -118,7 +122,7 @@ function Install-NSSM {
     Write-Output "Installing NSSM"
     mkdir -Force $NSSM_DIR
 
-    Start-FileDownload "https://k8stestinfrabinaries.blob.core.windows.net/nssm-mirror/nssm-2.24.zip" "$env:TEMP\nssm.zip"
+    Start-FileDownload $NSSM_URL "$env:TEMP\nssm.zip"
     tar -C "$NSSM_DIR" -xvf $env:TEMP\nssm.zip --strip-components 2 */win64/*.exe
     if($LASTEXITCODE) {
         Throw "Failed to unzip nssm.zip"
@@ -143,7 +147,7 @@ function Install-Kubelet {
 
     Start-FileDownload "https://dl.k8s.io/$KubernetesVersion/bin/windows/amd64/kubelet.exe" "$KUBERNETES_DIR\kubelet.exe"
     Start-FileDownload "https://dl.k8s.io/$KubernetesVersion/bin/windows/amd64/kubeadm.exe" "$KUBERNETES_DIR\kubeadm.exe"
-    Start-FileDownload "https://github.com/rancher/wins/releases/download/v0.1.0/wins.exe" "$KUBERNETES_DIR\wins.exe"
+    Start-FileDownload "https://github.com/rancher/wins/releases/download/v${WINS_VERSION}/wins.exe" "$KUBERNETES_DIR\wins.exe"
 
     Write-Output "Registering wins Windows service"
     wins.exe srv app run --register

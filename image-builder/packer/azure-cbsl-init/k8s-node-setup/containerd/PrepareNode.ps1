@@ -1,5 +1,5 @@
 Param(
-    [string]$KubernetesVersion="v1.20.5",
+    [string]$KubernetesVersion="v1.21.0",
     [Parameter(Mandatory=$true)]
     [string]$AcrName,
     [Parameter(Mandatory=$true)]
@@ -14,8 +14,8 @@ $ErrorActionPreference = "Stop"
 
 $CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
 
-$CRI_CONTAINERD_VERSION = "1.4.3"
-$CRICTL_VERSION = "1.20.0"
+$CRI_CONTAINERD_VERSION = "1.4.4"
+$CRICTL_VERSION = "1.21.0"
 
 
 function Install-Containerd {
@@ -75,7 +75,7 @@ function Start-ContainerImagesPull {
         (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
         "mcr.microsoft.com/windows/servercore:${windowsRelease}",
-        "${AcrName}.azurecr.io/flannel-windows:v0.13.0-windowsservercore-${windowsRelease}",
+        "${AcrName}.azurecr.io/flannel-windows:v${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",
         "${AcrName}.azurecr.io/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
     )
     foreach($img in $images) {
