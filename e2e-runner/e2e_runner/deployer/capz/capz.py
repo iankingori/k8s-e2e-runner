@@ -282,7 +282,11 @@ class CAPZProvisioner(base.Deployer):
                         '{}-control-plane'.format(self.cluster_name))
                     if is_control_plane:
                         continue
-                    if self._get_mgmt_capz_machine_phase(machine) != "Running":
+                    try:
+                        phase = self._get_mgmt_capz_machine_phase(machine)
+                    except Exception:
+                        continue
+                    if phase != "Running":
                         continue
                     node_name = self._get_mgmt_capz_machine_node(machine)
                     if node_name not in self._get_capz_nodes():
@@ -1001,15 +1005,12 @@ class CAPZProvisioner(base.Deployer):
                 assert len(control_plane_machines) > 0
                 control_plane_ready = True
                 for control_plane_machine in control_plane_machines:
-                    cmd = [
-                        self.kubectl, "get", "machine",
-                        "--kubeconfig", self.mgmt_kubeconfig_path,
-                        "--output=custom-columns=READY:.status.phase",
-                        "--no-headers", control_plane_machine
-                    ]
-                    output, _ = utils.retry_on_error()(
-                        utils.run_shell_cmd)(cmd, sensitive=True)
-                    status_phase = output.decode().strip()
+                    try:
+                        status_phase = self._get_mgmt_capz_machine_phase(
+                            control_plane_machine)
+                    except Exception:
+                        control_plane_ready = False
+                        break
                     if status_phase != "Running":
                         control_plane_ready = False
                         break
