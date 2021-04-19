@@ -1,6 +1,7 @@
 import configargparse
 import os
 import subprocess
+import tempfile
 import time
 import socket
 from threading import Timer
@@ -158,3 +159,43 @@ def str2bool(v):
     else:
         raise configargparse.ArgumentTypeError(
             'Boolean value expected')
+
+
+def run_remote_ssh_cmd(cmd, ssh_user, ssh_address, ssh_key_path=None,
+                       cwd="~", timeout=3600, return_result=False):
+    script = """
+    set -o nounset
+    set -o pipefail
+    set -o errexit
+    cd {0}
+    {1}
+    """.format(cwd, "\n".join(cmd))
+    ssh_cmd = ["ssh", "-q"]
+    if ssh_key_path:
+        ssh_cmd += ["-i", ssh_key_path]
+    ssh_cmd += [
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "{}@{}".format(ssh_user, ssh_address),
+        "bash", "-s"]
+    with tempfile.NamedTemporaryFile() as f:
+        f.write(script.encode())
+        f.flush()
+        if return_result:
+            ssh_cmd += ["<", f.name]
+            return run_shell_cmd(ssh_cmd, timeout=timeout)
+        with open(f.name, "rb", 0) as g:
+            subprocess.check_call(ssh_cmd, stdin=g)
+
+
+def rsync_upload(local_path, remote_path,
+                 ssh_user, ssh_address, ssh_key_path=None):
+    ssh_cmd = ("ssh -q "
+               "-o StrictHostKeyChecking=no "
+               "-o UserKnownHostsFile=/dev/null")
+    if ssh_key_path:
+        ssh_cmd += " -i {}".format(ssh_key_path)
+    run_shell_cmd([
+        "rsync", "-r", "-e", '"{}"'.format(ssh_cmd),
+        local_path,
+        "{}@{}:{}".format(ssh_user, ssh_address, remote_path)])

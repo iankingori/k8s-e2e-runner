@@ -1,8 +1,6 @@
 import base64
 import os
 import random
-import subprocess
-import tempfile
 import sh
 import yaml
 
@@ -84,7 +82,7 @@ class CAPZProvisioner(base.Deployer):
                                                       subscription_id)
 
         self._setup_infra()
-        self._init_bootstrap_vm()
+        self._bootstrap_vm  # It will setup the bootstrap Azure VM.
         self._setup_mgmt_kubeconfig()
 
     @cached_property
@@ -311,14 +309,10 @@ class CAPZProvisioner(base.Deployer):
 
     @utils.retry_on_error()
     def upload_to_bootstrap_vm(self, local_path, remote_path="www/"):
-        ssh_cmd = ("ssh -q -i {} "
-                   "-o StrictHostKeyChecking=no "
-                   "-o UserKnownHostsFile=/dev/null".format(
-                       os.environ["SSH_KEY"]))
-        utils.run_shell_cmd([
-            "rsync", "-r", "-e", '"{}"'.format(ssh_cmd),
-            local_path,
-            "capi@{}:{}".format(self.bootstrap_vm_public_ip, remote_path)])
+        utils.rsync_upload(
+            local_path=local_path, remote_path=remote_path,
+            ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
+            ssh_key_path=os.environ["SSH_KEY"])
 
     @utils.retry_on_error()
     def download_from_bootstrap_vm(self, remote_path, local_path):
@@ -334,27 +328,10 @@ class CAPZProvisioner(base.Deployer):
     @utils.retry_on_error()
     def run_cmd_on_bootstrap_vm(self, cmd, timeout=3600, cwd="~",
                                 return_result=False):
-        script = """
-        set -o nounset
-        set -o pipefail
-        set -o errexit
-        cd {0}
-        {1}
-        """.format(cwd, "\n".join(cmd))
-        ssh_cmd = ["ssh", "-q",
-                   "-i", os.environ["SSH_KEY"],
-                   "-o", "StrictHostKeyChecking=no",
-                   "-o", "UserKnownHostsFile=/dev/null",
-                   "capi@{}".format(self.bootstrap_vm_public_ip),
-                   "bash", "-s"]
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(script.encode())
-            f.flush()
-            if return_result:
-                ssh_cmd += ["<", f.name]
-                return utils.run_shell_cmd(ssh_cmd, timeout=timeout)
-            with open(f.name, "rb", 0) as g:
-                subprocess.check_call(ssh_cmd, stdin=g)
+        return utils.run_remote_ssh_cmd(
+            cmd=cmd, ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
+            ssh_key_path=os.environ["SSH_KEY"], cwd=cwd, timeout=timeout,
+            return_result=return_result)
 
     def remote_clone_git_repo(self, repo_url, branch_name, remote_dir):
         clone_cmd = ("test -e {0} || "
@@ -592,20 +569,24 @@ class CAPZProvisioner(base.Deployer):
                 self.bootstrap_vm_nic_name,
                 nic_parameters).result()
 
-    def _init_bootstrap_vm(self):
-        self._bootstrap_vm  # It will create the bootstrap Azure VM.
+    @utils.retry_on_error()
+    def _init_bootstrap_vm(self, bootstrap_vm_address):
         self.logging.info("Initializing the bootstrap VM")
-        self.run_cmd_on_bootstrap_vm(
-            cmd=["mkdir -p www",
-                 "sudo addgroup --system docker",
-                 "sudo usermod -aG docker capi"],
-            timeout=60)
-        self.upload_to_bootstrap_vm(
-            os.path.join(self.e2e_runner_dir, "scripts"))
-        self.run_cmd_on_bootstrap_vm(
-            cmd=["bash ./www/scripts/init-bootstrap-vm.sh"],
-            timeout=(60 * 15))
-        self._setup_mgmt_kubeconfig()
+        cmd = ["mkdir -p www",
+               "sudo addgroup --system docker",
+               "sudo usermod -aG docker capi"]
+        utils.run_remote_ssh_cmd(
+            cmd=cmd, ssh_user="capi", ssh_address=bootstrap_vm_address,
+            ssh_key_path=os.environ["SSH_KEY"])
+        utils.rsync_upload(
+            local_path=os.path.join(self.e2e_runner_dir, "scripts"),
+            remote_path="www/",
+            ssh_user="capi", ssh_address=bootstrap_vm_address,
+            ssh_key_path=os.environ["SSH_KEY"])
+        cmd = ["bash ./www/scripts/init-bootstrap-vm.sh"]
+        utils.run_remote_ssh_cmd(
+            cmd=cmd, ssh_user="capi", ssh_address=bootstrap_vm_address,
+            ssh_key_path=os.environ["SSH_KEY"], timeout=(60 * 15))
 
     def _create_bootstrap_azure_vm(self):
         self.logging.info("Setting up the bootstrap Azure VM")
@@ -801,10 +782,12 @@ class CAPZProvisioner(base.Deployer):
     @utils.retry_on_error()
     def _create_bootstrap_vm(self):
         try:
-            return self._create_bootstrap_azure_vm()
+            bootstrap_vm = self._create_bootstrap_azure_vm()
+            self._init_bootstrap_vm(bootstrap_vm['public_ip'])
         except Exception as ex:
             self.cleanup_bootstrap_vm()
             raise ex
+        return bootstrap_vm
 
     @utils.retry_on_error()
     def _setup_infra(self):
