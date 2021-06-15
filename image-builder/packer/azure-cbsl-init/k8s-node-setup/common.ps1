@@ -1,16 +1,21 @@
-$KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
-$VAR_LOG_DIR = Join-Path $env:SystemDrive "var\log"
-$VAR_LIB_DIR = Join-Path $env:SystemDrive "var\lib"
-$ETC_DIR = Join-Path $env:SystemDrive "etc"
-$NSSM_DIR = Join-Path $env:ProgramFiles "nssm"
-$OPT_DIR = Join-Path $env:SystemDrive "opt"
+$global:KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
+$global:CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
+$global:VAR_LOG_DIR = Join-Path $env:SystemDrive "var\log"
+$global:VAR_LIB_DIR = Join-Path $env:SystemDrive "var\lib"
+$global:ETC_DIR = Join-Path $env:SystemDrive "etc"
+$global:NSSM_DIR = Join-Path $env:ProgramFiles "nssm"
+$global:OPT_DIR = Join-Path $env:SystemDrive "opt"
 
-$CNI_PLUGINS_VERSION = "0.9.1"
-$WINDOWS_CNI_PLUGINS_VERSION = "0.2.0"
-$WINS_VERSION = "0.1.0"
-$FLANNEL_VERSION = "0.13.0"
+$global:KUBERNETES_PAUSE_IMAGE = "mcr.microsoft.com/oss/kubernetes/pause:1.4.1"
 
-$NSSM_URL = "https://k8stestinfrabinaries.blob.core.windows.net/nssm-mirror/nssm-2.24.zip"
+$global:CNI_PLUGINS_VERSION = "0.9.1"
+$global:WINDOWS_CNI_PLUGINS_VERSION = "0.2.0"
+$global:WINS_VERSION = "0.1.1"
+$global:FLANNEL_VERSION = "0.14.0"
+$global:CRI_CONTAINERD_VERSION = "1.5.2"
+$global:CRICTL_VERSION = "1.21.0"
+
+$global:NSSM_URL = "https://k8stestinfrabinaries.blob.core.windows.net/nssm-mirror/nssm-2.24.zip"
 
 
 function Start-ExecuteWithRetry {
@@ -59,7 +64,7 @@ function Start-FileDownload {
     )
     Write-Output "Downloading $URL to $Destination"
     Start-ExecuteWithRetry -ScriptBlock {
-        iex "curl.exe -L -s -o $Destination $URL"
+        Invoke-Expression "curl.exe -L -s -o $Destination $URL"
     } -MaxRetryCount $RetryCount -RetryInterval 3 -RetryMessage "Failed to download $URL. Retrying"
 }
 
@@ -109,13 +114,6 @@ function Get-NanoServerImage {
         $release = "1809"
     }
     return "mcr.microsoft.com/windows/nanoserver:$release"
-}
-
-function Get-KubernetesPauseImage {
-    switch(Get-WindowsRelease) {
-        "2004" { return "mcr.microsoft.com/oss/kubernetes/pause:1.4.0" }
-        default { return "mcr.microsoft.com/oss/kubernetes/pause:1.3.0" }
-    }
 }
 
 function Install-NSSM {
@@ -174,8 +172,7 @@ function Install-Kubelet {
     if($LASTEXITCODE) {
         Throw "Failed to set kubelet DependOnService"
     }
-    $k8sPauseImage = Get-KubernetesPauseImage
-    nssm set kubelet AppEnvironmentExtra K8S_PAUSE_IMAGE=$k8sPauseImage
+    nssm set kubelet AppEnvironmentExtra K8S_PAUSE_IMAGE=$KUBERNETES_PAUSE_IMAGE
     if($LASTEXITCODE) {
         Throw "Failed to set kubelet K8S_PAUSE_IMAGE nssm extra env variable"
     }
@@ -188,7 +185,7 @@ function Install-Kubelet {
                         -Direction Inbound -Protocol TCP -Action Allow -LocalPort 10250
 }
 
-function Install-CNI {
+function Install-ContainerNetworkingPlugins {
     mkdir -force "$OPT_DIR\cni\bin"
 
     Start-FileDownload "https://github.com/containernetworking/plugins/releases/download/v${CNI_PLUGINS_VERSION}/cni-plugins-windows-amd64-v${CNI_PLUGINS_VERSION}.tgz" `
@@ -198,15 +195,22 @@ function Install-CNI {
         Throw "Failed to extract cni-plugins.tgz"
     }
     Remove-Item -Force $env:TEMP\cni-plugins.tgz
+}
 
-    Start-FileDownload "https://github.com/microsoft/windows-container-networking/releases/download/v${WINDOWS_CNI_PLUGINS_VERSION}/windows-container-networking-cni-amd64-v${WINDOWS_CNI_PLUGINS_VERSION}.zip" `
-                       "$env:TEMP\windows-container-networking-cni.zip"
-    tar -xf $env:TEMP\windows-container-networking-cni.zip -C $OPT_DIR\cni\bin
-    if($LASTEXITCODE) {
-        Throw "Failed to extract windows-container-networking-cni.zip"
-    }
-    Remove-Item -Force $env:TEMP\windows-container-networking-cni.zip
+function Get-ContainerImages {
+    Param(
+        [parameter(Mandatory=$true)]
+        [string]$ContainerRegistry,
+        [parameter(Mandatory=$true)]
+        [string]$KubernetesVersion
+    )
 
-    Start-FileDownload "https://capzwin.blob.core.windows.net/bin/sdnoverlay.exe" "$OPT_DIR\cni\bin\sdnoverlay.exe"
-    Start-FileDownload "https://capzwin.blob.core.windows.net/bin/sdnbridge.exe" "$OPT_DIR\cni\bin\sdnbridge.exe"
+    $windowsRelease = Get-WindowsRelease
+    return @(
+        $KUBERNETES_PAUSE_IMAGE,
+        (Get-NanoServerImage),
+        "mcr.microsoft.com/windows/servercore:${windowsRelease}",
+        "${ContainerRegistry}/flannel-windows:v${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",
+        "${ContainerRegistry}/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
+    )
 }

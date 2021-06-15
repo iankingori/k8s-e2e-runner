@@ -1,4 +1,4 @@
-ARG flannelVersion="v0.13.0"
+ARG flannelVersion="v0.14.0"
 ARG servercoreTag="ltsc2019"
 
 FROM mcr.microsoft.com/windows/servercore:${servercoreTag}
@@ -12,6 +12,6 @@ RUN mkdir -force C:\k\flannel; \
     curl.exe -LO https://github.com/coreos/flannel/releases/download/${env:flannelVersion}/flanneld.exe
 
 RUN mkdir C:\utils; \
-    curl.exe -Lo C:\utils\wins.exe https://github.com/rancher/wins/releases/download/v0.1.0/wins.exe; \
-    curl.exe -Lo C:\utils\yq.exe https://github.com/mikefarah/yq/releases/download/v4.6.3/yq_windows_amd64.exe; \
+    curl.exe -Lo C:\utils\wins.exe https://github.com/rancher/wins/releases/download/v0.1.1/wins.exe; \
+    curl.exe -Lo C:\utils\yq.exe https://github.com/mikefarah/yq/releases/download/v4.9.6/yq_windows_amd64.exe; \
     "[Environment]::SetEnvironmentVariable('PATH', $env:PATH + ';C:\utils', [EnvironmentVariableTarget]::Machine)"

@@ -1,8 +1,8 @@
 FROM ubuntu:20.04
 
-ARG GO_VERSION=1.16.3
-ARG CAPI_VERSION=v0.3.15
-ARG KUBECTL_VERSION=v1.21.0
+ARG GO_VERSION=1.16.5
+ARG CAPI_VERSION=v0.3.19
+ARG KUBECTL_VERSION=v1.21.1
 
 # Install system APT packages & dependencies
 RUN apt-get update && \

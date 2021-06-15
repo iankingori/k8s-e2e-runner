@@ -1,5 +1,5 @@
 Param(
-    [string]$KubernetesVersion="v1.21.0",
+    [string]$KubernetesVersion="v1.21.1",
     [Parameter(Mandatory=$true)]
     [string]$AcrName,
     [Parameter(Mandatory=$true)]
@@ -21,18 +21,11 @@ function Set-DockerConfig {
 }
 
 function Start-ContainerImagesPull {
-    $windowsRelease = Get-WindowsRelease
-    $images = @(
-        (Get-KubernetesPauseImage),
-        (Get-NanoServerImage),
-        "mcr.microsoft.com/windows/servercore:${windowsRelease}",
-        "${AcrName}.azurecr.io/flannel-windows:v${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",
-        "${AcrName}.azurecr.io/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
-    )
     docker login "${AcrName}.azurecr.io" -u "${AcrName}" -p "${AcrUserPassword}"
     if($LASTEXITCODE) {
         Throw "Failed to login to login to registry ${AcrName}.azurecr.io"
     }
+    $images = Get-ContainerImages -ContainerRegistry "${AcrName}.azurecr.io" -KubernetesVersion $KubernetesVersion
     foreach($img in $images) {
         Start-ExecuteWithRetry {
             docker.exe image pull $img
@@ -49,11 +42,11 @@ function Start-ContainerImagesPull {
 
 
 Install-NSSM
-Install-CNI
 Set-DockerConfig
 Install-Kubelet -KubernetesVersion $KubernetesVersion `
                 -StartKubeletScriptPath "$PSScriptRoot\StartKubelet.ps1" `
                 -ContainerRuntimeServiceName "docker"
+Install-ContainerNetworkingPlugins
 Start-ContainerImagesPull
 
 Stop-Service "Docker"

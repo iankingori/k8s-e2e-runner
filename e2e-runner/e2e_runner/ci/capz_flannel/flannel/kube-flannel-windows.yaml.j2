@@ -99,7 +99,7 @@ spec:
         effect: NoSchedule
       initContainers:
       - name: install-cni
-        image: k8swin.azurecr.io/flannel-windows:v0.13.0-{{ server_core_tag }}
+        image: k8swin.azurecr.io/flannel-windows:v0.14.0-{{ server_core_tag }}
         command:
         - powershell
         args:
@@ -122,7 +122,7 @@ spec:
           mountPath: /etc/kubeadm-config/
       containers:
       - name: kube-flannel
-        image: k8swin.azurecr.io/flannel-windows:v0.13.0-{{ server_core_tag }}
+        image: k8swin.azurecr.io/flannel-windows:v0.14.0-{{ server_core_tag }}
         command:
         - powershell
         args:
