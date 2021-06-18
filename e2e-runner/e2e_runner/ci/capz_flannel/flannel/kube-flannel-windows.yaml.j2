@@ -8,7 +8,7 @@ metadata:
     tier: node
     app: flannel
 data:
-  init.ps1: |
+  run.ps1: |
     $ErrorActionPreference = "Stop"
 
     mkdir -force /host/etc/cni/net.d
@@ -49,9 +49,6 @@ data:
     cp -force /k/flannel/* /host/k/flannel/
     cp -force /kube-proxy/kubeconfig.conf /host/k/flannel/kubeconfig.yml
     cp -force /var/run/secrets/kubernetes.io/serviceaccount/* /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount/
-
-  run.ps1: |
-    $ErrorActionPreference = "Stop"
 
     mkdir -force /host/k/flannel
     cp -force /k/flannel/flanneld.exe /host/k/flannel/
@@ -97,14 +94,14 @@ spec:
       tolerations:
       - operator: Exists
         effect: NoSchedule
-      initContainers:
-      - name: install-cni
+      containers:
+      - name: kube-flannel
         image: k8swin.azurecr.io/flannel-windows:v0.14.0-{{ server_core_tag }}
         command:
         - powershell
         args:
         - -file
-        - /etc/kube-flannel-windows/init.ps1
+        - /etc/kube-flannel-windows/run.ps1
         volumeMounts:
         - name: wins
           mountPath: \\.\pipe\rancher_wins
@@ -120,21 +117,6 @@ spec:
           mountPath: /etc/kube-flannel-windows/
         - name: kubeadm-config
           mountPath: /etc/kubeadm-config/
-      containers:
-      - name: kube-flannel
-        image: k8swin.azurecr.io/flannel-windows:v0.14.0-{{ server_core_tag }}
-        command:
-        - powershell
-        args:
-        - -file
-        - /etc/kube-flannel-windows/run.ps1
-        volumeMounts:
-        - name: wins
-          mountPath: \\.\pipe\rancher_wins
-        - name: host
-          mountPath: /host
-        - name: flannel-windows-cfg
-          mountPath: /etc/kube-flannel-windows/
         env:
         - name: POD_NAME
           valueFrom:
