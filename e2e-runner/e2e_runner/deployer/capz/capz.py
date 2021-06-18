@@ -334,7 +334,7 @@ class CAPZProvisioner(base.Deployer):
                    "-o UserKnownHostsFile=/dev/null".format(
                        os.environ["SSH_KEY"]))
         utils.run_shell_cmd([
-            "rsync", "-r", "-e", '"{}"'.format(ssh_cmd),
+            "rsync", "-a", "-e", '"{}"'.format(ssh_cmd), "--delete",
             "capi@{}:{}".format(self.bootstrap_vm_public_ip, remote_path),
             local_path])
 
