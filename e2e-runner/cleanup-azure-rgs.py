@@ -73,6 +73,9 @@ def is_prowjob_finished(build_id):
     output = sh.kubectl('get', 'prowjob', '-n', 'default', '-o', 'json',
                         '-l', 'prow.k8s.io/build-id={}'.format(build_id))
     prowjob = json.loads(output.stdout)
+    if len(prowjob['items']) == 0:
+        logger.info("The prowjob doesn't exist anymore.")
+        return True
     state = prowjob['items'][0]['status'].get('state')
     if state != 'pending':
         logger.info("The prowjob is not running anymore.")
