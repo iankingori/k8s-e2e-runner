@@ -36,6 +36,14 @@ function Get-KubernetesLogs {
     Copy-Item -Recurse -Force -Path "$env:SystemDrive\var\log" -Destination $logsPath
 }
 
+function Get-CloudbaseInitLogs {
+    Write-Output "Collecting Cloudbase-Init logs"
+
+    Copy-Item -Recurse -Force `
+        -Path "${env:ProgramFiles}\Cloudbase Solutions\Cloudbase-Init\log" `
+        -Destination "${LOGS_DIR}\cloudbase-init"
+}
+
 if(Test-Path $LOGS_DIR) {
     Remove-Item -Recurse -Force -Path $LOGS_DIR
 }
@@ -44,6 +52,7 @@ New-Item -ItemType Directory -Path $LOGS_DIR | Out-Null
 Get-WindowsLogs
 Get-DockerLogs
 Get-KubernetesLogs
+Get-CloudbaseInitLogs
 
 $archivePath = Join-Path (Split-Path -Path $LOGS_DIR -Parent) "logs.zip"
 Compress-Archive -Path $LOGS_DIR -CompressionLevel Optimal -DestinationPath $archivePath -Force
