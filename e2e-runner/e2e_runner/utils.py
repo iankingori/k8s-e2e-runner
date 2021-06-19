@@ -196,6 +196,5 @@ def rsync_upload(local_path, remote_path,
     if ssh_key_path:
         ssh_cmd += " -i {}".format(ssh_key_path)
     run_shell_cmd([
-        "rsync", "-r", "-e", '"{}"'.format(ssh_cmd),
-        local_path,
+        "rsync", "-a", "-e", '"{}"'.format(ssh_cmd), "--delete", local_path,
         "{}@{}:{}".format(ssh_user, ssh_address, remote_path)])

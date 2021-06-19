@@ -81,14 +81,8 @@ spec:
     - - LABEL=etcd_disk
       - /var/lib/etcddisk
     preKubeadmCommands:
-{%- if k8s_bins %}
-    - curl -Lo /tmp/update-k8s.sh http://{{ bootstrap_vm_address }}/scripts/update-k8s.sh
-    - bash /tmp/update-k8s.sh http://{{ bootstrap_vm_address }} {{ ci_version }}
-{%- endif %}
-{%- if flannel_mode == "overlay" %}
-    - curl -Lo /tmp/set-nics-mtu.sh http://{{ bootstrap_vm_address }}/scripts/set-nics-mtu.sh
-    - bash /tmp/set-nics-mtu.sh
-{%- endif %}
+    - curl -Lo /tmp/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.sh
+    - bash /tmp/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }} {{ ci_version }} {{ k8s_bins }} {{ flannel_mode }}
     useExperimentalRetryJoin: true
   version: {{ ci_version }}
   replicas: 1
@@ -118,6 +112,6 @@ spec:
         marketplace:
           publisher: cncf-upstream
           offer: capi
-          sku: k8s-1dot21dot0-ubuntu-1804
-          version: "2021.04.08"
+          sku: k8s-1dot21dot1-ubuntu-1804
+          version: "2021.05.17"
 {%- endif %}

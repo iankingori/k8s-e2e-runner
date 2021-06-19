@@ -92,19 +92,5 @@ spec:
           name: '{{ ds.meta_data["local_hostname"] }}'
 {%- endraw %}
       preKubeadmCommands:
-      - curl.exe -Lo /tmp/ssh-setup.ps1 http://{{ bootstrap_vm_address }}/scripts/ssh-setup.ps1
-      - powershell -C "/tmp/ssh-setup.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -SSHPublicKey '{{ azure_ssh_public_key }}'"
-{%- if k8s_bins %}
-      - curl.exe -Lo /tmp/update-k8s.ps1 http://{{ bootstrap_vm_address }}/scripts/update-k8s.ps1
-      - powershell -C "/tmp/update-k8s.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -CIVersion {{ ci_version }}"
-{%- endif %}
-{%- if sdn_cni_bins %}
-      - curl.exe -Lo /tmp/update-sdn-cni.ps1 http://{{ bootstrap_vm_address }}/scripts/update-sdn-cni.ps1
-      - powershell -C "/tmp/update-sdn-cni.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }}"
-{%- endif %}
-{%- if containerd_bins and containerd_shim_bins %}
-      - curl.exe -Lo /tmp/update-containerd.ps1 http://{{ bootstrap_vm_address }}/scripts/update-containerd.ps1
-      - powershell -C "/tmp/update-containerd.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }}"
-{%- endif %}
       - curl.exe -Lo /tmp/kubeadm-bootstrap.ps1 http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.ps1
-      - powershell -C "/tmp/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }}"
+      - powershell -C "/tmp/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -CIVersion {{ ci_version }} -SSHPublicKey '{{ azure_ssh_public_key }}'{% if k8s_bins %} -K8sBins{% endif %}{% if sdn_cni_bins %} -SDNCNIBins{% endif %}{% if containerd_bins %} -ContainerdBins{% endif %}{% if containerd_shim_bins %} -ContainerdShimBins{% endif %}"

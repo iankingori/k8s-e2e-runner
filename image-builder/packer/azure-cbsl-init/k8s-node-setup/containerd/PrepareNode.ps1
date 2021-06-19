@@ -1,5 +1,5 @@
 Param(
-    [string]$KubernetesVersion="v1.21.0",
+    [string]$KubernetesVersion="v1.21.1",
     [Parameter(Mandatory=$true)]
     [string]$AcrName,
     [Parameter(Mandatory=$true)]
@@ -12,17 +12,13 @@ $ErrorActionPreference = "Stop"
 
 . "$PSScriptRoot\..\common.ps1"
 
-$CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
-
-$CRI_CONTAINERD_VERSION = "1.4.4"
-$CRICTL_VERSION = "1.21.0"
-
 
 function Install-Containerd {
     mkdir -force $CONTAINERD_DIR
     mkdir -force $KUBERNETES_DIR
     mkdir -force $VAR_LOG_DIR
     mkdir -force "$ETC_DIR\cni\net.d"
+    mkdir -force "$OPT_DIR\cni\bin"
 
     Start-FileDownload "https://github.com/containerd/containerd/releases/download/v${CRI_CONTAINERD_VERSION}/cri-containerd-cni-${CRI_CONTAINERD_VERSION}-windows-amd64.tar.gz" "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
     tar xzf $env:TEMP\cri-containerd-windows-amd64.tar.gz -C $CONTAINERD_DIR
@@ -40,12 +36,20 @@ function Install-Containerd {
     Remove-Item -Force "$env:TEMP\crictl-windows-amd64.tar.gz"
 
     Copy-Item "$PSScriptRoot\nat.conf" "$ETC_DIR\cni\net.d\"
-    $k8sPauseImage = Get-KubernetesPauseImage
-    Get-Content "$PSScriptRoot\containerd_config.toml" | `
-        ForEach-Object { $_ -replace "{{K8S_PAUSE_IMAGE}}", $k8sPauseImage } | `
-        Out-File "$CONTAINERD_DIR\containerd_config.toml" -Encoding ascii
+    foreach($cniBin in @("nat.exe", "sdnbridge.exe", "sdnoverlay.exe")) {
+        Move-Item "$CONTAINERD_DIR\cni\$cniBin" "$OPT_DIR\cni\bin\"
+    }
+    Get-Content "$PSScriptRoot\config.toml" | `
+        ForEach-Object { $_ -replace "{{K8S_PAUSE_IMAGE}}", $KUBERNETES_PAUSE_IMAGE } | `
+        Out-File "$CONTAINERD_DIR\config.toml" -Encoding ascii
 
-    nssm install containerd $CONTAINERD_DIR\containerd.exe --config $CONTAINERD_DIR\containerd_config.toml
+    # TODO: Remove these binaries downloads, once those bundled with the stable package pass Windows conformance testing.
+    Start-FileDownload "https://capzwin.blob.core.windows.net/bin/containerd-shim-runhcs-v1.exe" "$CONTAINERD_DIR\containerd-shim-runhcs-v1.exe"
+    foreach($cniBin in @("nat.exe", "sdnbridge.exe", "sdnoverlay.exe")) {
+        Start-FileDownload "https://capzwin.blob.core.windows.net/bin/$cniBin" "$OPT_DIR\cni\bin\$cniBin"
+    }
+
+    nssm install containerd $CONTAINERD_DIR\containerd.exe --config $CONTAINERD_DIR\config.toml
     if($LASTEXITCODE) {
         Throw "Failed to install containerd service"
     }
@@ -70,14 +74,7 @@ function Install-Containerd {
 }
 
 function Start-ContainerImagesPull {
-    $windowsRelease = Get-WindowsRelease
-    $images = @(
-        (Get-KubernetesPauseImage),
-        (Get-NanoServerImage),
-        "mcr.microsoft.com/windows/servercore:${windowsRelease}",
-        "${AcrName}.azurecr.io/flannel-windows:v${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",
-        "${AcrName}.azurecr.io/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
-    )
+    $images = Get-ContainerImages -ContainerRegistry "${AcrName}.azurecr.io" -KubernetesVersion $KubernetesVersion
     foreach($img in $images) {
         Start-ExecuteWithRetry {
             ctr.exe -n k8s.io image pull -u "${AcrUserName}:${AcrUserPassword}" $img
@@ -90,17 +87,18 @@ function Start-ContainerImagesPull {
 
 
 Install-NSSM
-Install-CNI
 Install-Containerd
 Install-Kubelet -KubernetesVersion $KubernetesVersion `
                 -StartKubeletScriptPath "$PSScriptRoot\StartKubelet.ps1" `
                 -ContainerRuntimeServiceName "containerd"
+Install-ContainerNetworkingPlugins
 Start-ContainerImagesPull
 
 nssm stop containerd
 if($LASTEXITCODE) {
     Throw "Failed to stop containerd"
 }
+Remove-Item -Force "${VAR_LOG_DIR}\containerd.log"
 $hnsNetworks = Get-HnsNetwork
 if($hnsNetworks) {
     $hnsNetworks | Remove-HnsNetwork

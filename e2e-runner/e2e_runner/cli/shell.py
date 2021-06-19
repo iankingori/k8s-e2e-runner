@@ -9,7 +9,7 @@ class E2eRunnerApp(App):
     def __init__(self):
         super(E2eRunnerApp, self).__init__(
             description='Kubernetes End-To-End Runner',
-            version='0.0.1',
+            version='1.0.0',
             command_manager=CommandManager('e2e.runner'),
             deferred_help=True,
         )
