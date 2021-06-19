@@ -62,7 +62,7 @@ class RunCI(Command):
 
         p.add_argument('--containerd-repo',
                        default='https://github.com/containerd/containerd')
-        p.add_argument('--containerd-branch', default='master')
+        p.add_argument('--containerd-branch', default='main')
 
         p.add_argument('--containerd-shim-repo',
                        default='https://github.com/microsoft/hcsshim')
