@@ -1,5 +1,5 @@
 Param(
-    [string]$KubernetesVersion="v1.21.1",
+    [string]$KubernetesVersion="v1.21.2",
     [Parameter(Mandatory=$true)]
     [string]$AcrName,
     [Parameter(Mandatory=$true)]
