@@ -4,15 +4,14 @@ set -o pipefail
 set -o errexit
 
 if [[ $# -ne 4 ]]; then
-    echo "USAGE: $0 <CI_PACKAGES_BASE_URL> <CI_VERSION> <K8S_BINS_BUILT> <FLANNEL_MODE>"
+    echo "USAGE: $0 <CI_PACKAGES_BASE_URL> <CI_VERSION> <FLANNEL_MODE> <K8S_BINS_BUILT>"
     exit 1
 fi
 
 CI_PACKAGES_BASE_URL=$1
 CI_VERSION=$2
-K8S_BINS_BUILT=$3
-FLANNEL_MODE=$4
-RESULT_FILE="/tmp/kubeadm-success.txt"
+FLANNEL_MODE=$3
+K8S_BINS_BUILT=$4
 
 run_cmd_with_retry() {
     local RETRIES=$1
@@ -78,10 +77,17 @@ set_nics_mtu() {
     done
 }
 
+catch() {
+    # If errors happen, uninstall the kubelet. This will render the machine
+    # not started, and the cluster-api MachineHealthCheck will replace it.
+    apt-get purge kubelet -y
+}
+
+trap catch ERR
+
 if [[ "$K8S_BINS_BUILT" = "True" ]]; then
     update_k8s
 fi
 if [[ "$FLANNEL_MODE" = "overlay" ]]; then
     set_nics_mtu
 fi
-echo "True" > $RESULT_FILE

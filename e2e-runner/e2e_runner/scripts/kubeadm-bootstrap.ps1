@@ -15,7 +15,6 @@ $ErrorActionPreference = "Stop"
 $global:KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
 $global:OPT_DIR = Join-Path $env:SystemDrive "opt"
 $global:CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
-$global:RESULT_FILE = Join-Path $env:SystemDrive "tmp\kubeadm-success.txt"
 
 
 function Start-ExternalCommand {
@@ -244,9 +243,8 @@ try {
         }
     }
     Start-ExternalCommand { nssm set kubelet Start SERVICE_AUTO_START 2>$null }
-    $success = $true
 } catch [System.Exception] {
-    $success = $false
-} finally {
-    Set-Content -Path $RESULT_FILE -Value $success -Encoding ascii
+    # If errors happen, uninstall the kubelet. This will render the machine
+    # not started, and the cluster-api MachineHealthCheck will replace it.
+    Start-ExternalCommand { nssm remove kubelet confirm 2>$null }
 }

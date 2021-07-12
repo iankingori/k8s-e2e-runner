@@ -244,19 +244,6 @@ class CAPZProvisioner(base.Deployer):
         with open(ssh_config_file, "w") as f:
             f.write("\n".join(ssh_config))
 
-    def assert_nodes_successful_provision(self):
-        nodes_addresses = \
-            self.windows_private_addresses + self.linux_private_addresses
-        for address in nodes_addresses:
-            self.logging.info(
-                "Checking if node %s provisioned successfully", address)
-            is_successful, _ = self.run_cmd_on_k8s_node(
-                "cat /tmp/kubeadm-success.txt", address)
-            if not strtobool(is_successful.decode().strip()):
-                msg = "Node {} didn't provision successfully".format(address)
-                self.logging.error(msg)
-                raise Exception(msg)
-
     def enable_ip_forwarding(self):
         self.logging.info("Enabling IP forwarding for the cluster VMs")
         vm_nics = utils.retry_on_error()(
