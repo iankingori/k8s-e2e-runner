@@ -167,7 +167,8 @@ class CAPZProvisioner(base.Deployer):
     def up(self):
         self._setup_capz_components()
         self._create_capz_cluster()
-        self._wait_for_control_plane()
+        self._create_capz_control_plane()
+        self._create_capz_windows_agents()
         self._setup_capz_kubeconfig()
 
     @utils.retry_on_error()
@@ -893,7 +894,7 @@ class CAPZProvisioner(base.Deployer):
             return False
         return True
 
-    def _create_capz_cluster(self):
+    def _capz_context(self):
         bootstrap_vm_address = "{}:8081".format(self.bootstrap_vm_private_ip)
         context = {
             "cluster_name": self.cluster_name,
@@ -926,10 +927,45 @@ class CAPZProvisioner(base.Deployer):
             context["win_minion_image_version"] = parsed["image_version"]
         elif self.win_minion_image_type == constants.MANAGED_IMAGE_TYPE:
             context["win_minion_image_id"] = self.win_minion_image_id
+        return context
+
+    def _create_capz_cluster(self):
         self.logging.info("Create CAPZ cluster")
         output_file = "/tmp/capz-cluster.yaml"
+        context = self._capz_context()
         utils.render_template(
             "cluster.yaml.j2", output_file, context, self.capz_dir)
+        utils.retry_on_error()(utils.run_shell_cmd)([
+            self.kubectl, "apply", "--kubeconfig",
+            self.mgmt_kubeconfig_path, "-f", output_file
+        ])
+
+    @utils.retry_on_error(max_attempts=5, max_sleep_seconds=0)
+    def _create_capz_control_plane(self):
+        self.logging.info("Create CAPZ control plane")
+        output_file = "/tmp/capz-control-plane.yaml"
+        context = self._capz_context()
+        utils.render_template(
+            "control-plane.yaml.j2", output_file, context, self.capz_dir)
+        try:
+            utils.retry_on_error()(utils.run_shell_cmd)([
+                self.kubectl, "apply", "--kubeconfig",
+                self.mgmt_kubeconfig_path, "-f", output_file
+            ])
+            self._wait_for_control_plane(timeout=600)
+        except Exception as ex:
+            utils.retry_on_error()(utils.run_shell_cmd)([
+                self.kubectl, "delete", "--ignore-not-found=true",
+                "--kubeconfig", self.mgmt_kubeconfig_path, "-f", output_file
+            ])
+            raise ex
+
+    def _create_capz_windows_agents(self):
+        self.logging.info("Create CAPZ Windows agents")
+        output_file = "/tmp/capz-windows-agents.yaml"
+        context = self._capz_context()
+        utils.render_template(
+            "windows-agents.yaml.j2", output_file, context, self.capz_dir)
         utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "apply", "--kubeconfig",
             self.mgmt_kubeconfig_path, "-f", output_file

@@ -1,14 +1,15 @@
 ---
-apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
 kind: KubeadmControlPlane
 metadata:
   name: {{ cluster_name }}-control-plane
   namespace: default
 spec:
-  infrastructureTemplate:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
-    kind: AzureMachineTemplate
-    name: {{ cluster_name }}-control-plane
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+      kind: AzureMachineTemplate
+      name: {{ cluster_name }}-control-plane
   kubeadmConfigSpec:
     clusterConfiguration:
       apiServer:
@@ -81,13 +82,12 @@ spec:
     - - LABEL=etcd_disk
       - /var/lib/etcddisk
     preKubeadmCommands:
-    - curl -Lo /tmp/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.sh
-    - bash /tmp/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }} {{ ci_version }} {{ flannel_mode }} {{ k8s_bins }}
-    useExperimentalRetryJoin: true
+    - curl -Lo /run/kubeadm/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.sh
+    - bash /run/kubeadm/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }} {{ ci_version }} {{ flannel_mode }} {{ k8s_bins }}
   version: {{ ci_version }}
   replicas: 1
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
 kind: AzureMachineTemplate
 metadata:
   name: {{ cluster_name }}-control-plane
@@ -99,7 +99,6 @@ spec:
       - diskSizeGB: 128
         lun: 0
         nameSuffix: etcddisk
-      location: {{ azure_location }}
       osDisk:
         diskSizeGB: 128
         managedDisk:
@@ -107,6 +106,9 @@ spec:
         osType: Linux
       sshPublicKey: {{ azure_ssh_public_key_b64 }}
       vmSize: {{ master_vm_size }}
+{%- if flannel_mode == "host-gw" %}
+      enableIPForwarding: true
+{%- endif %}
 {%- if k8s_bins %}
       image:
         marketplace:

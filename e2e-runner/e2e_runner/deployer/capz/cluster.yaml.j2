@@ -1,5 +1,5 @@
 ---
-apiVersion: cluster.x-k8s.io/v1alpha3
+apiVersion: cluster.x-k8s.io/v1alpha4
 kind: Cluster
 metadata:
   labels:
@@ -12,15 +12,15 @@ spec:
       cidrBlocks:
       - {{ cluster_network_subnet }}
   controlPlaneRef:
-    apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
     kind: KubeadmControlPlane
     name: {{ cluster_name }}-control-plane
   infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
     kind: AzureCluster
     name: {{ cluster_name }}
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
 kind: AzureCluster
 metadata:
   name: {{ cluster_name }}
@@ -37,7 +37,3 @@ spec:
         role: node
   resourceGroup: {{ cluster_name }}
   subscriptionID: {{ azure_subscription_id }}
-
-{% include "control-plane.yaml.j2" %}
-
-{% include "windows-agents.yaml.j2" %}

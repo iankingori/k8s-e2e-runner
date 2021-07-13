@@ -1,20 +1,20 @@
 ---
-apiVersion: cluster.x-k8s.io/v1alpha3
+apiVersion: cluster.x-k8s.io/v1alpha4
 kind: MachineHealthCheck
 metadata:
   name: {{ cluster_name }}-nodes-unhealthy
 spec:
   clusterName: {{ cluster_name }}
-  nodeStartupTimeout: 20m
+  nodeStartupTimeout: 10m
   selector:
     matchLabels:
       cluster.x-k8s.io/deployment-name: {{ cluster_name }}-md-win
   unhealthyConditions:
     - type: Ready
       status: Unknown
-      timeout: 30m
+      timeout: 5m
 ---
-apiVersion: cluster.x-k8s.io/v1alpha3
+apiVersion: cluster.x-k8s.io/v1alpha4
 kind: MachineDeployment
 metadata:
   name: {{ cluster_name }}-md-win
@@ -28,17 +28,17 @@ spec:
     spec:
       bootstrap:
         configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha4
           kind: KubeadmConfigTemplate
           name: {{ cluster_name }}-md-win
       clusterName: {{ cluster_name }}
       infrastructureRef:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
         kind: AzureMachineTemplate
         name: {{ cluster_name }}-md-win
       version: {{ ci_version }}
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
 kind: AzureMachineTemplate
 metadata:
   name: {{ cluster_name }}-md-win
@@ -46,7 +46,6 @@ metadata:
 spec:
   template:
     spec:
-      location: {{ azure_location }}
       osDisk:
         diskSizeGB: 128
         managedDisk:
@@ -54,6 +53,9 @@ spec:
         osType: Windows
       sshPublicKey: {{ azure_ssh_public_key_b64 }}
       vmSize: {{ win_minion_size }}
+{%- if flannel_mode == "host-gw" %}
+      enableIPForwarding: true
+{%- endif %}
       image:
 {%- if win_minion_image_type == "shared-image-gallery" %}
         sharedGallery:
@@ -67,7 +69,7 @@ spec:
         id: {{ win_minion_image_id }}
 {%- endif %}
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+apiVersion: bootstrap.cluster.x-k8s.io/v1alpha4
 kind: KubeadmConfigTemplate
 metadata:
   name: {{ cluster_name }}-md-win
@@ -93,5 +95,5 @@ spec:
           name: '{{ ds.meta_data["local_hostname"] }}'
 {%- endraw %}
       preKubeadmCommands:
-      - curl.exe -Lo /tmp/kubeadm-bootstrap.ps1 http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.ps1
-      - powershell -C "/tmp/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -CIVersion {{ ci_version }} -SSHPublicKey '{{ azure_ssh_public_key }}'{% if k8s_bins %} -K8sBins{% endif %}{% if sdn_cni_bins %} -SDNCNIBins{% endif %}{% if containerd_bins %} -ContainerdBins{% endif %}{% if containerd_shim_bins %} -ContainerdShimBins{% endif %}"
+      - curl.exe -Lo /run/kubeadm/kubeadm-bootstrap.ps1 http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.ps1
+      - powershell -C "/run/kubeadm/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -CIVersion {{ ci_version }} -SSHPublicKey '{{ azure_ssh_public_key }}'{% if k8s_bins %} -K8sBins{% endif %}{% if sdn_cni_bins %} -SDNCNIBins{% endif %}{% if containerd_bins %} -ContainerdBins{% endif %}{% if containerd_shim_bins %} -ContainerdShimBins{% endif %}"
