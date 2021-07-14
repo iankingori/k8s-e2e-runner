@@ -44,7 +44,7 @@ function Start-ContainerImagesPull {
 Install-NSSM
 Set-DockerConfig
 Install-Kubelet -KubernetesVersion $KubernetesVersion `
-                -StartKubeletScriptPath "$PSScriptRoot\StartKubelet.ps1" `
+                -StartKubeletScriptPath "$PSScriptRoot\..\StartKubelet.ps1" `
                 -ContainerRuntimeServiceName "docker"
 Install-ContainerNetworkingPlugins
 Start-ContainerImagesPull
