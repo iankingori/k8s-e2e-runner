@@ -3,15 +3,14 @@ set -o nounset
 set -o pipefail
 set -o errexit
 
-if [[ $# -ne 4 ]]; then
-    echo "USAGE: $0 <CI_PACKAGES_BASE_URL> <CI_VERSION> <FLANNEL_MODE> <K8S_BINS_BUILT>"
+if [[ $# -ne 3 ]]; then
+    echo "USAGE: $0 <CI_PACKAGES_BASE_URL> <CI_VERSION> <K8S_BINS_BUILT>"
     exit 1
 fi
 
 CI_PACKAGES_BASE_URL=$1
 CI_VERSION=$2
-FLANNEL_MODE=$3
-K8S_BINS_BUILT=$4
+K8S_BINS_BUILT=$3
 
 run_cmd_with_retry() {
     local RETRIES=$1
@@ -71,12 +70,6 @@ update_k8s() {
     echo "kubelet version: $(kubelet --version)"
 }
 
-set_nics_mtu() {
-    for dev in $(find /sys/class/net -type l -not -lname '*virtual*' -printf '%f\n'); do
-        /sbin/ifconfig "${dev}" mtu 1450
-    done
-}
-
 catch() {
     # If errors happen, uninstall the kubelet. This will render the machine
     # not started, and the cluster-api MachineHealthCheck will replace it.
@@ -87,7 +80,4 @@ trap catch ERR
 
 if [[ "$K8S_BINS_BUILT" = "True" ]]; then
     update_k8s
-fi
-if [[ "$FLANNEL_MODE" = "overlay" ]]; then
-    set_nics_mtu
 fi
