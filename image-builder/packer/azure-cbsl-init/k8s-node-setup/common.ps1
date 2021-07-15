@@ -6,13 +6,10 @@ $global:ETC_DIR = Join-Path $env:SystemDrive "etc"
 $global:NSSM_DIR = Join-Path $env:ProgramFiles "nssm"
 $global:OPT_DIR = Join-Path $env:SystemDrive "opt"
 
-$global:KUBERNETES_PAUSE_IMAGE = "mcr.microsoft.com/oss/kubernetes/pause:1.4.1"
-
 $global:CNI_PLUGINS_VERSION = "0.9.1"
-$global:WINDOWS_CNI_PLUGINS_VERSION = "0.2.0"
 $global:WINS_VERSION = "0.1.1"
 $global:FLANNEL_VERSION = "0.14.0"
-$global:CRI_CONTAINERD_VERSION = "1.5.2"
+$global:CRI_CONTAINERD_VERSION = "1.5.3"
 $global:CRICTL_VERSION = "1.21.0"
 
 $global:NSSM_URL = "https://k8stestinfrabinaries.blob.core.windows.net/nssm-mirror/nssm-2.24.zip"
@@ -172,10 +169,6 @@ function Install-Kubelet {
     if($LASTEXITCODE) {
         Throw "Failed to set kubelet DependOnService"
     }
-    nssm set kubelet AppEnvironmentExtra K8S_PAUSE_IMAGE=$KUBERNETES_PAUSE_IMAGE
-    if($LASTEXITCODE) {
-        Throw "Failed to set kubelet K8S_PAUSE_IMAGE nssm extra env variable"
-    }
     nssm set kubelet Start SERVICE_DEMAND_START
     if($LASTEXITCODE) {
         Throw "Failed to set kubelet manual start type"
@@ -207,7 +200,7 @@ function Get-ContainerImages {
 
     $windowsRelease = Get-WindowsRelease
     return @(
-        $KUBERNETES_PAUSE_IMAGE,
+        "mcr.microsoft.com/oss/kubernetes/pause:1.4.1",
         (Get-NanoServerImage),
         "mcr.microsoft.com/windows/servercore:${windowsRelease}",
         "${ContainerRegistry}/flannel-windows:v${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",

@@ -25,7 +25,7 @@ if(!$hnsNetwork) {
 
 $subnet = $hnsNetwork.Subnets[0].AddressPrefix
 $ipamConfig = @"
-{"cniVersion": "0.2.0", "name": "vxlan0", "ipam":{"type":"host-local","ranges":[[{"subnet":"$subnet"}]],"dataDir":"/var/lib/cni/networks"}}
+{"cniVersion": "0.2.0", "name": "$networkName", "ipam":{"type":"host-local","ranges":[[{"subnet":"$subnet"}]],"dataDir":"/var/lib/cni/networks"}}
 "@
 Set-Content -Path "$KUBERNETES_DIR\sourceVipRequest.json" -Value $ipamConfig -Encoding ascii
 

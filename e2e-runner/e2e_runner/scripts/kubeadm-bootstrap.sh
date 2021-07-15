@@ -3,16 +3,14 @@ set -o nounset
 set -o pipefail
 set -o errexit
 
-if [[ $# -ne 4 ]]; then
-    echo "USAGE: $0 <CI_PACKAGES_BASE_URL> <CI_VERSION> <K8S_BINS_BUILT> <FLANNEL_MODE>"
+if [[ $# -ne 3 ]]; then
+    echo "USAGE: $0 <CI_PACKAGES_BASE_URL> <CI_VERSION> <K8S_BINS_BUILT>"
     exit 1
 fi
 
 CI_PACKAGES_BASE_URL=$1
 CI_VERSION=$2
 K8S_BINS_BUILT=$3
-FLANNEL_MODE=$4
-RESULT_FILE="/tmp/kubeadm-success.txt"
 
 run_cmd_with_retry() {
     local RETRIES=$1
@@ -62,7 +60,7 @@ update_k8s() {
         # remove unused image tag
         ctr -n k8s.io image remove "k8s.gcr.io/${CI_IMAGE}-amd64:${CI_VERSION//+/_}"
         # cleanup cached node image
-        crictl rmi "k8s.gcr.io/${CI_IMAGE}:v1.21.1"
+        crictl rmi "k8s.gcr.io/${CI_IMAGE}:v1.21.2"
     done
 
     echo "Checking binary versions"
@@ -72,16 +70,14 @@ update_k8s() {
     echo "kubelet version: $(kubelet --version)"
 }
 
-set_nics_mtu() {
-    for dev in $(find /sys/class/net -type l -not -lname '*virtual*' -printf '%f\n'); do
-        /sbin/ifconfig "${dev}" mtu 1450
-    done
+catch() {
+    # If errors happen, uninstall the kubelet. This will render the machine
+    # not started, and the cluster-api MachineHealthCheck will replace it.
+    apt-get purge kubelet -y
 }
+
+trap catch ERR
 
 if [[ "$K8S_BINS_BUILT" = "True" ]]; then
     update_k8s
 fi
-if [[ "$FLANNEL_MODE" = "overlay" ]]; then
-    set_nics_mtu
-fi
-echo "True" > $RESULT_FILE

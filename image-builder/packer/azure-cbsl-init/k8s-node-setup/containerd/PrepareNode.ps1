@@ -1,5 +1,5 @@
 Param(
-    [string]$KubernetesVersion="v1.21.1",
+    [string]$KubernetesVersion="v1.21.2",
     [Parameter(Mandatory=$true)]
     [string]$AcrName,
     [Parameter(Mandatory=$true)]
@@ -39,9 +39,7 @@ function Install-Containerd {
     foreach($cniBin in @("nat.exe", "sdnbridge.exe", "sdnoverlay.exe")) {
         Move-Item "$CONTAINERD_DIR\cni\$cniBin" "$OPT_DIR\cni\bin\"
     }
-    Get-Content "$PSScriptRoot\config.toml" | `
-        ForEach-Object { $_ -replace "{{K8S_PAUSE_IMAGE}}", $KUBERNETES_PAUSE_IMAGE } | `
-        Out-File "$CONTAINERD_DIR\config.toml" -Encoding ascii
+    Copy-Item "$PSScriptRoot\config.toml" "$CONTAINERD_DIR\config.toml"
 
     # TODO: Remove these binaries downloads, once those bundled with the stable package pass Windows conformance testing.
     Start-FileDownload "https://capzwin.blob.core.windows.net/bin/containerd-shim-runhcs-v1.exe" "$CONTAINERD_DIR\containerd-shim-runhcs-v1.exe"
@@ -89,7 +87,7 @@ function Start-ContainerImagesPull {
 Install-NSSM
 Install-Containerd
 Install-Kubelet -KubernetesVersion $KubernetesVersion `
-                -StartKubeletScriptPath "$PSScriptRoot\StartKubelet.ps1" `
+                -StartKubeletScriptPath "$PSScriptRoot\..\StartKubelet.ps1" `
                 -ContainerRuntimeServiceName "containerd"
 Install-ContainerNetworkingPlugins
 Start-ContainerImagesPull

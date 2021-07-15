@@ -12,10 +12,10 @@ Param(
 
 $ErrorActionPreference = "Stop"
 
+$global:TMP_DIR = Join-Path $env:SystemDrive "tmp"
 $global:KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
 $global:OPT_DIR = Join-Path $env:SystemDrive "opt"
 $global:CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
-$global:RESULT_FILE = Join-Path $env:SystemDrive "tmp\kubeadm-success.txt"
 
 
 function Start-ExternalCommand {
@@ -212,6 +212,7 @@ function Update-ContainerdShim {
 
 
 try {
+    New-Item -ItemType Directory -Force -Path $TMP_DIR
     Install-OpenSSHServer
     if($K8sBins) {
         Update-Kubernetes
@@ -236,7 +237,7 @@ try {
             Start-Service -Name "docker"
         }
         "containerd" {
-            Add-Content -Path "/tmp/kubeadm-join-config.yaml" -Encoding Ascii `
+            Add-Content -Path "/run/kubeadm/kubeadm-join-config.yaml" -Encoding Ascii `
                         -Value "  criSocket: ${env:CONTAINER_RUNTIME_ENDPOINT}"
             Start-ExternalCommand { nssm set containerd Start SERVICE_AUTO_START 2>$null }
             Start-ExternalCommand { nssm start containerd 2>$null }
@@ -244,9 +245,8 @@ try {
         }
     }
     Start-ExternalCommand { nssm set kubelet Start SERVICE_AUTO_START 2>$null }
-    $success = $true
 } catch [System.Exception] {
-    $success = $false
-} finally {
-    Set-Content -Path $RESULT_FILE -Value $success -Encoding ascii
+    # If errors happen, uninstall the kubelet. This will render the machine
+    # not started, and the cluster-api MachineHealthCheck will replace it.
+    Start-ExternalCommand { nssm remove kubelet confirm 2>$null }
 }

@@ -6,7 +6,6 @@ import yaml
 
 from pathlib import Path
 from functools import cached_property
-from distutils.util import strtobool
 from azure.core import exceptions as azure_exceptions
 from azure.identity import ClientSecretCredential
 from azure.mgmt.resource import ResourceManagementClient
@@ -167,7 +166,8 @@ class CAPZProvisioner(base.Deployer):
     def up(self):
         self._setup_capz_components()
         self._create_capz_cluster()
-        self._wait_for_control_plane()
+        self._create_capz_control_plane()
+        self._create_capz_windows_agents()
         self._setup_capz_kubeconfig()
 
     @utils.retry_on_error()
@@ -244,19 +244,6 @@ class CAPZProvisioner(base.Deployer):
         with open(ssh_config_file, "w") as f:
             f.write("\n".join(ssh_config))
 
-    def assert_nodes_successful_provision(self):
-        nodes_addresses = \
-            self.windows_private_addresses + self.linux_private_addresses
-        for address in nodes_addresses:
-            self.logging.info(
-                "Checking if node %s provisioned successfully", address)
-            is_successful, _ = self.run_cmd_on_k8s_node(
-                "cat /tmp/kubeadm-success.txt", address)
-            if not strtobool(is_successful.decode().strip()):
-                msg = "Node {} didn't provision successfully".format(address)
-                self.logging.error(msg)
-                raise Exception(msg)
-
     def enable_ip_forwarding(self):
         self.logging.info("Enabling IP forwarding for the cluster VMs")
         vm_nics = utils.retry_on_error()(
@@ -286,38 +273,17 @@ class CAPZProvisioner(base.Deployer):
                 retry=retry_if_exception_type(AssertionError),
                 reraise=True):
             with attempt:
-                ready_nodes = []
-                machines = self._get_mgmt_capz_machines_names()
+                ready_machines = []
+                machines = self._get_win_azuremachines_names()
                 for machine in machines:
-                    is_control_plane = machine.startswith(
-                        '{}-control-plane'.format(self.cluster_name))
-                    if is_control_plane:
-                        continue
                     try:
-                        phase = self._get_mgmt_capz_machine_phase(machine)
+                        self._wait_ready_azuremachine(machine)
                     except Exception:
+                        vm_name = machine[:9] + "-" + machine[-5:]
+                        self._delete_azure_vm(vm_name)
                         continue
-                    if phase != "Running":
-                        continue
-                    node_name = self._get_mgmt_capz_machine_node(machine)
-                    if node_name not in self._get_capz_nodes():
-                        continue
-                    if self.container_runtime == "docker":
-                        # Kubernetes Docker agents don't have a default CNI
-                        # configured. Therefore the agents will not report
-                        # ready until a CNI is initialized.
-                        # Therefore, at least we verify that the ready
-                        # condition is reported by the agents.
-                        r = self._get_capz_node_ready_condition(node_name)
-                        if not r:
-                            continue
-                        if r.get('reason') == 'KubeletNotReady':
-                            ready_nodes.append(node_name)
-                    else:
-                        if self._is_k8s_node_ready(node_name):
-                            ready_nodes.append(node_name)
-                assert len(ready_nodes) == self.win_minion_count
-                assert set(ready_nodes) == set(self._get_capz_nodes())
+                    ready_machines.append(machine)
+                assert len(ready_machines) == self.win_minion_count
         self.logging.info("All CAPZ agents are ready")
 
     @utils.retry_on_error()
@@ -334,7 +300,7 @@ class CAPZProvisioner(base.Deployer):
                    "-o UserKnownHostsFile=/dev/null".format(
                        os.environ["SSH_KEY"]))
         utils.run_shell_cmd([
-            "rsync", "-a", "-e", '"{}"'.format(ssh_cmd), "--delete",
+            "rsync", "-rlptD", "-e", '"{}"'.format(ssh_cmd), "--delete",
             "capi@{}:{}".format(self.bootstrap_vm_public_ip, remote_path),
             local_path])
 
@@ -815,27 +781,53 @@ class CAPZProvisioner(base.Deployer):
             raise ex
 
     @utils.retry_on_error()
-    def _get_mgmt_capz_machines_names(self):
+    def _get_win_azuremachines_names(self):
+        selector = "cluster.x-k8s.io/deployment-name={}-md-win".format(
+            self.cluster_name)
         cmd = [
-            self.kubectl, "get", "machine",
+            self.kubectl, "get", "azuremachine",
             "--kubeconfig", self.mgmt_kubeconfig_path,
+            "-l", selector,
             "--output=custom-columns=NAME:.metadata.name",
             "--no-headers"
         ]
         output, _ = utils.run_shell_cmd(cmd, sensitive=True)
         return output.decode().strip().split('\n')
 
+    @retry(stop=stop_after_delay(600),
+           wait=wait_exponential(max=30),
+           reraise=True)
+    def _wait_ready_azuremachine(self, name):
+        status = self._get_azuremachine_status(name)
+        if not status:
+            raise Exception(
+                "Azure machine ({}) didn't report status".format(name))
+        if status.get("vmState") != "Succeeded":
+            raise Exception(
+                "Azure machine ({}) state is not succeeded".format(name))
+        if not status.get("ready"):
+            raise Exception(
+                "Azure machine ({}) is not ready yet".format(name))
+
     @utils.retry_on_error()
-    def _get_capz_nodes(self):
+    def _get_azuremachine_status(self, name):
         cmd = [
-            self.kubectl, "get", "nodes",
-            "--kubeconfig", self.capz_kubeconfig_path,
-            "-l", "!node-role.kubernetes.io/control-plane",
-            "--output=custom-columns=NAME:.metadata.name",
-            "--no-headers"
+            self.kubectl, "get", "azuremachine",
+            "--kubeconfig", self.mgmt_kubeconfig_path,
+            "--output", "yaml", name
         ]
         output, _ = utils.run_shell_cmd(cmd, sensitive=True)
-        return output.decode().strip().split('\n')
+        azuremachine = yaml.safe_load(output.decode())
+        if "status" not in azuremachine:
+            return None
+        return azuremachine["status"]
+
+    @utils.retry_on_error()
+    def _delete_azure_vm(self, name):
+        for vm in self.compute_client.virtual_machines.list(self.cluster_name):
+            if vm.name == name:
+                self.compute_client.virtual_machines.begin_delete(
+                    self.cluster_name, name).wait()
 
     @utils.retry_on_error()
     def _get_mgmt_capz_machine_phase(self, machine_name):
@@ -848,65 +840,7 @@ class CAPZProvisioner(base.Deployer):
         output, _ = utils.run_shell_cmd(cmd, sensitive=True)
         return output.decode().strip()
 
-    @utils.retry_on_error()
-    def _get_mgmt_capz_machine_node(self, machine_name):
-        cmd = [
-            self.kubectl, "get", "machine",
-            "--kubeconfig", self.mgmt_kubeconfig_path,
-            "--output=custom-columns=NODE_NAME:.status.nodeRef.name",
-            "--no-headers", machine_name
-        ]
-        output, _ = utils.run_shell_cmd(cmd, sensitive=True)
-        return output.decode().strip()
-
-    @utils.retry_on_error()
-    def _get_capz_node_status(self, node_name):
-        cmd = [
-            self.kubectl, "get", "node", "--output", "yaml",
-            "--kubeconfig", self.capz_kubeconfig_path,
-            node_name
-        ]
-        output, _ = utils.run_shell_cmd(cmd, sensitive=True)
-        node = yaml.safe_load(output.decode())
-        if "status" not in node:
-            return None
-        return node["status"]
-
-    def _get_capz_node_status_conditions(self, node_name,
-                                         condition_type="Ready"):
-        node_status = self._get_capz_node_status(node_name)
-        if not node_status:
-            return []
-        return [
-            c for c in node_status["conditions"] if c["type"] == condition_type
-        ]
-
-    def _get_capz_node_ready_condition(self, node_name):
-        ready_conditions = self._get_capz_node_status_conditions(
-            node_name, "Ready")
-        if len(ready_conditions) == 0:
-            return None
-        return ready_conditions[0]
-
-    def _is_k8s_node_ready(self, node_name=None):
-        if not node_name:
-            self.logging.warning("Empty node_name parameter")
-            return False
-        ready_condition = self._get_capz_node_ready_condition(node_name)
-        if not ready_condition:
-            self.logging.info("Node %s didn't report ready condition yet",
-                              node_name)
-            return False
-        try:
-            is_ready = strtobool(ready_condition["status"])
-        except ValueError:
-            is_ready = False
-        if not is_ready:
-            self.logging.info("Node %s is not ready yet", node_name)
-            return False
-        return True
-
-    def _create_capz_cluster(self):
+    def _capz_context(self):
         bootstrap_vm_address = "{}:8081".format(self.bootstrap_vm_private_ip)
         context = {
             "cluster_name": self.cluster_name,
@@ -939,10 +873,45 @@ class CAPZProvisioner(base.Deployer):
             context["win_minion_image_version"] = parsed["image_version"]
         elif self.win_minion_image_type == constants.MANAGED_IMAGE_TYPE:
             context["win_minion_image_id"] = self.win_minion_image_id
+        return context
+
+    def _create_capz_cluster(self):
         self.logging.info("Create CAPZ cluster")
         output_file = "/tmp/capz-cluster.yaml"
+        context = self._capz_context()
         utils.render_template(
             "cluster.yaml.j2", output_file, context, self.capz_dir)
+        utils.retry_on_error()(utils.run_shell_cmd)([
+            self.kubectl, "apply", "--kubeconfig",
+            self.mgmt_kubeconfig_path, "-f", output_file
+        ])
+
+    @utils.retry_on_error(max_attempts=5, max_sleep_seconds=0)
+    def _create_capz_control_plane(self):
+        self.logging.info("Create CAPZ control plane")
+        output_file = "/tmp/capz-control-plane.yaml"
+        context = self._capz_context()
+        utils.render_template(
+            "control-plane.yaml.j2", output_file, context, self.capz_dir)
+        try:
+            utils.retry_on_error()(utils.run_shell_cmd)([
+                self.kubectl, "apply", "--kubeconfig",
+                self.mgmt_kubeconfig_path, "-f", output_file
+            ])
+            self._wait_for_control_plane(timeout=600)
+        except Exception as ex:
+            utils.retry_on_error()(utils.run_shell_cmd)([
+                self.kubectl, "delete", "--ignore-not-found=true",
+                "--kubeconfig", self.mgmt_kubeconfig_path, "-f", output_file
+            ])
+            raise ex
+
+    def _create_capz_windows_agents(self):
+        self.logging.info("Create CAPZ Windows agents")
+        output_file = "/tmp/capz-windows-agents.yaml"
+        context = self._capz_context()
+        utils.render_template(
+            "windows-agents.yaml.j2", output_file, context, self.capz_dir)
         utils.retry_on_error()(utils.run_shell_cmd)([
             self.kubectl, "apply", "--kubeconfig",
             self.mgmt_kubeconfig_path, "-f", output_file
