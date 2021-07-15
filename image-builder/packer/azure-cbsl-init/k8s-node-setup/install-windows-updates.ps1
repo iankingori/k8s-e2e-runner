@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 . "$PSScriptRoot\common.ps1"
 
-$extraUpdates = @{
+$EXTRA_UPDATES = @{
     #
     # For each release, the array needs to have items given as:
     # @{
@@ -18,15 +18,18 @@ $extraUpdates = @{
 }
 
 
+Write-Output "Installing PSWindowsUpdate PowerShell module"
+Install-PackageProvider -Name NuGet -Force -Confirm:$false
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 Install-Module -Name PSWindowsUpdate -Force -Confirm:$false
 
-Start-ExecuteWithRetry {
-    Install-WindowsUpdate -AcceptAll -IgnoreReboot
-} -MaxRetryCount 10 -RetryInterval 30 -RetryMessage "Failed to install Windows updates"
+Write-Output "Installing latest Windows updates"
+Start-ExecuteWithRetry `
+    -ScriptBlock { Install-WindowsUpdate -AcceptAll -IgnoreReboot } `
+    -MaxRetryCount 10 -RetryInterval 30 -RetryMessage "Failed to install Windows updates"
 
 $release = Get-WindowsRelease
-foreach($update in $extraUpdates[$release]) {
+foreach($update in $EXTRA_UPDATES[$release]) {
     $hotfix = Get-HotFix -Id $update["ID"] -ErrorAction SilentlyContinue
     if($hotfix) {
         Write-Output "HotFix $($update["ID"]) is already installed"

@@ -64,29 +64,16 @@
       "elevated_password": "{{.WinRMPassword}}",
       "type": "powershell",
       "elevated_execute_command": "powershell.exe -ExecutionPolicy Bypass -File {{.Path}}",
-      "inline": ["C:\\k8s-node-setup\\setup-prerequisites.ps1 -ContainerRuntime {{ user `container_runtime` }}"]
-    },
-    {
-      "type": "windows-restart"
-    },
-    {
-      "elevated_user": "packer",
-      "elevated_password": "{{.WinRMPassword}}",
-      "type": "powershell",
-      "elevated_execute_command": "powershell.exe -ExecutionPolicy Bypass -File {{.Path}}",
-      "inline": ["C:\\k8s-node-setup\\install-windows-features.ps1"]
-    },
-    {
-      "type": "windows-restart"
-    },
-    {
-      "elevated_user": "packer",
-      "elevated_password": "{{.WinRMPassword}}",
-      "type": "powershell",
-      "elevated_execute_command": "powershell.exe -ExecutionPolicy Bypass -File {{.Path}}",
       "inline": ["C:\\k8s-node-setup\\install-windows-updates.ps1"]
     },
     {
+      "elevated_user": "packer",
+      "elevated_password": "{{.WinRMPassword}}",
+      "type": "powershell",
+      "elevated_execute_command": "powershell.exe -ExecutionPolicy Bypass -File {{.Path}}",
+      "inline": ["C:\\k8s-node-setup\\install-prerequisites.ps1 -ContainerRuntime {{ user `container_runtime` }}"]
+    },
+    {
       "type": "windows-restart"
     },
     {
@@ -94,9 +81,7 @@
       "elevated_password": "{{.WinRMPassword}}",
       "type": "powershell",
       "elevated_execute_command": "powershell.exe -ExecutionPolicy Bypass -File {{.Path}}",
-      "inline": [
-        "C:\\k8s-node-setup\\{{ user `container_runtime` }}\\PrepareNode.ps1 -KubernetesVersion {{ user `kubernetes_version` }} -AcrName {{ user `acr_name` }} -AcrUserName {{ user `acr_user_name` }} -AcrUserPassword {{ user `acr_user_password` }}"
-      ]
+      "inline": ["C:\\k8s-node-setup\\{{ user `container_runtime` }}\\PrepareNode.ps1 -KubernetesVersion {{ user `kubernetes_version` }} -AcrName {{ user `acr_name` }} -AcrUserName {{ user `acr_user_name` }} -AcrUserPassword {{ user `acr_user_password` }}"]
     },
     {
       "elevated_user": "packer",

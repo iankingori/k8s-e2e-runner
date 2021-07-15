@@ -13,6 +13,23 @@ $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\..\common.ps1"
 
 
+function Disable-Docker {
+    # Return early if Docker is not installed
+    $dockerdBin = Get-Command "dockerd" -ErrorAction SilentlyContinue
+    if(!$dockerdBin) {
+        return
+    }
+
+    # Disable Docker system service
+    Stop-Service -Name "Docker"
+    Set-Service -Name "Docker" -StartupType Disabled
+
+    # Remove Docker from the system PATH
+    $systemPath = [Environment]::GetEnvironmentVariable("PATH", [System.EnvironmentVariableTarget]::Machine).Split(';')
+    $newSystemPath = $systemPath | Where-Object { $_ -ne "${env:ProgramFiles}\Docker" }
+    [Environment]::SetEnvironmentVariable("PATH", $newSystemPath, [System.EnvironmentVariableTarget]::Machine)
+}
+
 function Install-Containerd {
     mkdir -force $CONTAINERD_DIR
     mkdir -force $KUBERNETES_DIR
@@ -84,10 +101,11 @@ function Start-ContainerImagesPull {
 }
 
 
+Disable-Docker
 Install-NSSM
 Install-Containerd
 Install-Kubelet -KubernetesVersion $KubernetesVersion `
-                -StartKubeletScriptPath "$PSScriptRoot\..\StartKubelet.ps1" `
+                -StartKubeletScriptPath "$PSScriptRoot\..\start-kubelet.ps1" `
                 -ContainerRuntimeServiceName "containerd"
 Install-ContainerNetworkingPlugins
 Start-ContainerImagesPull
