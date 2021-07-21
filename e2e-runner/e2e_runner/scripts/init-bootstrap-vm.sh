@@ -3,7 +3,7 @@ set -o nounset
 set -o pipefail
 set -o errexit
 
-GO_VERSION="1.16.5"
+GO_VERSION="1.16.7"
 KIND_BIN_URL="https://github.com/kubernetes-sigs/kind/releases/download/v0.11.1/kind-linux-amd64"
 
 function retrycmd_if_failure() {
