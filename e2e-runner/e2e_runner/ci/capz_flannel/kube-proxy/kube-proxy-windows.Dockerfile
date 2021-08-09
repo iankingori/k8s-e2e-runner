@@ -1,4 +1,4 @@
-ARG k8sVersion="v1.21.2"
+ARG k8sVersion="v1.22.0"
 ARG servercoreTag="ltsc2019"
 
 FROM mcr.microsoft.com/windows/servercore:${servercoreTag}
@@ -13,5 +13,5 @@ RUN mkdir -force C:\k\kube-proxy; \
 
 RUN mkdir C:\utils; \
     curl.exe --fail -sLo C:\utils\wins.exe https://github.com/rancher/wins/releases/download/v0.1.1/wins.exe; \
-    curl.exe --fail -sLo C:\utils\yq.exe https://github.com/mikefarah/yq/releases/download/v4.9.8/yq_windows_amd64.exe; \
+    curl.exe --fail -sLo C:\utils\yq.exe https://github.com/mikefarah/yq/releases/download/v4.11.2/yq_windows_amd64.exe; \
     "[Environment]::SetEnvironmentVariable('PATH', $env:PATH + ';C:\utils', [EnvironmentVariableTarget]::Machine)"

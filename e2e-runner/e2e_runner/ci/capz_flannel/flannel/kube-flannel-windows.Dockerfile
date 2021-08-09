@@ -13,5 +13,5 @@ RUN mkdir -force C:\k\flannel; \
 
 RUN mkdir C:\utils; \
     curl.exe -Lo C:\utils\wins.exe https://github.com/rancher/wins/releases/download/v0.1.1/wins.exe; \
-    curl.exe -Lo C:\utils\yq.exe https://github.com/mikefarah/yq/releases/download/v4.9.8/yq_windows_amd64.exe; \
+    curl.exe -Lo C:\utils\yq.exe https://github.com/mikefarah/yq/releases/download/v4.11.2/yq_windows_amd64.exe; \
     "[Environment]::SetEnvironmentVariable('PATH', $env:PATH + ';C:\utils', [EnvironmentVariableTarget]::Machine)"
