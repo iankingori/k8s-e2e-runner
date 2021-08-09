@@ -1,7 +1,7 @@
 ARG flannelVersion="v0.14.0"
-ARG servercoreTag="ltsc2019"
+ARG baseImage="mcr.microsoft.com/windows/servercore:ltsc2019"
 
-FROM mcr.microsoft.com/windows/servercore:${servercoreTag}
+FROM ${baseImage}
 SHELL ["powershell", "-NoLogo", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 ARG flannelVersion

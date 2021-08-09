@@ -95,7 +95,7 @@ class RunCI(Command):
                                 constants.FLANNEL_MODE_L2BRIDGE],
                        help="Flannel mode used by the CI.")
         p.add_argument("--base-container-image-tag", default="ltsc2019",
-                       choices=["ltsc2019", "1909", "2004"],
+                       choices=["ltsc2019", "1909", "2004", "ltsc2022"],
                        help="The base container image used for the "
                        "kube-proxy / flannel CNI. This needs to be adjusted "
                        "depending on the Windows minion Azure image.")

@@ -96,6 +96,7 @@ function Get-WindowsRelease {
         17763 = "ltsc2019"
         18363 = "1909"
         19041 = "2004"
+        20348 = "ltsc2022"
     }
     $osBuild = [System.Environment]::OSVersion.Version.Build
     $releaseName = $releases[$osBuild]
@@ -107,10 +108,29 @@ function Get-WindowsRelease {
 
 function Get-NanoServerImage {
     $release = Get-WindowsRelease
+    if($release -eq "ltsc2022") {
+        return "mcr.microsoft.com/windows/nanoserver/insider:10.0.20348.1"
+    }
     if($release -eq "ltsc2019") {
         $release = "1809"
     }
     return "mcr.microsoft.com/windows/nanoserver:$release"
+}
+
+function Get-ServerCoreImage {
+    $release = Get-WindowsRelease
+    if($release -eq "ltsc2022") {
+        return "mcr.microsoft.com/windows/servercore/insider:10.0.20348.1"
+    }
+    return "mcr.microsoft.com/windows/servercore:$release"
+}
+
+function Get-KubernetesPauseImage {
+    $release = Get-WindowsRelease
+    if($release -eq "ltsc2022") {
+        return "k8swin.azurecr.io/pause:3.6"
+    }
+    return "mcr.microsoft.com/oss/kubernetes/pause:1.4.1"
 }
 
 function Install-NSSM {
@@ -169,6 +189,11 @@ function Install-Kubelet {
     if($LASTEXITCODE) {
         Throw "Failed to set kubelet DependOnService"
     }
+    $k8sPauseImage = Get-KubernetesPauseImage
+    nssm set kubelet AppEnvironmentExtra K8S_PAUSE_IMAGE=$k8sPauseImage
+    if($LASTEXITCODE) {
+        Throw "Failed to set kubelet K8S_PAUSE_IMAGE nssm extra env variable"
+    }
     nssm set kubelet Start SERVICE_DEMAND_START
     if($LASTEXITCODE) {
         Throw "Failed to set kubelet manual start type"
@@ -200,9 +225,9 @@ function Get-ContainerImages {
 
     $windowsRelease = Get-WindowsRelease
     return @(
-        "mcr.microsoft.com/oss/kubernetes/pause:1.4.1",
+        (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
-        "mcr.microsoft.com/windows/servercore:${windowsRelease}",
+        (Get-ServerCoreImage),
         "${ContainerRegistry}/flannel-windows:v${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",
         "${ContainerRegistry}/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
     )

@@ -56,6 +56,11 @@ function Install-Containerd {
     foreach($cniBin in @("nat.exe", "sdnbridge.exe", "sdnoverlay.exe")) {
         Move-Item "$CONTAINERD_DIR\cni\$cniBin" "$OPT_DIR\cni\bin\"
     }
+    $k8sPauseImage = Get-KubernetesPauseImage
+    Get-Content "$PSScriptRoot\config.toml" | `
+        ForEach-Object { $_ -replace "{{K8S_PAUSE_IMAGE}}", $k8sPauseImage } | `
+        Out-File "$CONTAINERD_DIR\config.toml" -Encoding ascii
+
     Copy-Item "$PSScriptRoot\config.toml" "$CONTAINERD_DIR\config.toml"
 
     # TODO: Remove these binaries downloads, once those bundled with the stable package pass Windows conformance testing.
