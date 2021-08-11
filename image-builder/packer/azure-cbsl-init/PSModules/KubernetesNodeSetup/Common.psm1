@@ -152,8 +152,6 @@ function Install-Kubelet {
         [parameter(Mandatory=$true)]
         [string]$KubernetesVersion,
         [parameter(Mandatory=$true)]
-        [string]$StartKubeletScriptPath,
-        [parameter(Mandatory=$true)]
         [string]$ContainerRuntimeServiceName
     )
 
@@ -177,7 +175,7 @@ function Install-Kubelet {
     mkdir -force "$ETC_DIR\kubernetes\pki"
     New-Item -Path "$VAR_LIB_DIR\kubelet\etc\kubernetes\pki" -Type SymbolicLink `
              -Value "$ETC_DIR\kubernetes\pki"
-    Copy-Item -Force -Path $StartKubeletScriptPath -Destination "$KUBERNETES_DIR\StartKubelet.ps1"
+    Copy-Item -Force -Path "$PSScriptRoot\scripts\start-kubelet.ps1" -Destination "$KUBERNETES_DIR\StartKubelet.ps1"
 
     Write-Output "Registering kubelet service"
 
@@ -231,4 +229,15 @@ function Get-ContainerImages {
         "${ContainerRegistry}/flannel-windows:v${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",
         "${ContainerRegistry}/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
     )
+}
+
+function Confirm-EnvVarsAreSet {
+    Param(
+        [String[]]$EnvVars
+    )
+    foreach($var in $EnvVars) {
+        if(!(Test-Path "env:${var}")) {
+            Throw "Missing required environment variable: $var"
+        }
+    }
 }
