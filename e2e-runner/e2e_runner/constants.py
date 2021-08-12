@@ -1,6 +1,6 @@
 AZURE_LOCATIONS = ["eastus2", "westeurope", "westus2", "southcentralus"]
 
-DEFAULT_KUBERNETES_VERSION = "v1.21.2"
+DEFAULT_KUBERNETES_VERSION = "v1.22.0"
 
 SHARED_IMAGE_GALLERY_TYPE = "shared-image-gallery"
 MANAGED_IMAGE_TYPE = "managed-image"
@@ -16,4 +16,4 @@ CONTAINERD_SHIM_DIR = "./cmd/containerd-shim-runhcs-v1"
 CONTAINERD_SHIM_BIN = "containerd-shim-runhcs-v1.exe"
 
 CAPI_VERSION = "v0.4.0"
-CAPZ_PROVIDER_VERSION = "v0.5.0"
+CAPZ_PROVIDER_VERSION = "v0.5.1"

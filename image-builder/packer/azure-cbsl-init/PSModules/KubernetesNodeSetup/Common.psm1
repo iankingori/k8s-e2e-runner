@@ -96,6 +96,7 @@ function Get-WindowsRelease {
         17763 = "ltsc2019"
         18363 = "1909"
         19041 = "2004"
+        20348 = "ltsc2022"
     }
     $osBuild = [System.Environment]::OSVersion.Version.Build
     $releaseName = $releases[$osBuild]
@@ -107,10 +108,29 @@ function Get-WindowsRelease {
 
 function Get-NanoServerImage {
     $release = Get-WindowsRelease
+    if($release -eq "ltsc2022") {
+        return "mcr.microsoft.com/windows/nanoserver/insider:10.0.20348.1"
+    }
     if($release -eq "ltsc2019") {
         $release = "1809"
     }
     return "mcr.microsoft.com/windows/nanoserver:$release"
+}
+
+function Get-ServerCoreImage {
+    $release = Get-WindowsRelease
+    if($release -eq "ltsc2022") {
+        return "mcr.microsoft.com/windows/servercore/insider:10.0.20348.1"
+    }
+    return "mcr.microsoft.com/windows/servercore:$release"
+}
+
+function Get-KubernetesPauseImage {
+    $release = Get-WindowsRelease
+    if($release -eq "ltsc2022") {
+        return "k8swin.azurecr.io/pause:3.6"
+    }
+    return "mcr.microsoft.com/oss/kubernetes/pause:1.4.1"
 }
 
 function Install-NSSM {
@@ -131,8 +151,6 @@ function Install-Kubelet {
     Param(
         [parameter(Mandatory=$true)]
         [string]$KubernetesVersion,
-        [parameter(Mandatory=$true)]
-        [string]$StartKubeletScriptPath,
         [parameter(Mandatory=$true)]
         [string]$ContainerRuntimeServiceName
     )
@@ -157,7 +175,7 @@ function Install-Kubelet {
     mkdir -force "$ETC_DIR\kubernetes\pki"
     New-Item -Path "$VAR_LIB_DIR\kubelet\etc\kubernetes\pki" -Type SymbolicLink `
              -Value "$ETC_DIR\kubernetes\pki"
-    Copy-Item -Force -Path $StartKubeletScriptPath -Destination "$KUBERNETES_DIR\StartKubelet.ps1"
+    Copy-Item -Force -Path "$PSScriptRoot\scripts\start-kubelet.ps1" -Destination "$KUBERNETES_DIR\StartKubelet.ps1"
 
     Write-Output "Registering kubelet service"
 
@@ -168,6 +186,11 @@ function Install-Kubelet {
     nssm set kubelet DependOnService $ContainerRuntimeServiceName
     if($LASTEXITCODE) {
         Throw "Failed to set kubelet DependOnService"
+    }
+    $k8sPauseImage = Get-KubernetesPauseImage
+    nssm set kubelet AppEnvironmentExtra K8S_PAUSE_IMAGE=$k8sPauseImage
+    if($LASTEXITCODE) {
+        Throw "Failed to set kubelet K8S_PAUSE_IMAGE nssm extra env variable"
     }
     nssm set kubelet Start SERVICE_DEMAND_START
     if($LASTEXITCODE) {
@@ -200,10 +223,21 @@ function Get-ContainerImages {
 
     $windowsRelease = Get-WindowsRelease
     return @(
-        "mcr.microsoft.com/oss/kubernetes/pause:1.4.1",
+        (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
-        "mcr.microsoft.com/windows/servercore:${windowsRelease}",
+        (Get-ServerCoreImage),
         "${ContainerRegistry}/flannel-windows:v${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",
         "${ContainerRegistry}/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
     )
+}
+
+function Confirm-EnvVarsAreSet {
+    Param(
+        [String[]]$EnvVars
+    )
+    foreach($var in $EnvVars) {
+        if(!(Test-Path "env:${var}")) {
+            Throw "Missing required environment variable: $var"
+        }
+    }
 }

@@ -90,7 +90,6 @@ spec:
           kubeletExtraArgs:
             cloud-config: c:/k/azure.json
             cloud-provider: azure
-            pod-infra-container-image: mcr.microsoft.com/oss/kubernetes/pause:1.4.1
 {%- raw %}
           name: '{{ ds.meta_data["local_hostname"] }}'
 {%- endraw %}

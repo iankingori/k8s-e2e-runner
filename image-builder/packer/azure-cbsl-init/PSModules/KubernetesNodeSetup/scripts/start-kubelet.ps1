@@ -24,6 +24,7 @@ Invoke-Expression (
     "--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf " +
     "--kubeconfig=/etc/kubernetes/kubelet.conf " +
     "--hostname-override=$(hostname) " +
+    "--pod-infra-container-image=`"${env:K8S_PAUSE_IMAGE}`" " +
     "--enable-debugging-handlers " +
     "--cgroups-per-qos=false " +
     "--enforce-node-allocatable=`"`" " +

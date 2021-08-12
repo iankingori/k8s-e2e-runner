@@ -1,0 +1,9 @@
+{
+  "image_offer": "microsoftserveroperatingsystems-previews",
+  "image_publisher": "MicrosoftWindowsServer",
+  "image_sku": "windows-server-2022-azure-edition-core-preview",
+  "location": "westeurope",
+  "vm_size": "Standard_D2s_v3",
+  "image_name": "ws-ltsc2022-containerd-cbsl-init",
+  "container_runtime": "containerd"
+}

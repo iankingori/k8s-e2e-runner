@@ -30,7 +30,7 @@ periodics:
         - --enable-win-dsr=True
         - --enable-ipv6dualstack=True
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.08.12
         - --cluster-name=capzflannel-l2br-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-master
@@ -63,7 +63,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.08.12
         - --cluster-name=capzflannel-ovrl-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master
@@ -98,7 +98,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.08.12
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
@@ -133,7 +133,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.08.12
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-dsr-disabled-master
@@ -167,7 +167,7 @@ periodics:
         - --enable-win-dsr=False
         - --enable-ipv6dualstack=True
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.08.12
         - --cluster-name=capzdocker-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-dsr-disabled-master
@@ -200,7 +200,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=False
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.08.12
         - --cluster-name=capzdocker-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
@@ -222,8 +222,8 @@ periodics:
         - --test=True
         - --down=True
         - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.21.x
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.21.x.yaml
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
         - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
@@ -232,7 +232,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.08.12
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
@@ -254,8 +254,8 @@ periodics:
         - --test=True
         - --down=True
         - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.21.x
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.21.x.yaml
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
         - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|device.plugin.for.Windows|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook
         - --build=sdncnibins
@@ -264,7 +264,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.08.12
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-sac1909-containerd-flannel-sdnbridge-stable
@@ -286,8 +286,8 @@ periodics:
         - --up=True
         - --down=True
         - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.21.x
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.21.x.yaml
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
         - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
@@ -297,7 +297,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=1909
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.08.12
         - --cluster-name=capzctrd1909-$(BUILD_ID)
 
 - name: k8s-e2e-sac1909-containerd-flannel-sdnoverlay-stable
@@ -319,8 +319,8 @@ periodics:
         - --up=True
         - --down=True
         - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.21.x
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.21.x.yaml
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
         - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|device.plugin.for.Windows|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook
         - --build=sdncnibins
@@ -330,7 +330,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=1909
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-1909-containerd-cbsl-init:2021.08.12
         - --cluster-name=capzctrd1909-$(BUILD_ID)
 
 - name: k8s-e2e-sac2004-containerd-flannel-sdnbridge-stable
@@ -352,8 +352,8 @@ periodics:
         - --up=True
         - --down=True
         - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.21.x
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.21.x.yaml
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
         - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|device.plugin.for.Windows
         - --build=sdncnibins
@@ -363,7 +363,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=2004
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.08.12
         - --cluster-name=capzctrd2004-$(BUILD_ID)
 
 - name: k8s-e2e-sac2004-containerd-flannel-sdnoverlay-stable
@@ -385,8 +385,8 @@ periodics:
         - --up=True
         - --down=True
         - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.21.x
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.21.x.yaml
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
         - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|device.plugin.for.Windows|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook
         - --build=sdncnibins
@@ -396,5 +396,5 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=2004
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.07.15
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.08.12
         - --cluster-name=capzctrd2004-$(BUILD_ID)

@@ -35,26 +35,27 @@ The current scripts support the following K8s Windows workers configurations:
     export ACR_USER_NAME="<ACR_USER_NAME>"
     export ACR_USER_PASSWORD="<ACR_USER_PASSWORD>"
 
-    export KUBERNETES_VERSION="v1.21.2"
+    export KUBERNETES_VERSION="v1.22.0"
     export FLANNEL_VERSION="v0.14.0"
     ```
 
 2. Build the container images for the chosen K8s Windows worker configuration:
 
     ```bash
-    SERVER_CORE_TAG="ltsc2019"  # Current scripts support one of: ltsc2019, 1909, 2004.
+    BASE_IMAGE="mcr.microsoft.com/windows/servercore:ltsc2019"
+    TAG="ltsc2019"
 
     az acr build --registry $ACR_NAME \
-                 --image kube-proxy-windows:${KUBERNETES_VERSION}-windowsservercore-${SERVER_CORE_TAG} \
-                 --build-arg servercoreTag=${SERVER_CORE_TAG} \
+                 --image kube-proxy-windows:${KUBERNETES_VERSION}-windowsservercore-${TAG} \
+                 --build-arg baseImage=${BASE_IMAGE} \
                  --build-arg k8sVersion=${KUBERNETES_VERSION} \
                  --platform windows \
                  --file e2e-runner/e2e_runner/ci/capz_flannel/kube-proxy/kube-proxy-windows.Dockerfile \
                  https://github.com/e2e-win/k8s-e2e-runner.git
 
     az acr build --registry $ACR_NAME \
-                 --image flannel-windows:${FLANNEL_VERSION}-windowsservercore-${SERVER_CORE_TAG} \
-                 --build-arg servercoreTag=${SERVER_CORE_TAG} \
+                 --image flannel-windows:${FLANNEL_VERSION}-windowsservercore-${TAG} \
+                 --build-arg baseImage=${BASE_IMAGE} \
                  --build-arg flannelVersion=${FLANNEL_VERSION} \
                  --platform windows \
                  --file e2e-runner/e2e_runner/ci/capz_flannel/flannel/kube-flannel-windows.Dockerfile \

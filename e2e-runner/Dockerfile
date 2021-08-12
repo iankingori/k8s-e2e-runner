@@ -1,8 +1,8 @@
 FROM ubuntu:20.04
 
-ARG GO_VERSION=1.16.5
+ARG GO_VERSION=1.16.7
 ARG CAPI_VERSION=v0.4.0
-ARG KUBECTL_VERSION=v1.21.2
+ARG KUBECTL_VERSION=v1.22.0
 
 # Install system APT packages & dependencies
 RUN apt-get update && \
@@ -17,7 +17,8 @@ RUN apt-get autoclean && \
 
 # Install Python dependencies
 ADD requirements.txt /tmp
-RUN pip3 install -r /tmp/requirements.txt
+RUN pip3 install -r /tmp/requirements.txt && \
+    rm /tmp/requirements.txt
 
 # Install Golang
 ENV GOPATH "/home/prow/go"
@@ -36,10 +37,10 @@ RUN mkdir -p $GOPATH/src/k8s.io && \
     make WHAT="vendor/github.com/onsi/ginkgo/ginkgo"
 
 # Build kubetest
-RUN mkdir -p $GOPATH/src/github.com/kubernetes && \
-    git clone https://github.com/kubernetes/test-infra && \
-    cd test-infra && \
-    GO111MODULE=on go install ./kubetest
+RUN git clone https://github.com/kubernetes/test-infra /tmp/test-infra && \
+    cd /tmp/test-infra && \
+    GO111MODULE=on go install ./kubetest && \
+    rm -rf /tmp/test-infra
 
 # Install clusterctl
 RUN curl -Lo /usr/local/bin/clusterctl "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CAPI_VERSION}/clusterctl-linux-amd64" && \
