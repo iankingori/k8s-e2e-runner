@@ -296,6 +296,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
+        - --base-container-image-tag=ltsc2022
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.08.12
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
@@ -328,6 +329,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
+        - --base-container-image-tag=ltsc2022
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.08.12
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
