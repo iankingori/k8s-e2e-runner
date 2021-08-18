@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import time
 import socket
+import tarfile
 from threading import Timer
 
 import jinja2
@@ -198,3 +199,8 @@ def rsync_upload(local_path, remote_path,
     run_shell_cmd([
         "rsync", "-rlptD", "-e", '"{}"'.format(ssh_cmd), "--delete",
         local_path, "{}@{}:{}".format(ssh_user, ssh_address, remote_path)])
+
+
+def make_tgz_archive(source_dir, output_file):
+    with tarfile.open(output_file, "w:gz") as tar:
+        tar.add(source_dir, arcname=os.path.basename(source_dir))

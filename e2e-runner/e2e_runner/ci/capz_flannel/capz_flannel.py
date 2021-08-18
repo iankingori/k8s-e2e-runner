@@ -111,6 +111,7 @@ class CapzFlannelCI(base.CI):
         self.deployer.windows_private_addresses
         # Once the CAPZ cluster is deployed, we don't need the
         # bootstrap VM anymore.
+        self.deployer.collect_bootstrap_vm_logs()
         self.deployer.cleanup_bootstrap_vm()
 
     def down(self):
