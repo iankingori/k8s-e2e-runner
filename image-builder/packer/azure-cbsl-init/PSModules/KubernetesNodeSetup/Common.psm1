@@ -6,11 +6,11 @@ $global:ETC_DIR = Join-Path $env:SystemDrive "etc"
 $global:NSSM_DIR = Join-Path $env:ProgramFiles "nssm"
 $global:OPT_DIR = Join-Path $env:SystemDrive "opt"
 
-$global:CNI_PLUGINS_VERSION = "0.9.1"
+$global:CNI_PLUGINS_VERSION = "1.0.0"
 $global:WINS_VERSION = "0.1.1"
 $global:FLANNEL_VERSION = "0.14.0"
-$global:CRI_CONTAINERD_VERSION = "1.5.3"
-$global:CRICTL_VERSION = "1.21.0"
+$global:CRI_CONTAINERD_VERSION = "1.5.5"
+$global:CRICTL_VERSION = "1.22.0"
 
 $global:NSSM_URL = "https://k8stestinfrabinaries.blob.core.windows.net/nssm-mirror/nssm-2.24.zip"
 
@@ -108,9 +108,6 @@ function Get-WindowsRelease {
 
 function Get-NanoServerImage {
     $release = Get-WindowsRelease
-    if($release -eq "ltsc2022") {
-        return "mcr.microsoft.com/windows/nanoserver/insider:10.0.20348.1"
-    }
     if($release -eq "ltsc2019") {
         $release = "1809"
     }
@@ -119,9 +116,6 @@ function Get-NanoServerImage {
 
 function Get-ServerCoreImage {
     $release = Get-WindowsRelease
-    if($release -eq "ltsc2022") {
-        return "mcr.microsoft.com/windows/servercore/insider:10.0.20348.1"
-    }
     return "mcr.microsoft.com/windows/servercore:$release"
 }
 
@@ -210,6 +204,7 @@ function Install-ContainerNetworkingPlugins {
     if($LASTEXITCODE) {
         Throw "Failed to extract cni-plugins.tgz"
     }
+    Start-FileDownload "https://capzwin.blob.core.windows.net/bin/flannel.exe" "$OPT_DIR\cni\bin\flannel.exe"
     Remove-Item -Force $env:TEMP\cni-plugins.tgz
 }
 
