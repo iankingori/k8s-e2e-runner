@@ -2,6 +2,7 @@ import base64
 import os
 import random
 import sh
+import shutil
 import yaml
 
 from pathlib import Path
@@ -69,6 +70,8 @@ class CAPZProvisioner(base.Deployer):
         self.bootstrap_vm_nic_name = "k8s-bootstrap-nic"
         self.bootstrap_vm_public_ip_name = "k8s-bootstrap-public-ip"
         self.bootstrap_vm_size = opts.bootstrap_vm_size
+        self.bootstrap_vm_logs_dir = os.path.join(
+            opts.artifacts_directory, "bootstrap_vm_logs")
 
         self._set_azure_variables()
         credentials, subscription_id = self._get_azure_credentials()
@@ -361,6 +364,30 @@ class CAPZProvisioner(base.Deployer):
         utils.retry_on_error()(
             self.network_client.public_ip_addresses.begin_delete)(
                 self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
+
+    def collect_bootstrap_vm_logs(self):
+        self.logging.info("Collecting logs from bootstrap VM")
+        os.makedirs(self.bootstrap_vm_logs_dir, exist_ok=True)
+        output = sh.kubectl('get', 'pods',
+                            '--kubeconfig', self.mgmt_kubeconfig_path,
+                            '-A', '-o', 'yaml')
+        pods = yaml.safe_load(output.stdout)
+        for pod in pods['items']:
+            name = pod['metadata']['name']
+            ns = pod['metadata']['namespace']
+            for container in pod['spec']['containers']:
+                output = sh.kubectl(
+                    'logs', '--kubeconfig', self.mgmt_kubeconfig_path,
+                    '-n', ns, name, container['name'])
+                log_file = os.path.join(
+                    self.bootstrap_vm_logs_dir,
+                    '{}_{}_{}.log'.format(ns, name, container['name']))
+                with open(log_file, 'wb') as f:
+                    f.write(output.stdout)
+        utils.make_tgz_archive(
+            self.bootstrap_vm_logs_dir,
+            "{}.tar.gz".format(self.bootstrap_vm_logs_dir))
+        shutil.rmtree(self.bootstrap_vm_logs_dir)
 
     def connect_agents_to_controlplane_subnet(self):
         self.logging.info("Connecting agents VMs to the control-plane subnet")
