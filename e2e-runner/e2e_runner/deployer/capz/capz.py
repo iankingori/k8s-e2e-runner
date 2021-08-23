@@ -84,12 +84,8 @@ class CAPZProvisioner(base.Deployer):
                                                       subscription_id)
 
         self._setup_infra()
-        self._bootstrap_vm  # It will setup the bootstrap Azure VM.
+        self.bootstrap_vm = self._create_bootstrap_vm()
         self._setup_mgmt_kubeconfig()
-
-    @cached_property
-    def _bootstrap_vm(self):
-        return self._create_bootstrap_vm()
 
     @cached_property
     def _node_route_table(self):
@@ -160,11 +156,11 @@ class CAPZProvisioner(base.Deployer):
 
     @property
     def bootstrap_vm_private_ip(self):
-        return self._bootstrap_vm['private_ip']
+        return self.bootstrap_vm['private_ip']
 
     @property
     def bootstrap_vm_public_ip(self):
-        return self._bootstrap_vm['public_ip']
+        return self.bootstrap_vm['public_ip']
 
     def up(self):
         self._setup_capz_components()
@@ -364,6 +360,7 @@ class CAPZProvisioner(base.Deployer):
         utils.retry_on_error()(
             self.network_client.public_ip_addresses.begin_delete)(
                 self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
+        self.bootstrap_vm = None
 
     def collect_bootstrap_vm_logs(self):
         self.logging.info("Collecting logs from bootstrap VM")
