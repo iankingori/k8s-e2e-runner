@@ -175,7 +175,6 @@ class RunCI(Command):
             raise e
 
         finally:
-            ci.collect_windows_logs()
-            ci.collect_linux_logs()
+            ci.collect_logs()
             if args.down is True:
                 ci.down()

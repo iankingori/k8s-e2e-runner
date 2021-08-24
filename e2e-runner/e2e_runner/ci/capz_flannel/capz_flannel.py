@@ -121,6 +121,12 @@ class CapzFlannelCI(base.CI):
         self.deployer.reclaim()
         self._setup_kubeconfig()
 
+    def collect_logs(self):
+        if self.deployer.bootstrap_vm:
+            self.deployer.collect_bootstrap_vm_logs()
+        self.collect_linux_logs()
+        self.collect_windows_logs()
+
     def collect_windows_logs(self):
         if "KUBECONFIG" not in os.environ:
             self.logging.info("Skipping collection of Windows logs, because "
