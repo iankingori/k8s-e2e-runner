@@ -16,8 +16,8 @@ The current scripts support the following K8s Windows workers configurations:
 
 * Windows Server 2019 LTSC with Docker runtime
 * Windows Server 2019 LTSC with Containerd runtime
-* Windows Server 1909 SAC with Containerd runtime
 * Windows Server 2004 SAC with Containerd runtime
+* Windows Server 2022 LTSC with Containerd runtime
 
 ### Image builder steps
 

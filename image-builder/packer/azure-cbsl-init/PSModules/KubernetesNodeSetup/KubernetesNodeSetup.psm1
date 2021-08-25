@@ -13,8 +13,8 @@ function Install-LatestWindowsUpdates {
         #
         [Hashtable]$ExtraUpdates=@{
             "ltsc2019" = @()
-            "1909" = @()
             "2004" = @()
+            "ltsc2022" = @()
         }
     )
 

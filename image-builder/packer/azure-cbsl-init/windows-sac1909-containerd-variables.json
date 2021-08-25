@@ -1,9 +1,0 @@
-{
-  "image_offer": "WindowsServer",
-  "image_publisher": "MicrosoftWindowsServer",
-  "image_sku": "datacenter-core-1909-with-containers-smalldisk-g2",
-  "location": "westeurope",
-  "vm_size": "Standard_D2s_v3",
-  "image_name": "ws-1909-containerd-cbsl-init",
-  "container_runtime": "containerd"
-}
