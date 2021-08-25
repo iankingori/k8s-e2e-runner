@@ -94,7 +94,6 @@ function Add-ToSystemPath {
 function Get-WindowsRelease {
     $releases = @{
         17763 = "ltsc2019"
-        18363 = "1909"
         19041 = "2004"
         20348 = "ltsc2022"
     }

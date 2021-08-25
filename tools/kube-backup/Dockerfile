@@ -1,6 +1,6 @@
 FROM ubuntu:latest
 
-ENV K8S_VERSION=1.17.3
+ENV K8S_VERSION=1.22.0
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
