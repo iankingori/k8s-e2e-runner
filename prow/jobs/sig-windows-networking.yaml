@@ -322,7 +322,7 @@ periodics:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x-claudiubelu
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x-claudiubelu.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|device.plugin.for.Windows|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|device.plugin.for.Windows|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook|should.be.able.to.create.a.functioning.NodePort.service|should.be.able.to.change.the.type.from.ExternalName.to.NodePort
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
