@@ -1015,7 +1015,8 @@ class CAPZProvisioner(base.Deployer):
             "--core", ("cluster-api:%s" % constants.CAPI_VERSION),
             "--bootstrap", ("kubeadm:%s" % constants.CAPI_VERSION),
             "--control-plane", ("kubeadm:%s" % constants.CAPI_VERSION),
-            "--infrastructure", ("azure:%s" % constants.CAPZ_PROVIDER_VERSION)
+            "--infrastructure", ("azure:%s" % constants.CAPZ_PROVIDER_VERSION),
+            "--wait-providers"
         ])
         self.logging.info("Wait for the deployments to be available")
         utils.run_shell_cmd([
