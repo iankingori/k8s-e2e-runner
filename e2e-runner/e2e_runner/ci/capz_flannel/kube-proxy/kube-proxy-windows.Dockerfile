@@ -1,17 +1,26 @@
-ARG k8sVersion="v1.22.0"
-ARG baseImage="mcr.microsoft.com/windows/servercore:ltsc2019"
+ARG BASE_IMAGE="mcr.microsoft.com/windows/servercore:ltsc2019"
+ARG WINS_VERSION="v0.1.1"
+ARG YQ_VERSION="v4.11.2"
+ARG K8S_VERSION="v1.22.1"
 
-FROM ${baseImage}
-SHELL ["powershell", "-NoLogo", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+# Linux stage
+FROM --platform=linux/amd64 alpine:latest as prep
 
-ARG k8sVersion
+ARG WINS_VERSION
+ARG YQ_VERSION
+ARG K8S_VERSION
 
-RUN mkdir -force C:\k\kube-proxy; \
-    pushd C:\k\kube-proxy; \
-    Write-Output ${env:k8sVersion}; \
-    curl.exe --fail -sLO https://dl.k8s.io/${env:k8sVersion}/bin/windows/amd64/kube-proxy.exe
+RUN mkdir -p /k/kube-proxy
 
-RUN mkdir C:\utils; \
-    curl.exe --fail -sLo C:\utils\wins.exe https://github.com/rancher/wins/releases/download/v0.1.1/wins.exe; \
-    curl.exe --fail -sLo C:\utils\yq.exe https://github.com/mikefarah/yq/releases/download/v4.11.2/yq_windows_amd64.exe; \
-    "[Environment]::SetEnvironmentVariable('PATH', $env:PATH + ';C:\utils', [EnvironmentVariableTarget]::Machine)"
+ADD https://github.com/rancher/wins/releases/download/${WINS_VERSION}/wins.exe /wins.exe
+ADD https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_windows_amd64.exe /yq.exe
+ADD https://dl.k8s.io/${K8S_VERSION}/bin/windows/amd64/kube-proxy.exe /k/kube-proxy/kube-proxy.exe
+
+# Windows stage
+FROM $BASE_IMAGE
+
+COPY --from=prep /k /k
+COPY --from=prep /wins.exe /Windows/System32/wins.exe
+COPY --from=prep /yq.exe /Windows/System32/yq.exe
+
+ENV PATH="C:\Windows\System32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0"

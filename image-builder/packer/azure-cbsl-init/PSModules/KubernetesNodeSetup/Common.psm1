@@ -119,11 +119,7 @@ function Get-ServerCoreImage {
 }
 
 function Get-KubernetesPauseImage {
-    $release = Get-WindowsRelease
-    if($release -eq "ltsc2022") {
-        return "k8swin.azurecr.io/pause:3.6"
-    }
-    return "mcr.microsoft.com/oss/kubernetes/pause:1.4.1"
+    return "mcr.microsoft.com/oss/kubernetes/pause:3.6"
 }
 
 function Install-NSSM {
