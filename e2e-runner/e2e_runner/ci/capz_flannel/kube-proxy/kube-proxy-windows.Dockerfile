@@ -1,4 +1,4 @@
-ARG k8sVersion="v1.22.0"
+ARG k8sVersion="v1.22.1"
 ARG baseImage="mcr.microsoft.com/windows/servercore:ltsc2019"
 
 FROM ${baseImage}

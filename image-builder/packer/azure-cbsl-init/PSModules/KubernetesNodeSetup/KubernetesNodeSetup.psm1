@@ -180,7 +180,7 @@ function Set-DockerConfig {
 
 function Install-ContainerdKubernetesNode {
     Param(
-        [String]$KubernetesVersion="v1.22.0"
+        [String]$KubernetesVersion="v1.22.1"
     )
 
     Confirm-EnvVarsAreSet -EnvVars @("ACR_NAME", "ACR_USER_NAME", "ACR_USER_PASSWORD")
@@ -214,7 +214,7 @@ function Install-ContainerdKubernetesNode {
 
 function Install-DockerKubernetesNode {
     Param(
-        [String]$KubernetesVersion="v1.22.0"
+        [String]$KubernetesVersion="v1.22.1"
     )
 
     Confirm-EnvVarsAreSet -EnvVars @("ACR_NAME", "ACR_USER_NAME", "ACR_USER_PASSWORD")
