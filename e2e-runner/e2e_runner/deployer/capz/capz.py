@@ -275,13 +275,8 @@ class CAPZProvisioner(base.Deployer):
                 ready_machines = []
                 machines = self._get_win_azuremachines_names()
                 for machine in machines:
-                    try:
-                        self._wait_ready_azuremachine(machine)
-                    except Exception:
-                        vm_name = machine[:9] + "-" + machine[-5:]
-                        self._delete_azure_vm(vm_name)
-                        continue
-                    ready_machines.append(machine)
+                    if self._is_azuremachine_ready(machine):
+                        ready_machines.append(machine)
                 assert len(ready_machines) == self.win_minion_count
         self.logging.info("All CAPZ agents are ready")
 
@@ -818,20 +813,15 @@ class CAPZProvisioner(base.Deployer):
         output, _ = utils.run_shell_cmd(cmd, sensitive=True)
         return output.decode().strip().split('\n')
 
-    @retry(stop=stop_after_delay(600),
-           wait=wait_exponential(max=30),
-           reraise=True)
-    def _wait_ready_azuremachine(self, name):
+    def _is_azuremachine_ready(self, name):
         status = self._get_azuremachine_status(name)
         if not status:
-            raise Exception(
-                "Azure machine ({}) didn't report status".format(name))
+            return False
         if status.get("vmState") != "Succeeded":
-            raise Exception(
-                "Azure machine ({}) state is not succeeded".format(name))
+            return False
         if not status.get("ready"):
-            raise Exception(
-                "Azure machine ({}) is not ready yet".format(name))
+            return False
+        return True
 
     @utils.retry_on_error()
     def _get_azuremachine_status(self, name):
@@ -845,13 +835,6 @@ class CAPZProvisioner(base.Deployer):
         if "status" not in azuremachine:
             return None
         return azuremachine["status"]
-
-    @utils.retry_on_error()
-    def _delete_azure_vm(self, name):
-        for vm in self.compute_client.virtual_machines.list(self.cluster_name):
-            if vm.name == name:
-                self.compute_client.virtual_machines.begin_delete(
-                    self.cluster_name, name).wait()
 
     @utils.retry_on_error()
     def _get_mgmt_capz_machine_phase(self, machine_name):
