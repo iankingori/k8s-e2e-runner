@@ -269,23 +269,6 @@ class CAPZProvisioner(base.Deployer):
                     nic.name,
                     nic_parameters).result()
 
-    def wait_for_agents(self, timeout=3600):
-        self.logging.info("Waiting up to %.2f minutes for CAPZ machines",
-                          timeout / 60.0)
-        for attempt in Retrying(
-                stop=stop_after_delay(timeout),
-                wait=wait_exponential(max=30),
-                retry=retry_if_exception_type(AssertionError),
-                reraise=True):
-            with attempt:
-                ready_machines = []
-                machines = self._get_win_azuremachines_names()
-                for machine in machines:
-                    if self._is_azuremachine_ready(machine):
-                        ready_machines.append(machine)
-                assert len(ready_machines) == self.win_minion_count
-        self.logging.info("All CAPZ agents are ready")
-
     @utils.retry_on_error()
     def upload_to_bootstrap_vm(self, local_path, remote_path="www/"):
         utils.rsync_upload(
@@ -907,16 +890,25 @@ class CAPZProvisioner(base.Deployer):
             ])
             raise ex
 
+    @utils.retry_on_error(max_attempts=12, max_sleep_seconds=0)
     def _create_capz_windows_agents(self):
         self.logging.info("Create CAPZ Windows agents")
         output_file = "/tmp/capz-windows-agents.yaml"
         context = self._capz_context()
         utils.render_template(
             "windows-agents.yaml.j2", output_file, context, self.capz_dir)
-        utils.retry_on_error()(utils.run_shell_cmd)([
-            self.kubectl, "apply", "--kubeconfig",
-            self.mgmt_kubeconfig_path, "-f", output_file
-        ])
+        try:
+            utils.retry_on_error()(utils.run_shell_cmd)([
+                self.kubectl, "apply", "--kubeconfig",
+                self.mgmt_kubeconfig_path, "-f", output_file
+            ])
+            self._wait_for_windows_agents(timeout=600)
+        except Exception as ex:
+            utils.retry_on_error()(utils.run_shell_cmd)([
+                self.kubectl, "delete", "--ignore-not-found=true",
+                "--kubeconfig", self.mgmt_kubeconfig_path, "-f", output_file
+            ])
+            raise ex
 
     def _setup_mgmt_kubeconfig(self):
         self.logging.info("Setting up the management cluster kubeconfig")
@@ -982,6 +974,23 @@ class CAPZProvisioner(base.Deployer):
                         break
                 assert control_plane_ready
         self.logging.info("Control-plane is ready")
+
+    def _wait_for_windows_agents(self, timeout=3600):
+        self.logging.info("Waiting up to %.2f minutes for CAPZ Windows agents",
+                          timeout / 60.0)
+        for attempt in Retrying(
+                stop=stop_after_delay(timeout),
+                wait=wait_exponential(max=30),
+                retry=retry_if_exception_type(AssertionError),
+                reraise=True):
+            with attempt:
+                ready_machines = []
+                machines = self._get_win_azuremachines_names()
+                for machine in machines:
+                    if self._is_azuremachine_ready(machine):
+                        ready_machines.append(machine)
+                assert len(ready_machines) == self.win_minion_count
+        self.logging.info("All CAPZ Windows agents are ready")
 
     @utils.retry_on_error(max_attempts=10)
     def _setup_capz_components(self):
