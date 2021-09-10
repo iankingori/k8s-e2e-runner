@@ -66,6 +66,7 @@ class CAPZProvisioner(base.Deployer):
         self.win_minion_gallery_image = opts.win_minion_gallery_image
         self.win_minion_image_id = opts.win_minion_image_id
 
+        self.bootstrap_vm = None
         self.bootstrap_vm_name = "k8s-bootstrap"
         self.bootstrap_vm_nic_name = "k8s-bootstrap-nic"
         self.bootstrap_vm_public_ip_name = "k8s-bootstrap-public-ip"
@@ -82,14 +83,6 @@ class CAPZProvisioner(base.Deployer):
                                                       subscription_id)
         self.compute_client = ComputeManagementClient(credentials,
                                                       subscription_id)
-
-        self._setup_infra()
-        self.bootstrap_vm = self._create_bootstrap_vm()
-        self._setup_mgmt_kubeconfig()
-
-    @cached_property
-    def _node_route_table(self):
-        return self._create_node_route_table()
 
     @cached_property
     def master_public_address(self):
@@ -161,6 +154,19 @@ class CAPZProvisioner(base.Deployer):
     @property
     def bootstrap_vm_public_ip(self):
         return self.bootstrap_vm['public_ip']
+
+    @utils.retry_on_error()
+    def setup_infra(self):
+        self.logging.info("Setting up the testing infra")
+        try:
+            self._create_resource_group()
+            self._create_vnet()
+            self._create_control_plane_subnet()
+            self._create_node_subnet()
+            self._create_bootstrap_vm()
+        except Exception as ex:
+            self.down()  # Deletes the resource group
+            raise ex
 
     def up(self):
         self._setup_capz_components()
@@ -568,22 +574,22 @@ class CAPZProvisioner(base.Deployer):
                 nic_parameters).result()
 
     @utils.retry_on_error()
-    def _init_bootstrap_vm(self, bootstrap_vm_address):
+    def _init_bootstrap_vm(self):
         self.logging.info("Initializing the bootstrap VM")
         cmd = ["mkdir -p www",
                "sudo addgroup --system docker",
                "sudo usermod -aG docker capi"]
         utils.run_remote_ssh_cmd(
-            cmd=cmd, ssh_user="capi", ssh_address=bootstrap_vm_address,
+            cmd=cmd, ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
             ssh_key_path=os.environ["SSH_KEY"])
         utils.rsync_upload(
             local_path=os.path.join(self.e2e_runner_dir, "scripts"),
             remote_path="www/",
-            ssh_user="capi", ssh_address=bootstrap_vm_address,
+            ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
             ssh_key_path=os.environ["SSH_KEY"])
         cmd = ["bash ./www/scripts/init-bootstrap-vm.sh"]
         utils.run_remote_ssh_cmd(
-            cmd=cmd, ssh_user="capi", ssh_address=bootstrap_vm_address,
+            cmd=cmd, ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
             ssh_key_path=os.environ["SSH_KEY"], timeout=(60 * 15))
 
     def _create_bootstrap_azure_vm(self):
@@ -730,7 +736,7 @@ class CAPZProvisioner(base.Deployer):
     def _create_control_plane_subnet(self):
         self.logging.info("Creating Azure vNET control plane subnet")
         nsg = self._create_control_plane_secgroup()
-        route_table = self._node_route_table
+        route_table = self._create_node_route_table()
         subnet_params = {
             "address_prefix": self.control_plane_subnet_cidr_block,
             "network_security_group": {
@@ -760,7 +766,7 @@ class CAPZProvisioner(base.Deployer):
     def _create_node_subnet(self):
         self.logging.info("Creating Azure vNET node subnet")
         nsg = self._create_node_secgroup()
-        route_table = self._node_route_table
+        route_table = self._create_node_route_table()
         subnet_params = {
             "address_prefix": self.node_subnet_cidr_block,
             "network_security_group": {
@@ -780,23 +786,11 @@ class CAPZProvisioner(base.Deployer):
     @utils.retry_on_error()
     def _create_bootstrap_vm(self):
         try:
-            bootstrap_vm = self._create_bootstrap_azure_vm()
-            self._init_bootstrap_vm(bootstrap_vm['public_ip'])
+            self.bootstrap_vm = self._create_bootstrap_azure_vm()
+            self._init_bootstrap_vm()
+            self._setup_mgmt_kubeconfig()
         except Exception as ex:
             self.cleanup_bootstrap_vm()
-            raise ex
-        return bootstrap_vm
-
-    @utils.retry_on_error()
-    def _setup_infra(self):
-        self.logging.info("Setting up the testing infra")
-        try:
-            self._create_resource_group()
-            self._create_vnet()
-            self._create_control_plane_subnet()
-            self._create_node_subnet()
-        except Exception as ex:
-            self.down()  # Deletes the resource group
             raise ex
 
     @utils.retry_on_error()

@@ -29,6 +29,9 @@ class CI(object):
         self.e2e_runner_dir = os.path.dirname(__file__)
         self.deployer = Deployer()
 
+    def setup_infra(self):
+        self.logging.info("Setup Infra: Default NOOP")
+
     def up(self):
         self.logging.info("UP: Default NOOP")
 

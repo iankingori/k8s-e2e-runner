@@ -59,6 +59,9 @@ class CapzFlannelCI(base.CI):
             tags['jobName'] = job_name
         return tags
 
+    def setup_infra(self):
+        return self.deployer.setup_infra()
+
     def build(self, bins_to_build):
         builder_mapping = {
             "k8sbins": self._build_k8s_artifacts,

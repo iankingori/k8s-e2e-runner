@@ -1,4 +1,5 @@
 import os
+import traceback
 
 from cliff.command import Command
 
@@ -157,22 +158,30 @@ class RunCI(Command):
         ci = factory.get_ci(args.ci)(args)
 
         try:
+            # Setup the testing infrastructure
+            ci.setup_infra()
+
+            # Build the binaries to be tested (if needed)
             ci.build(args.build)
+
+            # Set the patches to be applied to the K8s worker nodes
             ci.set_patches(args.install_patch)
 
+            # Setup the testing cluster
             if args.up is True:
                 ci.up()
             else:
                 ci.reclaim()
 
+            # Run the tests
             if args.test is True:
                 success = ci.test()
                 if success != 0:
                     raise Exception("CI Tests failed")
 
-        except Exception as e:
-            self.logging.error("{}".format(e))
-            raise e
+        except Exception:
+            self.logging.error("{}".format(traceback.format_exc()))
+            raise
 
         finally:
             ci.collect_logs()
