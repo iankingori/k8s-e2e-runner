@@ -987,7 +987,11 @@ class CAPZProvisioner(base.Deployer):
                 ready_machines = []
                 machines = self._get_win_azuremachines_names()
                 for machine in machines:
-                    if self._is_azuremachine_ready(machine):
+                    try:
+                        is_ready = self._is_azuremachine_ready(machine)
+                    except Exception:
+                        continue
+                    if is_ready:
                         ready_machines.append(machine)
                 assert len(ready_machines) == self.win_minion_count
         self.logging.info("All CAPZ Windows agents are ready")
