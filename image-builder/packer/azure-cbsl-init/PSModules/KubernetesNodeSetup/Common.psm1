@@ -6,7 +6,7 @@ $global:ETC_DIR = Join-Path $env:SystemDrive "etc"
 $global:NSSM_DIR = Join-Path $env:ProgramFiles "nssm"
 $global:OPT_DIR = Join-Path $env:SystemDrive "opt"
 
-$global:CNI_PLUGINS_VERSION = "1.0.0"
+$global:CNI_PLUGINS_VERSION = "1.0.1"
 $global:WINS_VERSION = "0.1.1"
 $global:FLANNEL_VERSION = "0.14.0"
 $global:CRI_CONTAINERD_VERSION = "1.5.5"
