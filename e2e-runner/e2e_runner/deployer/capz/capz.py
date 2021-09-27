@@ -1043,3 +1043,4 @@ class CAPZProvisioner(base.Deployer):
         # Set Azure location if it's not set already
         if not self.azure_location:
             self.azure_location = random.choice(constants.AZURE_LOCATIONS)
+        self.logging.info("Using Azure location %s", self.azure_location)
