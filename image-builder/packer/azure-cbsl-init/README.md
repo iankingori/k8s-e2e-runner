@@ -7,8 +7,9 @@ This directory contains the scripts and config files needed to generate Azure cu
 ### Requirements
 
 * The `packer` tool installed. Download the latest binary for your platform from [here](https://www.packer.io/downloads).
-* The `az` CLI tool installed.
-  * An Azure Container Registry (ACR) must be setup to host the CI container images.
+* Docker (with `buildx` support) installed.
+* An Azure Container Registry (ACR) used to host the CI container images.
+* (Optional) The `az` CLI tool installed, if CI Azure images are published to a shared gallery.
 
 ### Windows images configurations
 
@@ -45,21 +46,29 @@ The current scripts support the following K8s Windows workers configurations:
     BASE_IMAGE="mcr.microsoft.com/windows/servercore:ltsc2019"
     TAG="ltsc2019"
 
-    az acr build --registry $ACR_NAME \
-                 --image kube-proxy-windows:${KUBERNETES_VERSION}-windowsservercore-${TAG} \
-                 --build-arg baseImage=${BASE_IMAGE} \
-                 --build-arg k8sVersion=${KUBERNETES_VERSION} \
-                 --platform windows \
-                 --file e2e-runner/e2e_runner/ci/capz_flannel/kube-proxy/kube-proxy-windows.Dockerfile \
-                 https://github.com/e2e-win/k8s-e2e-runner.git
+    echo $ACR_USER_PASSWORD | docker login "${ACR_NAME}.azurecr.io" -u $ACR_USER_NAME --password-stdin
 
-    az acr build --registry $ACR_NAME \
-                 --image flannel-windows:${FLANNEL_VERSION}-windowsservercore-${TAG} \
-                 --build-arg baseImage=${BASE_IMAGE} \
-                 --build-arg flannelVersion=${FLANNEL_VERSION} \
-                 --platform windows \
-                 --file e2e-runner/e2e_runner/ci/capz_flannel/flannel/kube-flannel-windows.Dockerfile \
-                 https://github.com/e2e-win/k8s-e2e-runner.git
+    cd <K8S_E2E_RUNNER_DIR>/e2e-runner/e2e_runner/ci/capz_flannel/kube-proxy
+    docker buildx build --progress=plain \
+                        --no-cache \
+                        --pull \
+                        --output=type=registry \
+                        --platform windows/amd64 \
+                        --build-arg BASE_IMAGE="${BASE_IMAGE}" \
+                        --build-arg K8S_VERSION=${KUBERNETES_VERSION} \
+                        -t "${ACR_NAME}.azurecr.io/kube-proxy-windows:${KUBERNETES_VERSION}-windowsservercore-${TAG}" \
+                        -f kube-proxy-windows.Dockerfile .
+
+    cd <K8S_E2E_RUNNER_DIR>/e2e-runner/e2e_runner/ci/capz_flannel/flannel
+    docker buildx build --progress=plain \
+                        --no-cache \
+                        --pull \
+                        --output=type=registry \
+                        --platform windows/amd64 \
+                        --build-arg BASE_IMAGE="${BASE_IMAGE}" \
+                        --build-arg FLANNEL_VERSION=${FLANNEL_VERSION} \
+                        -t "${ACR_NAME}.azurecr.io/flannel-windows:${FLANNEL_VERSION}-windowsservercore-${TAG}" \
+                        -f kube-flannel-windows.Dockerfile .
     ```
 
 3. Run the packer image builder. Choose the variables file for the K8s worker image you want to build. You may want to adjust the variables from the variables file to match your environment:
