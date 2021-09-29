@@ -62,6 +62,7 @@ periodics:
         - --flannel-mode=overlay
         - --win-minion-count=2
         - --enable-win-dsr=True
+        - --enable-ipv6dualstack=True
         - --container-runtime=docker
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.09.27
         - --cluster-name=capzflannel-ovrl-$(BUILD_ID)
@@ -97,6 +98,7 @@ periodics:
         - --flannel-mode=host-gw
         - --win-minion-count=2
         - --enable-win-dsr=True
+        - --enable-ipv6dualstack=True
         - --container-runtime=containerd
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.09.27
         - --cluster-name=capzctrd-$(BUILD_ID)
@@ -132,6 +134,7 @@ periodics:
         - --flannel-mode=overlay
         - --win-minion-count=2
         - --enable-win-dsr=True
+        - --enable-ipv6dualstack=True
         - --container-runtime=containerd
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.09.27
         - --cluster-name=capzctrd-$(BUILD_ID)
@@ -199,6 +202,7 @@ periodics:
         - --flannel-mode=overlay
         - --win-minion-count=2
         - --enable-win-dsr=False
+        - --enable-ipv6dualstack=True
         - --container-runtime=docker
         - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.09.27
         - --cluster-name=capzdocker-ltsc2019-$(BUILD_ID)
