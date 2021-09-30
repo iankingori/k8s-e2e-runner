@@ -83,7 +83,6 @@ class CapzFlannelCI(base.CI):
         self.deployer.up()
         if self.opts.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
             self.deployer.connect_agents_to_controlplane_subnet()
-            self.deployer.enable_ip_forwarding()
         self.deployer.setup_ssh_config()
         self._setup_kubeconfig()
         extra_kubelet_args = [

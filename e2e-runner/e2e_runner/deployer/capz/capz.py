@@ -7,12 +7,18 @@ import yaml
 
 from pathlib import Path
 from functools import cached_property
+
 from azure.core import exceptions as azure_exceptions
 from azure.identity import ClientSecretCredential
-from azure.mgmt.resource import ResourceManagementClient
+
 from azure.mgmt.network import models as net_models
+from azure.mgmt.compute import models as compute_models
+from azure.mgmt.resource.resources import models as res_models
+
+from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.compute import ComputeManagementClient
+
 from tenacity import (
     Retrying,
     stop_after_delay,
@@ -175,13 +181,12 @@ class CAPZProvisioner(base.Deployer):
         self._create_capz_windows_agents()
         self._setup_capz_kubeconfig()
 
-    @utils.retry_on_error()
     def down(self, wait=True):
         self.logging.info("Deleting Azure resource group")
         client = self.resource_mgmt_client
         try:
-            delete_async_operation = client.resource_groups.begin_delete(
-                self.cluster_name)
+            delete_async_operation = utils.retry_on_error()(
+                client.resource_groups.begin_delete)(self.cluster_name)
             if wait:
                 delete_async_operation.wait()
         except azure_exceptions.ResourceNotFoundError as e:
@@ -248,26 +253,6 @@ class CAPZProvisioner(base.Deployer):
         ssh_config_file = os.path.join(ssh_dir, "config")
         with open(ssh_config_file, "w") as f:
             f.write("\n".join(ssh_config))
-
-    def enable_ip_forwarding(self):
-        self.logging.info("Enabling IP forwarding for the cluster VMs")
-        vm_nics = utils.retry_on_error()(
-            self.network_client.network_interfaces.list)(self.cluster_name)
-        for nic in vm_nics:
-            if nic.name == self.bootstrap_vm_nic_name:
-                continue
-            if nic.enable_ip_forwarding:
-                self.logging.info(
-                    "IP forwarding is already enabled on nic %s", nic.name)
-                continue
-            self.logging.info("Enabling IP forwarding on nic %s", nic.name)
-            nic_parameters = nic.as_dict()
-            nic_parameters["enable_ip_forwarding"] = True
-            utils.retry_on_error()(
-                self.network_client.network_interfaces.begin_create_or_update)(
-                    self.cluster_name,
-                    nic.name,
-                    nic_parameters).result()
 
     @utils.retry_on_error()
     def upload_to_bootstrap_vm(self, local_path, remote_path="www/"):
@@ -346,6 +331,7 @@ class CAPZProvisioner(base.Deployer):
                 self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
         self.bootstrap_vm = None
 
+    @utils.retry_on_error()
     def collect_bootstrap_vm_logs(self):
         self.logging.info("Collecting logs from bootstrap VM")
         os.makedirs(self.bootstrap_vm_logs_dir, exist_ok=True)
@@ -377,39 +363,45 @@ class CAPZProvisioner(base.Deployer):
                 self.cluster_name,
                 "{}-vnet".format(self.cluster_name),
                 "{}-controlplane-subnet".format(self.cluster_name))
-        subnet_id = control_plane_subnet.id
+
         for vm in self._get_agents_vms():
             self.logging.info("Connecting VM {}".format(vm.name))
-            nic_id = vm.network_profile.network_interfaces[0].id
-            vm_nic = self._get_vm_nic(nic_id)
-            nic_address = vm_nic.ip_configurations[0].private_ip_address
-            route = self._get_vm_route(nic_address)
+            nic = self._get_vm_nic(
+                vm.network_profile.network_interfaces[0].id)
+            route = self._get_vm_route(
+                nic.ip_configurations[0].private_ip_address)
+
             self.logging.info("Shutting down VM")
             utils.retry_on_error()(
                 self.compute_client.virtual_machines.begin_deallocate)(
                     self.cluster_name, vm.name).wait()
+
             self.logging.info("Updating VM NIC subnet")
-            nic_parameters = vm_nic.as_dict()
-            nic_model = net_models.NetworkInterface(**nic_parameters)
-            nic_model.ip_configurations[0]['subnet']['id'] = subnet_id
+            nic.ip_configurations[0].subnet.id = control_plane_subnet.id
+            nic_parameters = net_models.NetworkInterface(
+                id=nic.id,
+                location=self.azure_location,
+                ip_configurations=nic.ip_configurations)
             utils.retry_on_error()(
                 self.network_client.network_interfaces.begin_create_or_update)(
-                    self.cluster_name, vm_nic.name, nic_model).wait()
+                    self.cluster_name, nic.name, nic_parameters).wait()
+
             self.logging.info("Starting VM")
             utils.retry_on_error()(
                 self.compute_client.virtual_machines.begin_start)(
                     self.cluster_name, vm.name).wait()
+
             self.logging.info("Updating the node routetable")
-            route_params = route.as_dict()
-            vm_nic = self._get_vm_nic(nic_id)  # Refresh NIC info
-            nic_address = vm_nic.ip_configurations[0].private_ip_address
-            route_params["next_hop_ip_address"] = nic_address
+            nic = self._get_vm_nic(nic.id)  # Refresh NIC info
+            nic_address = nic.ip_configurations[0].private_ip_address
+            route.next_hop_ip_address = nic_address
             utils.retry_on_error()(
                 self.network_client.routes.begin_create_or_update)(
                     self.cluster_name,
                     "{}-node-routetable".format(self.cluster_name),
                     route.name,
-                    route_params).wait()
+                    route).wait()
+
             self.logging.info(
                 "Waiting until VM address is refreshed in the CAPZ cluster")
             for attempt in Retrying(
@@ -520,10 +512,9 @@ class CAPZProvisioner(base.Deployer):
 
     def _create_bootstrap_vm_public_ip(self):
         self.logging.info("Creating bootstrap VM public IP")
-        public_ip_parameters = {
-            "location": self.azure_location,
-            "public_ip_address_version": "IPV4"
-        }
+        public_ip_parameters = net_models.PublicIPAddress(
+            location=self.azure_location,
+            public_ip_address_version="IPv4")
         return utils.retry_on_error()(
             self.network_client.public_ip_addresses.begin_create_or_update)(
                 self.cluster_name,
@@ -538,18 +529,13 @@ class CAPZProvisioner(base.Deployer):
                 self.cluster_name,
                 "%s-vnet" % self.cluster_name,
                 "%s-controlplane-subnet" % self.cluster_name)
-        nic_parameters = {
-            "location": self.azure_location,
-            "ip_configurations": [{
-                "name": "%s-ipconfig" % self.bootstrap_vm_nic_name,
-                "subnet": {
-                    "id": control_plane_subnet.id
-                },
-                "public_ip_address": {
-                    "id": public_ip.id
-                }
-            }]
-        }
+        nic_parameters = net_models.NetworkInterface(
+            location=self.azure_location,
+            ip_configurations=[
+                net_models.NetworkInterfaceIPConfiguration(
+                    name="{}-ipconfig".format(self.bootstrap_vm_nic_name),
+                    subnet=control_plane_subnet,
+                    public_ip_address=public_ip)])
         return utils.retry_on_error()(
             self.network_client.network_interfaces.begin_create_or_update)(
                 self.cluster_name,
@@ -578,38 +564,46 @@ class CAPZProvisioner(base.Deployer):
     def _create_bootstrap_azure_vm(self):
         self.logging.info("Setting up the bootstrap Azure VM")
         vm_nic = self._create_bootstrap_vm_nic()
-        vm_parameters = {
-            "location": self.azure_location,
-            "os_profile": {
-                "computer_name": self.bootstrap_vm_name,
-                "admin_username": "capi",
-                "linux_configuration": {
-                    "disable_password_authentication": True,
-                    "ssh": {
-                        "public_keys": [{
-                            "key_data": os.environ["AZURE_SSH_PUBLIC_KEY"],
-                            "path": "/home/capi/.ssh/authorized_keys"
-                        }]
-                    }
-                }
-            },
-            "hardware_profile": {
-                "vm_size": self.bootstrap_vm_size
-            },
-            "storage_profile": {
-                "image_reference": {
-                    "publisher": "Canonical",
-                    "offer": "0001-com-ubuntu-server-focal",
-                    "sku": "20_04-lts-gen2",
-                    "version": "latest"
-                },
-            },
-            "network_profile": {
-                "network_interfaces": [{
-                    "id": vm_nic.id
-                }]
-            }
-        }
+        vm_parameters = compute_models.VirtualMachine(
+            location=self.azure_location,
+            os_profile=compute_models.OSProfile(
+                computer_name=self.bootstrap_vm_name,
+                admin_username="capi",
+                linux_configuration=compute_models.LinuxConfiguration(
+                    disable_password_authentication=True,
+                    ssh=compute_models.SshConfiguration(
+                        public_keys=[
+                            compute_models.SshPublicKey(
+                                key_data=os.environ["AZURE_SSH_PUBLIC_KEY"],
+                                path="/home/capi/.ssh/authorized_keys"
+                            )
+                        ]
+                    )
+                )
+            ),
+            hardware_profile=compute_models.HardwareProfile(
+                vm_size=self.bootstrap_vm_size
+            ),
+            storage_profile=compute_models.StorageProfile(
+                image_reference=compute_models.ImageReference(
+                    publisher="Canonical",
+                    offer="0001-com-ubuntu-server-focal",
+                    sku="20_04-lts-gen2",
+                    version="latest"
+                ),
+                os_disk=compute_models.OSDisk(
+                    create_option=(
+                        compute_models.DiskCreateOptionTypes.FROM_IMAGE),
+                    disk_size_gb=128
+                )
+            ),
+            network_profile=compute_models.NetworkProfile(
+                network_interfaces=[
+                    compute_models.NetworkInterfaceReference(
+                        id=vm_nic.id)
+                ]
+            )
+        )
         self.logging.info("Creating bootstrap VM")
         vm = utils.retry_on_error()(
             self.compute_client.virtual_machines.begin_create_or_update)(
@@ -636,13 +630,11 @@ class CAPZProvisioner(base.Deployer):
 
     def _create_resource_group(self):
         self.logging.info("Creating Azure resource group")
-        resource_group_params = {
-            'location': self.azure_location,
-            'tags': self.resource_group_tags,
-        }
+        rg_params = res_models.ResourceGroup(
+            location=self.azure_location,
+            tags=self.resource_group_tags)
         self.resource_mgmt_client.resource_groups.create_or_update(
-            self.cluster_name,
-            resource_group_params)
+            self.cluster_name, rg_params)
         for attempt in Retrying(
                 stop=stop_after_delay(600),
                 wait=wait_exponential(max=30),
@@ -657,12 +649,12 @@ class CAPZProvisioner(base.Deployer):
     @utils.retry_on_error()
     def _create_vnet(self):
         self.logging.info("Creating Azure vNET")
-        vnet_params = {
-            "location": self.azure_location,
-            "address_space": {
-                "address_prefixes": [self.vnet_cidr_block]
-            }
-        }
+        vnet_params = net_models.VirtualNetwork(
+            location=self.azure_location,
+            address_space=net_models.AddressSpace(
+                address_prefixes=[self.vnet_cidr_block]
+            )
+        )
         return self.network_client.virtual_networks.begin_create_or_update(
             self.cluster_name,
             "{}-vnet".format(self.cluster_name),
@@ -671,9 +663,8 @@ class CAPZProvisioner(base.Deployer):
     @utils.retry_on_error()
     def _create_node_route_table(self):
         self.logging.info("Creating Azure node route table")
-        route_table_params = {
-            "location": self.azure_location,
-        }
+        route_table_params = net_models.RouteTable(
+            location=self.azure_location)
         return self.network_client.route_tables.begin_create_or_update(
             self.cluster_name,
             "{}-node-routetable".format(self.cluster_name),
@@ -709,7 +700,6 @@ class CAPZProvisioner(base.Deployer):
         ]
         secgroup_name = "{}-controlplane-nsg".format(self.cluster_name)
         secgroup_params = net_models.NetworkSecurityGroup(
-            name=secgroup_name,
             location=self.azure_location,
             security_rules=secgroup_rules)
         nsg_client = self.network_client.network_security_groups
@@ -720,15 +710,10 @@ class CAPZProvisioner(base.Deployer):
         self.logging.info("Creating Azure vNET control plane subnet")
         nsg = self._create_control_plane_secgroup()
         route_table = self._create_node_route_table()
-        subnet_params = {
-            "address_prefix": self.control_plane_subnet_cidr_block,
-            "network_security_group": {
-                "id": nsg.id
-            },
-            "route_table": {
-                "id": route_table.id
-            },
-        }
+        subnet_params = net_models.Subnet(
+            address_prefix=self.control_plane_subnet_cidr_block,
+            network_security_group=nsg,
+            route_table=route_table)
         return utils.retry_on_error()(
             self.network_client.subnets.begin_create_or_update)(
                 self.cluster_name,
@@ -740,7 +725,6 @@ class CAPZProvisioner(base.Deployer):
     def _create_node_secgroup(self):
         secgroup_name = "{}-node-nsg".format(self.cluster_name)
         secgroup_params = net_models.NetworkSecurityGroup(
-            name=secgroup_name,
             location=self.azure_location)
         nsg_client = self.network_client.network_security_groups
         return nsg_client.begin_create_or_update(
@@ -750,15 +734,10 @@ class CAPZProvisioner(base.Deployer):
         self.logging.info("Creating Azure vNET node subnet")
         nsg = self._create_node_secgroup()
         route_table = self._create_node_route_table()
-        subnet_params = {
-            "address_prefix": self.node_subnet_cidr_block,
-            "network_security_group": {
-                "id": nsg.id
-            },
-            "route_table": {
-                "id": route_table.id
-            },
-        }
+        subnet_params = net_models.Subnet(
+            address_prefix=self.node_subnet_cidr_block,
+            network_security_group=nsg,
+            route_table=route_table)
         return utils.retry_on_error()(
             self.network_client.subnets.begin_create_or_update)(
                 self.cluster_name,
@@ -766,7 +745,6 @@ class CAPZProvisioner(base.Deployer):
                 "{}-node-subnet".format(self.cluster_name),
                 subnet_params).result()
 
-    @utils.retry_on_error()
     def _create_bootstrap_vm(self):
         try:
             self.bootstrap_vm = self._create_bootstrap_azure_vm()
