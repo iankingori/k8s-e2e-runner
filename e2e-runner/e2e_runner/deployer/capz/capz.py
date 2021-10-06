@@ -378,13 +378,9 @@ class CAPZProvisioner(base.Deployer):
 
             self.logging.info("Updating VM NIC subnet")
             nic.ip_configurations[0].subnet.id = control_plane_subnet.id
-            nic_parameters = net_models.NetworkInterface(
-                id=nic.id,
-                location=self.azure_location,
-                ip_configurations=nic.ip_configurations)
             utils.retry_on_error()(
                 self.network_client.network_interfaces.begin_create_or_update)(
-                    self.cluster_name, nic.name, nic_parameters).wait()
+                    self.cluster_name, nic.name, nic).wait()
 
             self.logging.info("Starting VM")
             utils.retry_on_error()(

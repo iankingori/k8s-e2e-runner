@@ -27,7 +27,6 @@ data:
     yq eval -i '.winkernel.enableDSR = true' /host/var/lib/kube-proxy/config.conf
     yq eval -i '.featureGates.WinDSR = true' /host/var/lib/kube-proxy/config.conf
 {%- endif %}
-    yq eval -i '.featureGates.IPv6DualStack = {{ enable_ipv6dualstack }}' /host/var/lib/kube-proxy/config.conf
     yq eval -i '.mode = ""kernelspace""' /host/var/lib/kube-proxy/config.conf
 
   run.ps1: |

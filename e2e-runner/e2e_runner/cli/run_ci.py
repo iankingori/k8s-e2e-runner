@@ -107,10 +107,6 @@ class RunCI(Command):
                        "overwriten by the version of the newly built k8s "
                        "binaries")
         p.add_argument('--enable-win-dsr', type=utils.str2bool, default=False)
-        p.add_argument('--enable-ipv6dualstack',
-                       type=utils.str2bool, default=False,
-                       help='Enables the IPv6DualStack feature gate for '
-                       'kubelet and kube-proxy.')
         p.add_argument("--cluster-name", required=True,
                        help="The cluster name given to the cluster-api "
                        "manifest. This value is used for the Azure resource "
