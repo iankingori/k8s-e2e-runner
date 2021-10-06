@@ -85,11 +85,6 @@ class CapzFlannelCI(base.CI):
             self.deployer.connect_agents_to_controlplane_subnet()
         self.deployer.setup_ssh_config()
         self._setup_kubeconfig()
-        extra_kubelet_args = [
-            "--feature-gates='IPv6DualStack={}'".format(
-                str(self.opts.enable_ipv6dualstack).lower()),
-        ]
-        self.deployer.add_win_agents_kubelet_args(extra_kubelet_args)
         self._install_patches()
         if "k8sbins" in self.deployer.bins_built:
             self._upload_kube_proxy_windows_bin()
@@ -425,12 +420,10 @@ class CapzFlannelCI(base.CI):
             self.capz_flannel_dir, "kube-proxy/kube-proxy-windows.yaml.j2")
         server_core_tag = "windowsservercore-%s" % (
             self.opts.base_container_image_tag)
-        enable_ipv6dualstack = str(self.opts.enable_ipv6dualstack).lower()
         context = {
             "kubernetes_version": self.kubernetes_version,
             "server_core_tag": server_core_tag,
             "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),
-            "enable_ipv6dualstack": enable_ipv6dualstack,
             "flannel_mode": self.opts.flannel_mode
         }
         output_file = "/tmp/kube-proxy-windows.yaml"
