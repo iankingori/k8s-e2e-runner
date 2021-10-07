@@ -864,7 +864,7 @@ class CAPZProvisioner(base.Deployer):
             ])
             raise ex
 
-    @utils.retry_on_error(max_attempts=12, max_sleep_seconds=0)
+    @utils.retry_on_error(max_attempts=4, max_sleep_seconds=0)
     def _create_capz_windows_agents(self):
         self.logging.info("Create CAPZ Windows agents")
         output_file = "/tmp/capz-windows-agents.yaml"
@@ -876,7 +876,7 @@ class CAPZProvisioner(base.Deployer):
                 self.kubectl, "apply", "--kubeconfig",
                 self.mgmt_kubeconfig_path, "-f", output_file
             ])
-            self._wait_for_windows_agents(timeout=600)
+            self._wait_for_windows_agents(timeout=1800)
         except Exception as ex:
             utils.retry_on_error()(utils.run_shell_cmd)([
                 self.kubectl, "delete", "--ignore-not-found=true",
