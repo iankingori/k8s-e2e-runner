@@ -96,7 +96,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: kube-flannel
-        image: k8swin.azurecr.io/flannel-windows:v0.14.0-{{ server_core_tag }}
+        image: k8swin.azurecr.io/flannel-windows:v0.15.0-{{ server_core_tag }}
         command:
         - powershell
         args:

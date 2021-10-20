@@ -1,7 +1,7 @@
 ARG BASE_IMAGE="mcr.microsoft.com/windows/servercore:ltsc2019"
 ARG WINS_VERSION="v0.1.1"
-ARG YQ_VERSION="v4.11.2"
-ARG FLANNEL_VERSION="v0.14.0"
+ARG YQ_VERSION="v4.13.4"
+ARG FLANNEL_VERSION="v0.15.0"
 
 # Linux stage
 FROM --platform=linux/amd64 alpine:latest as prep
