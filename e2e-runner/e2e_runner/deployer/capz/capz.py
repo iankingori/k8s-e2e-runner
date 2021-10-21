@@ -317,6 +317,14 @@ class CAPZProvisioner(base.Deployer):
 
     def cleanup_bootstrap_vm(self):
         self.logging.info("Cleaning up the bootstrap VM")
+        # The below deployer properties are cached, after their first call.
+        # However, they use the management CAPI cluster (from the bootstrap
+        # VM) to find the appropriate values when first called. Therefore,
+        # make sure we cache them before cleaning up the bootstrap VM.
+        self.master_public_address
+        self.master_public_port
+        self.linux_private_addresses
+        self.windows_private_addresses
         self.logging.info("Deleting bootstrap VM")
         utils.retry_on_error()(
             self.compute_client.virtual_machines.begin_delete)(
@@ -750,54 +758,6 @@ class CAPZProvisioner(base.Deployer):
             self.cleanup_bootstrap_vm()
             raise ex
 
-    @utils.retry_on_error()
-    def _get_win_azuremachines_names(self):
-        selector = "cluster.x-k8s.io/deployment-name={}-md-win".format(
-            self.cluster_name)
-        cmd = [
-            self.kubectl, "get", "azuremachine",
-            "--kubeconfig", self.mgmt_kubeconfig_path,
-            "-l", selector,
-            "--output=custom-columns=NAME:.metadata.name",
-            "--no-headers"
-        ]
-        output, _ = utils.run_shell_cmd(cmd, sensitive=True)
-        return output.decode().strip().split('\n')
-
-    def _is_azuremachine_ready(self, name):
-        status = self._get_azuremachine_status(name)
-        if not status:
-            return False
-        if status.get("vmState") != "Succeeded":
-            return False
-        if not status.get("ready"):
-            return False
-        return True
-
-    @utils.retry_on_error()
-    def _get_azuremachine_status(self, name):
-        cmd = [
-            self.kubectl, "get", "azuremachine",
-            "--kubeconfig", self.mgmt_kubeconfig_path,
-            "--output", "yaml", name
-        ]
-        output, _ = utils.run_shell_cmd(cmd, sensitive=True)
-        azuremachine = yaml.safe_load(output.decode())
-        if "status" not in azuremachine:
-            return None
-        return azuremachine["status"]
-
-    @utils.retry_on_error()
-    def _get_mgmt_capz_machine_phase(self, machine_name):
-        cmd = [
-            self.kubectl, "get", "machine",
-            "--kubeconfig", self.mgmt_kubeconfig_path,
-            "--output=custom-columns=READY:.status.phase",
-            "--no-headers", machine_name
-        ]
-        output, _ = utils.run_shell_cmd(cmd, sensitive=True)
-        return output.decode().strip()
-
     def _capz_context(self):
         bootstrap_vm_address = "{}:8081".format(self.bootstrap_vm_private_ip)
         context = {
@@ -846,7 +806,7 @@ class CAPZProvisioner(base.Deployer):
 
     @utils.retry_on_error(max_attempts=5, max_sleep_seconds=0)
     def _create_capz_control_plane(self):
-        self.logging.info("Create CAPZ control plane")
+        self.logging.info("Create CAPZ control-plane")
         output_file = "/tmp/capz-control-plane.yaml"
         context = self._capz_context()
         utils.render_template(
@@ -856,15 +816,23 @@ class CAPZProvisioner(base.Deployer):
                 self.kubectl, "apply", "--kubeconfig",
                 self.mgmt_kubeconfig_path, "-f", output_file
             ])
-            self._wait_for_control_plane(timeout=600)
+            timeout = 600
+            self.logging.info(
+                "Waiting up to %.2f minutes for the CAPZ control-plane.",
+                timeout / 60.0)
+            self._wait_for_running_capz_machines(
+                wanted_count=1,
+                selector="cluster.x-k8s.io/control-plane=",
+                timeout=timeout)
         except Exception as ex:
             utils.retry_on_error()(utils.run_shell_cmd)([
                 self.kubectl, "delete", "--ignore-not-found=true",
                 "--kubeconfig", self.mgmt_kubeconfig_path, "-f", output_file
             ])
             raise ex
+        self.logging.info("Control-plane is ready")
 
-    @utils.retry_on_error(max_attempts=4, max_sleep_seconds=0)
+    @utils.retry_on_error(max_attempts=6, max_sleep_seconds=0)
     def _create_capz_windows_agents(self):
         self.logging.info("Create CAPZ Windows agents")
         output_file = "/tmp/capz-windows-agents.yaml"
@@ -876,13 +844,22 @@ class CAPZProvisioner(base.Deployer):
                 self.kubectl, "apply", "--kubeconfig",
                 self.mgmt_kubeconfig_path, "-f", output_file
             ])
-            self._wait_for_windows_agents(timeout=1800)
+            timeout = 1200
+            self.logging.info(
+                "Waiting up to %.2f minutes for CAPZ Windows agents",
+                timeout / 60.0)
+            self._wait_for_running_capz_machines(
+                wanted_count=2,
+                selector="cluster.x-k8s.io/deployment-name={}-md-win".format(
+                    self.cluster_name),
+                timeout=timeout)
         except Exception as ex:
             utils.retry_on_error()(utils.run_shell_cmd)([
                 self.kubectl, "delete", "--ignore-not-found=true",
                 "--kubeconfig", self.mgmt_kubeconfig_path, "-f", output_file
             ])
             raise ex
+        self.logging.info("All CAPZ Windows agents are ready")
 
     def _setup_mgmt_kubeconfig(self):
         self.logging.info("Setting up the management cluster kubeconfig")
@@ -909,18 +886,14 @@ class CAPZProvisioner(base.Deployer):
         with open(self.capz_kubeconfig_path, 'w') as f:
             f.write(base64.b64decode(output).decode())
 
-    def _wait_for_control_plane(self, timeout=2700):
-        self.logging.info(
-            "Waiting up to %.2f minutes for the control-plane to be ready.",
-            timeout / 60.0)
-        machines_list_cmd = [
+    def _wait_for_running_capz_machines(self, wanted_count,
+                                        selector="", timeout=3600):
+        cmd = [
             self.kubectl, "get", "machine",
             "--kubeconfig", self.mgmt_kubeconfig_path,
-            "--output=custom-columns=NAME:.metadata.name",
-            "--no-headers"
+            "-l", "'{}'".format(selector),
+            "-o", "yaml"
         ]
-        control_plane_name_prefix = "{}-control-plane".format(
-            self.cluster_name)
         for attempt in Retrying(
                 stop=stop_after_delay(timeout),
                 wait=wait_exponential(max=30),
@@ -928,47 +901,16 @@ class CAPZProvisioner(base.Deployer):
                 reraise=True):
             with attempt:
                 output, _ = utils.retry_on_error()(
-                    utils.run_shell_cmd)(machines_list_cmd, sensitive=True)
-                machines = output.decode().strip().split('\n')
-                control_plane_machines = [
-                    m for m in machines
-                    if m.startswith(control_plane_name_prefix)
-                ]
-                assert len(control_plane_machines) > 0
-                control_plane_ready = True
-                for control_plane_machine in control_plane_machines:
-                    try:
-                        status_phase = self._get_mgmt_capz_machine_phase(
-                            control_plane_machine)
-                    except Exception:
-                        control_plane_ready = False
-                        break
-                    if status_phase != "Running":
-                        control_plane_ready = False
-                        break
-                assert control_plane_ready
-        self.logging.info("Control-plane is ready")
-
-    def _wait_for_windows_agents(self, timeout=3600):
-        self.logging.info("Waiting up to %.2f minutes for CAPZ Windows agents",
-                          timeout / 60.0)
-        for attempt in Retrying(
-                stop=stop_after_delay(timeout),
-                wait=wait_exponential(max=30),
-                retry=retry_if_exception_type(AssertionError),
-                reraise=True):
-            with attempt:
-                ready_machines = []
-                machines = self._get_win_azuremachines_names()
-                for machine in machines:
-                    try:
-                        is_ready = self._is_azuremachine_ready(machine)
-                    except Exception:
+                    utils.run_shell_cmd)(cmd, sensitive=True)
+                machines = yaml.safe_load(output.decode())
+                running_machines = []
+                for machine in machines["items"]:
+                    status = machine.get("status")
+                    if not status:
                         continue
-                    if is_ready:
-                        ready_machines.append(machine)
-                assert len(ready_machines) == self.win_minion_count
-        self.logging.info("All CAPZ Windows agents are ready")
+                    if status.get("phase") == "Running":
+                        running_machines.append(machine)
+                assert len(running_machines) == wanted_count
 
     @utils.retry_on_error(max_attempts=10)
     def _setup_capz_components(self):

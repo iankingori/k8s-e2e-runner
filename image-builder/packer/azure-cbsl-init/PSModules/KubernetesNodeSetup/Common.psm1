@@ -8,8 +8,8 @@ $global:OPT_DIR = Join-Path $env:SystemDrive "opt"
 
 $global:CNI_PLUGINS_VERSION = "1.0.1"
 $global:WINS_VERSION = "0.1.1"
-$global:FLANNEL_VERSION = "0.14.0"
-$global:CRI_CONTAINERD_VERSION = "1.5.5"
+$global:FLANNEL_VERSION = "0.15.0"
+$global:CRI_CONTAINERD_VERSION = "1.5.7"
 $global:CRICTL_VERSION = "1.22.0"
 
 $global:NSSM_URL = "https://k8stestinfrabinaries.blob.core.windows.net/nssm-mirror/nssm-2.24.zip"
