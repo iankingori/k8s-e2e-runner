@@ -317,6 +317,14 @@ class CAPZProvisioner(base.Deployer):
 
     def cleanup_bootstrap_vm(self):
         self.logging.info("Cleaning up the bootstrap VM")
+        # The below deployer properties are cached, after their first call.
+        # However, they use the management CAPI cluster (from the bootstrap
+        # VM) to find the appropriate values when first called. Therefore,
+        # make sure we cache them before cleaning up the bootstrap VM.
+        self.master_public_address
+        self.master_public_port
+        self.linux_private_addresses
+        self.windows_private_addresses
         self.logging.info("Deleting bootstrap VM")
         utils.retry_on_error()(
             self.compute_client.virtual_machines.begin_delete)(

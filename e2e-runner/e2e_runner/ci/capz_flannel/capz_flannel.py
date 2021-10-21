@@ -97,14 +97,6 @@ class CapzFlannelCI(base.CI):
         self.logging.info("The cluster provisioned in %.2f minutes",
                           (time.time() - start) / 60.0)
         self._validate_cluster()
-        # The below deployer properties are cached, after their first call.
-        # However, they use the management CAPI cluster (from the bootstrap
-        # VM) to find the appropriate values when first called. Therefore,
-        # make sure we cache them before cleaning up the bootstrap VM.
-        self.deployer.master_public_address
-        self.deployer.master_public_port
-        self.deployer.linux_private_addresses
-        self.deployer.windows_private_addresses
         # Once the CAPZ cluster is deployed, we don't need the
         # bootstrap VM anymore.
         self.deployer.collect_bootstrap_vm_logs()
