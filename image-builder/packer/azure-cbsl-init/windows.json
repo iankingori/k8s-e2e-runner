@@ -14,6 +14,8 @@
     "image_publisher": "{{ user `image_publisher` }}",
     "image_offer": "{{ user `image_offer` }}",
     "image_sku": "{{ user `image_sku` }}",
+    "image_version": "{{ user `image_version` }}",
+    "install_latest_windows_updates": "{{ user `install_latest_windows_updates` }}",
     "location": "{{ user `location` }}",
     "vm_size": "{{ user `vm_size` }}"
   },
@@ -34,6 +36,7 @@
       "image_publisher": "{{ user `image_publisher` }}",
       "image_offer": "{{ user `image_offer` }}",
       "image_sku": "{{ user `image_sku` }}",
+      "image_version": "{{ user `image_version` }}",
 
       "vm_size": "{{ user `vm_size` }}",
       "location": "{{ user `location` }}",
@@ -57,7 +60,8 @@
       "elevated_password": "{{.WinRMPassword}}",
       "type": "powershell",
       "environment_vars": [
-        "CONTAINER_RUNTIME={{ user `container_runtime` }}"
+        "CONTAINER_RUNTIME={{ user `container_runtime` }}",
+        "INSTALL_LATEST_WINDOWS_UPDATES={{ user `install_latest_windows_updates` }}"
       ],
       "script": "0-setup.ps1"
     },
