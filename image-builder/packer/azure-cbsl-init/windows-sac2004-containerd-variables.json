@@ -2,6 +2,8 @@
   "image_offer": "WindowsServer",
   "image_publisher": "MicrosoftWindowsServer",
   "image_sku": "datacenter-core-2004-with-containers-smalldisk-g2",
+  "image_version": "latest",
+  "install_latest_windows_updates": "false",
   "location": "westeurope",
   "vm_size": "Standard_D2s_v3",
   "image_name": "ws-2004-containerd-cbsl-init",
