@@ -295,7 +295,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=ltsc2022
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.10.20
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.11.02
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable
@@ -328,7 +328,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=ltsc2022
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.10.20
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.11.02
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
 - name: k8s-e2e-sac2004-containerd-flannel-sdnbridge-stable
