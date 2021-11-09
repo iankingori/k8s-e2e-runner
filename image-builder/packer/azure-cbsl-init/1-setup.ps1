@@ -11,14 +11,16 @@ Confirm-EnvVarsAreSet -EnvVars @(
 
 switch ($env:CONTAINER_RUNTIME) {
     "docker" {
-        Install-DockerKubernetesNode -KubernetesVersion $env:KUBERNETES_VERSION
+        Install-DockerKubernetesNode
     }
     "containerd" {
-        Install-ContainerdKubernetesNode -KubernetesVersion $env:KUBERNETES_VERSION
+        Install-ContainerdKubernetesNode
     }
     default {
         Throw "Unsupported container runtime: ${env:CONTAINER_RUNTIME}"
     }
 }
 
+Install-Wins
+Install-OpenSSHServer
 Install-CloudbaseInit

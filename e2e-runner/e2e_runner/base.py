@@ -2,6 +2,7 @@ import os
 import subprocess
 import stat
 import time
+import urllib
 
 from e2e_runner import (
     logger,
@@ -62,7 +63,7 @@ class CI(object):
         self.logging.info("Setup Kubetest")
         if self.opts.kubetest_link:
             kubetestbin = "/usr/bin/kubetest"
-            utils.download_file(self.opts.kubetest_link, kubetestbin)
+            urllib.request.urlretrieve(self.opts.kubetest_link, kubetestbin)
             os.chmod(kubetestbin, stat.S_IRWXU | stat.S_IRWXG)
             return
         # Clone repository using git and then install. Workaround for:
@@ -95,7 +96,7 @@ class CI(object):
                 "node-role.kubernetes.io/master=NoSchedule"
             ])
         self.logging.info("Downloading repo-list")
-        utils.download_file(self.opts.repo_list, "/tmp/repo-list")
+        urllib.request.urlretrieve(self.opts.repo_list, "/tmp/repo-list")
         os.environ["KUBE_TEST_REPO_LIST"] = "/tmp/repo-list"
         self.logging.info("Building tests")
         utils.run_shell_cmd(

@@ -19,7 +19,7 @@ if($dockerdBin) {
 
 Invoke-Expression (
     "C:\k\kubelet.exe $global:KUBELET_ARGS " +
-    "--cert-dir=$env:SystemDrive\var\lib\kubelet\pki " +
+    "--cert-dir=/var/lib/kubelet/pki " +
     "--config=/var/lib/kubelet/config.yaml " +
     "--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf " +
     "--kubeconfig=/etc/kubernetes/kubelet.conf " +

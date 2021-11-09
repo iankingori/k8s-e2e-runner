@@ -23,6 +23,7 @@ version = 2
   max_recv_message_size = 16777216
   max_send_message_size = 16777216
   tcp_address = ""
+  tcp_tls_ca = ""
   tcp_tls_cert = ""
   tcp_tls_key = ""
   uid = 0
@@ -41,6 +42,7 @@ version = 2
     startup_delay = "100ms"
 
   [plugins."io.containerd.grpc.v1.cri"]
+    device_ownership_from_security_context = false
     disable_apparmor = false
     disable_cgroup = false
     disable_hugetlb_controller = false
@@ -64,9 +66,10 @@ version = 2
     unset_seccomp_profile = ""
 
     [plugins."io.containerd.grpc.v1.cri".cni]
-      bin_dir = "C:\\opt\\cni\\bin"
-      conf_dir = "C:\\etc\\cni\\net.d"
+      bin_dir = "C:\\containerd\\cni\\bin"
+      conf_dir = "C:\\containerd\\cni\\conf"
       conf_template = ""
+      ip_pref = ""
       max_conf_num = 1
 
     [plugins."io.containerd.grpc.v1.cri".containerd]
@@ -78,6 +81,8 @@ version = 2
 
       [plugins."io.containerd.grpc.v1.cri".containerd.default_runtime]
         base_runtime_spec = ""
+        cni_conf_dir = ""
+        cni_max_conf_num = 0
         container_annotations = []
         pod_annotations = []
         privileged_without_host_devices = false
@@ -91,6 +96,8 @@ version = 2
 
         [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runhcs-wcow-process]
           base_runtime_spec = ""
+          cni_conf_dir = ""
+          cni_max_conf_num = 0
           container_annotations = []
           pod_annotations = []
           privileged_without_host_devices = false
@@ -102,6 +109,8 @@ version = 2
 
       [plugins."io.containerd.grpc.v1.cri".containerd.untrusted_workload_runtime]
         base_runtime_spec = ""
+        cni_conf_dir = ""
+        cni_max_conf_num = 0
         container_annotations = []
         pod_annotations = []
         privileged_without_host_devices = false
@@ -135,14 +144,23 @@ version = 2
   [plugins."io.containerd.internal.v1.restart"]
     interval = "10s"
 
+  [plugins."io.containerd.internal.v1.tracing"]
+    sampling_ratio = 0.0
+    service_name = "containerd"
+
   [plugins."io.containerd.metadata.v1.bolt"]
     content_sharing_policy = "shared"
 
   [plugins."io.containerd.runtime.v2.task"]
     platforms = ["windows/amd64", "linux/amd64"]
+    sched_core = false
 
   [plugins."io.containerd.service.v1.diff-service"]
     default = ["windows", "windows-lcow"]
+
+  [plugins."io.containerd.tracing.processor.v1.otlp"]
+    endpoint = ""
+    insecure = false
 
 [proxy_plugins]
 

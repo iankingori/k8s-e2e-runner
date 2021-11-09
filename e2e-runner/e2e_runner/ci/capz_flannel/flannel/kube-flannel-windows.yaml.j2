@@ -11,47 +11,18 @@ data:
   run.ps1: |
     $ErrorActionPreference = "Stop"
 
-    mkdir -force /host/etc/cni/net.d
+    /etc/kube-flannel-windows/configure-cni.ps1
+    if($LASTEXITCODE) {
+        Throw "Failed to configure Flannel CNI"
+    }
+
     mkdir -force /host/etc/kube-flannel
-    mkdir -force /host/k/flannel
-    mkdir -force /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount
-
-    $cniJson = get-content /etc/kube-flannel-windows/cni-conf.json | ConvertFrom-Json
-    $serviceSubnet = yq eval '.networking.serviceSubnet' /etc/kubeadm-config/ClusterConfiguration
-    $podSubnet = yq eval '.networking.podSubnet' /etc/kubeadm-config/ClusterConfiguration
-    $networkJson = wins cli net get | ConvertFrom-Json
-
-{%- if container_runtime == "containerd" and mode == "overlay" %}
-    $cniJson.delegate.AdditionalArgs[0].Value.Settings.Exceptions = $serviceSubnet, $podSubnet
-    $cniJson.delegate.AdditionalArgs[1].Value.Settings.DestinationPrefix = $serviceSubnet
-    $cniJson.delegate.AdditionalArgs[2].Value.Settings.ProviderAddress = $networkJson.AddressCIDR.Split('/')[0]
-{%- endif %}
-{%- if container_runtime == "containerd" and mode == "l2bridge" %}
-    $cniJson.delegate.AdditionalArgs[0].Value.Settings.Exceptions = $serviceSubnet, $podSubnet, $networkJson.SubnetCIDR
-    $cniJson.delegate.AdditionalArgs[1].Value.Settings.DestinationPrefix = $serviceSubnet
-    $cniJson.delegate.AdditionalArgs[2].Value.Settings.DestinationPrefix = $networkJson.AddressCIDR
-{%- endif %}
-{%- if container_runtime == "docker" and mode == "overlay" %}
-    $cniJson.delegate.policies[0].Value.ExceptionList = $serviceSubnet, $podSubnet
-    $cniJson.delegate.policies[1].Value.DestinationPrefix = $serviceSubnet
-{%- endif %}
-{%- if container_runtime == "docker" and mode == "l2bridge" %}
-    $cniJson.delegate.policies[0].Value.ExceptionList = $serviceSubnet, $podSubnet, $networkJson.SubnetCIDR
-    $cniJson.delegate.policies[1].Value.DestinationPrefix = $serviceSubnet
-    $cniJson.delegate.policies[2].Value.DestinationPrefix = $networkJson.AddressCIDR
-{%- endif %}
-
-    Set-Content -Path /host/etc/cni/net.d/10-flannel.conf `
-                -Value ($cniJson | ConvertTo-Json -depth 100) `
-                -Encoding Ascii
-
     cp -force /etc/kube-flannel/net-conf.json /host/etc/kube-flannel
+
+    mkdir -force /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount
     cp -force /k/flannel/* /host/k/flannel/
     cp -force /kube-proxy/kubeconfig.conf /host/k/flannel/kubeconfig.yml
     cp -force /var/run/secrets/kubernetes.io/serviceaccount/* /host/k/flannel/var/run/secrets/kubernetes.io/serviceaccount/
-
-    mkdir -force /host/k/flannel
-    cp -force /k/flannel/flanneld.exe /host/k/flannel/
 
     wins cli process run --path /k/flannel/flanneld.exe --envs "POD_NAME=$env:POD_NAME POD_NAMESPACE=$env:POD_NAMESPACE" --args "--kube-subnet-mgr --ip-masq --kubeconfig-file /k/flannel/kubeconfig.yml"
 
