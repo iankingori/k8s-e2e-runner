@@ -179,6 +179,11 @@ class CAPZProvisioner(base.Deployer):
         self._create_capz_control_plane()
         self._create_capz_windows_agents()
         self._setup_capz_kubeconfig()
+        self._setup_ssh_config()
+        # Once the CAPZ cluster is deployed, we don't need the
+        # bootstrap VM anymore.
+        self.collect_bootstrap_vm_logs()
+        self.cleanup_bootstrap_vm()
 
     def down(self, wait=True):
         self.logging.info("Deleting Azure resource group")
@@ -222,36 +227,6 @@ class CAPZProvisioner(base.Deployer):
                 kubeadm_flags_env_file,
                 win_address)
             self.run_cmd_on_k8s_node('nssm restart kubelet', win_address)
-
-    def setup_ssh_config(self):
-        ssh_dir = os.path.join(os.environ["HOME"], ".ssh")
-        os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
-        ssh_config = [
-            "Host %s" % self.master_public_address,
-            "HostName %s" % self.master_public_address,
-            "User capi",
-            "StrictHostKeyChecking no",
-            "UserKnownHostsFile /dev/null",
-            "IdentityFile %s" % os.environ["SSH_KEY"],
-            ""
-        ]
-        k8s_master_ssh_host = self.master_public_address
-        agents_private_addresses = self.windows_private_addresses + \
-            self.linux_private_addresses
-        for address in agents_private_addresses:
-            ssh_config += [
-                "Host %s" % address,
-                "HostName %s" % address,
-                "User capi",
-                "ProxyCommand ssh -q %s -W %%h:%%p" % k8s_master_ssh_host,
-                "StrictHostKeyChecking no",
-                "UserKnownHostsFile /dev/null",
-                "IdentityFile %s" % os.environ["SSH_KEY"],
-                ""
-            ]
-        ssh_config_file = os.path.join(ssh_dir, "config")
-        with open(ssh_config_file, "w") as f:
-            f.write("\n".join(ssh_config))
 
     @utils.retry_on_error()
     def upload_to_bootstrap_vm(self, local_path, remote_path="www/"):
@@ -360,6 +335,36 @@ class CAPZProvisioner(base.Deployer):
             self.bootstrap_vm_logs_dir,
             "{}.tar.gz".format(self.bootstrap_vm_logs_dir))
         shutil.rmtree(self.bootstrap_vm_logs_dir)
+
+    def _setup_ssh_config(self):
+        ssh_dir = os.path.join(os.environ["HOME"], ".ssh")
+        os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
+        ssh_config = [
+            "Host %s" % self.master_public_address,
+            "HostName %s" % self.master_public_address,
+            "User capi",
+            "StrictHostKeyChecking no",
+            "UserKnownHostsFile /dev/null",
+            "IdentityFile %s" % os.environ["SSH_KEY"],
+            ""
+        ]
+        k8s_master_ssh_host = self.master_public_address
+        agents_private_addresses = self.windows_private_addresses + \
+            self.linux_private_addresses
+        for address in agents_private_addresses:
+            ssh_config += [
+                "Host %s" % address,
+                "HostName %s" % address,
+                "User capi",
+                "ProxyCommand ssh -q %s -W %%h:%%p" % k8s_master_ssh_host,
+                "StrictHostKeyChecking no",
+                "UserKnownHostsFile /dev/null",
+                "IdentityFile %s" % os.environ["SSH_KEY"],
+                ""
+            ]
+        ssh_config_file = os.path.join(ssh_dir, "config")
+        with open(ssh_config_file, "w") as f:
+            f.write("\n".join(ssh_config))
 
     def _get_agents_private_addresses(self, operating_system):
         cmd = [

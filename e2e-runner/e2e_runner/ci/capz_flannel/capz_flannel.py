@@ -79,14 +79,8 @@ class CapzFlannelCI(base.CI):
 
     def up(self):
         start = time.time()
-
         self.deployer.up()
-        # Once the CAPZ cluster is deployed, we don't need the
-        # bootstrap VM anymore.
-        self.deployer.collect_bootstrap_vm_logs()
-        self.deployer.cleanup_bootstrap_vm()
 
-        self.deployer.setup_ssh_config()
         self._setup_kubeconfig()
         self._install_patches()
         if "k8sbins" in self.deployer.bins_built:
@@ -96,12 +90,12 @@ class CapzFlannelCI(base.CI):
         self._wait_for_ready_cni()
         if self.opts.flannel_mode == constants.FLANNEL_MODE_OVERLAY:
             self._allocate_win_source_vip()
+
         self._add_kube_proxy_windows()
         self._wait_for_ready_pods()
 
         self.logging.info("The cluster provisioned in %.2f minutes",
                           (time.time() - start) / 60.0)
-
         self.logging.info("Validating cluster")
         self._validate_k8s_api_versions()
 
