@@ -23,7 +23,6 @@ from tenacity import (
     stop_after_delay,
     wait_exponential,
     retry_if_exception_type,
-    retry,
 )
 from e2e_runner import (
     base,
@@ -362,58 +361,6 @@ class CAPZProvisioner(base.Deployer):
             "{}.tar.gz".format(self.bootstrap_vm_logs_dir))
         shutil.rmtree(self.bootstrap_vm_logs_dir)
 
-    def connect_agents_to_controlplane_subnet(self):
-        self.logging.info("Connecting agents VMs to the control-plane subnet")
-        control_plane_subnet = utils.retry_on_error()(
-            self.network_client.subnets.get)(
-                self.cluster_name,
-                "{}-vnet".format(self.cluster_name),
-                "{}-controlplane-subnet".format(self.cluster_name))
-
-        for vm in self._get_agents_vms():
-            self.logging.info("Connecting VM {}".format(vm.name))
-            nic = self._get_vm_nic(
-                vm.network_profile.network_interfaces[0].id)
-            route = self._get_vm_route(
-                nic.ip_configurations[0].private_ip_address)
-
-            self.logging.info("Shutting down VM")
-            utils.retry_on_error()(
-                self.compute_client.virtual_machines.begin_deallocate)(
-                    self.cluster_name, vm.name).wait()
-
-            self.logging.info("Updating VM NIC subnet")
-            nic.ip_configurations[0].subnet.id = control_plane_subnet.id
-            utils.retry_on_error()(
-                self.network_client.network_interfaces.begin_create_or_update)(
-                    self.cluster_name, nic.name, nic).wait()
-
-            self.logging.info("Starting VM")
-            utils.retry_on_error()(
-                self.compute_client.virtual_machines.begin_start)(
-                    self.cluster_name, vm.name).wait()
-
-            self.logging.info("Updating the node routetable")
-            nic = self._get_vm_nic(nic.id)  # Refresh NIC info
-            nic_address = nic.ip_configurations[0].private_ip_address
-            route.next_hop_ip_address = nic_address
-            utils.retry_on_error()(
-                self.network_client.routes.begin_create_or_update)(
-                    self.cluster_name,
-                    "{}-node-routetable".format(self.cluster_name),
-                    route.name,
-                    route).wait()
-
-            self.logging.info(
-                "Waiting until VM address is refreshed in the CAPZ cluster")
-            for attempt in Retrying(
-                    stop=stop_after_delay(10 * 60),
-                    wait=wait_exponential(max=30),
-                    reraise=True):
-                with attempt:
-                    addresses = self._get_agents_private_addresses("windows")
-                    assert nic_address in addresses
-
     def _get_agents_private_addresses(self, operating_system):
         cmd = [
             self.kubectl, "get", "nodes", "--kubeconfig",
@@ -462,33 +409,6 @@ class CAPZProvisioner(base.Deployer):
             tenant_id=os.environ["AZURE_TENANT_ID"])
         subscription_id = os.environ["AZURE_SUBSCRIPTION_ID"]
         return credentials, subscription_id
-
-    @utils.retry_on_error()
-    def _get_agents_vms(self):
-        for vm in self.compute_client.virtual_machines.list(self.cluster_name):
-            if vm.storage_profile.os_disk.os_type == 'Windows':
-                yield vm
-
-    @utils.retry_on_error()
-    def _get_vm_nic(self, nic_id):
-        nics = self.network_client.network_interfaces.list(self.cluster_name)
-        for nic in nics:
-            if nic.id == nic_id:
-                return nic
-        raise Exception("The VM NIC was not found: {}".format(nic_id))
-
-    @retry(stop=stop_after_delay(900),
-           wait=wait_exponential(max=30),
-           reraise=True)
-    def _get_vm_route(self, next_hop_ip_address):
-        routes = self.network_client.routes.list(
-            self.cluster_name,
-            "{}-node-routetable".format(self.cluster_name))
-        for route in routes:
-            if route.next_hop_ip_address == next_hop_ip_address:
-                return route
-        raise Exception("The VM route with next_hop {} was not found".format(
-            next_hop_ip_address))
 
     def _wait_for_bootstrap_vm(self, timeout=900):
         self.logging.info("Waiting up to %.2f minutes for VM %s to provision",

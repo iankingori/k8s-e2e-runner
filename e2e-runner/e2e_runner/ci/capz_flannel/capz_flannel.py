@@ -79,28 +79,31 @@ class CapzFlannelCI(base.CI):
 
     def up(self):
         start = time.time()
+
         self.deployer.up()
-        # if self.opts.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
-        #     self.deployer.connect_agents_to_controlplane_subnet()
+        # Once the CAPZ cluster is deployed, we don't need the
+        # bootstrap VM anymore.
+        self.deployer.collect_bootstrap_vm_logs()
+        self.deployer.cleanup_bootstrap_vm()
+
         self.deployer.setup_ssh_config()
         self._setup_kubeconfig()
         self._install_patches()
         if "k8sbins" in self.deployer.bins_built:
             self._upload_kube_proxy_windows_bin()
+
         self._add_flannel_cni()
         self._wait_for_ready_cni()
         if self.opts.flannel_mode == constants.FLANNEL_MODE_OVERLAY:
             self._allocate_win_source_vip()
         self._add_kube_proxy_windows()
         self._wait_for_ready_pods()
+
         self.logging.info("The cluster provisioned in %.2f minutes",
                           (time.time() - start) / 60.0)
+
         self.logging.info("Validating cluster")
         self._validate_k8s_api_versions()
-        # Once the CAPZ cluster is deployed, we don't need the
-        # bootstrap VM anymore.
-        self.deployer.collect_bootstrap_vm_logs()
-        self.deployer.cleanup_bootstrap_vm()
 
     def down(self):
         self.deployer.down(wait=False)
@@ -416,6 +419,8 @@ class CapzFlannelCI(base.CI):
         context = {
             "server_core_tag": server_core_tag,
             "container_runtime": self.opts.container_runtime,
+            "control_plane_cidr": self.opts.control_plane_subnet_cidr_block,
+            "node_cidr": self.opts.node_subnet_cidr_block,
             "mode": mode
         }
         kube_flannel_windows = "/tmp/kube-flannel-windows.yaml"

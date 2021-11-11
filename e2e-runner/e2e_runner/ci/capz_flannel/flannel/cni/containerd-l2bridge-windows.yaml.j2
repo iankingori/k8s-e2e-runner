@@ -6,7 +6,7 @@
     $networkJson = wins cli net get | ConvertFrom-Json
 
     $cniJson = Get-Content /etc/kube-flannel-windows/cni-conf.json | ConvertFrom-Json
-    $cniJson.delegate.AdditionalArgs[0].Value.Settings.Exceptions = $serviceSubnet, $podSubnet, $networkJson.SubnetCIDR
+    $cniJson.delegate.AdditionalArgs[0].Value.Settings.Exceptions = $serviceSubnet, $podSubnet, "{{ control_plane_cidr }}", "{{ node_cidr }}"
     $cniJson.delegate.AdditionalArgs[1].Value.Settings.DestinationPrefix = $serviceSubnet
     $cniJson.delegate.AdditionalArgs[2].Value.Settings.DestinationPrefix = $networkJson.AddressCIDR
 
