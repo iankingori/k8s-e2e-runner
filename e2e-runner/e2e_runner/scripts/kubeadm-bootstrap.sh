@@ -59,8 +59,6 @@ update_k8s() {
         ctr -n k8s.io images tag "k8s.gcr.io/${CI_IMAGE}-amd64:${CI_VERSION//+/_}" "k8s.gcr.io/${CI_IMAGE}:${CI_VERSION//+/_}"
         # remove unused image tag
         ctr -n k8s.io image remove "k8s.gcr.io/${CI_IMAGE}-amd64:${CI_VERSION//+/_}"
-        # cleanup cached node image
-        crictl rmi "k8s.gcr.io/${CI_IMAGE}:v1.22.2"
     done
 
     echo "Checking binary versions"

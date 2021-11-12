@@ -1,15 +1,28 @@
 ---
-apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineHealthCheck
+metadata:
+  name: {{ cluster_name }}-control-plane-mhc
+spec:
+  clusterName: {{ cluster_name }}
+  nodeStartupTimeout: 10m
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/control-plane: ""
+  unhealthyConditions:
+    - type: Ready
+      status: Unknown
+      timeout: 5m
+    - type: Ready
+      status: "False"
+      timeout: 5m
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 kind: KubeadmControlPlane
 metadata:
   name: {{ cluster_name }}-control-plane
   namespace: default
 spec:
-  machineTemplate:
-    infrastructureRef:
-      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
-      kind: AzureMachineTemplate
-      name: {{ cluster_name }}-control-plane
   kubeadmConfigSpec:
     clusterConfiguration:
       apiServer:
@@ -28,7 +41,11 @@ spec:
           cloud-config: /etc/kubernetes/azure.json
           cloud-provider: azure
           cluster-name: {{ cluster_name }}
+{%- if flannel_mode == "host-gw" %}
           configure-cloud-routes: "true"
+{%- else %}
+          configure-cloud-routes: "false"
+{%- endif %}
         extraVolumes:
         - hostPath: /etc/kubernetes/azure.json
           mountPath: /etc/kubernetes/azure.json
@@ -37,6 +54,8 @@ spec:
       etcd:
         local:
           dataDir: /var/lib/etcddisk/etcd
+          extraArgs:
+            quota-backend-bytes: "8589934592"
     diskSetup:
       filesystems:
       - device: /dev/disk/azure/scsi1/lun0
@@ -76,6 +95,7 @@ spec:
     initConfiguration:
       nodeRegistration:
         kubeletExtraArgs:
+          azure-container-registry-config: /etc/kubernetes/azure.json
           cloud-config: /etc/kubernetes/azure.json
           cloud-provider: azure
 {%- raw %}
@@ -84,6 +104,7 @@ spec:
     joinConfiguration:
       nodeRegistration:
         kubeletExtraArgs:
+          azure-container-registry-config: /etc/kubernetes/azure.json
           cloud-config: /etc/kubernetes/azure.json
           cloud-provider: azure
 {%- raw %}
@@ -99,10 +120,15 @@ spec:
     postKubeadmCommands:
     - netplan apply
 {%- endif %}
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: AzureMachineTemplate
+      name: {{ cluster_name }}-control-plane
   version: {{ ci_version }}
   replicas: 1
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureMachineTemplate
 metadata:
   name: {{ cluster_name }}-control-plane
@@ -116,8 +142,6 @@ spec:
         nameSuffix: etcddisk
       osDisk:
         diskSizeGB: 128
-        managedDisk:
-          storageAccountType: Premium_LRS
         osType: Linux
       sshPublicKey: {{ azure_ssh_public_key_b64 }}
       vmSize: {{ master_vm_size }}

@@ -1,3 +1,24 @@
+  configure-cni.ps1: |
+    $ErrorActionPreference = "Stop"
+
+    $serviceSubnet = yq eval '.networking.serviceSubnet' /etc/kubeadm-config/ClusterConfiguration
+    $podSubnet = yq eval '.networking.podSubnet' /etc/kubeadm-config/ClusterConfiguration
+    $networkJson = wins cli net get | ConvertFrom-Json
+
+    $cniJson = Get-Content /etc/kube-flannel-windows/cni-conf.json | ConvertFrom-Json
+    $cniJson.delegate.policies[0].Value.ExceptionList = $serviceSubnet, $podSubnet, "{{ control_plane_cidr }}", "{{ node_cidr }}"
+    $cniJson.delegate.policies[1].Value.DestinationPrefix = $serviceSubnet
+    $cniJson.delegate.policies[2].Value.DestinationPrefix = $networkJson.AddressCIDR
+
+    mkdir -force /host/opt/cni/bin
+    cp -force /opt/cni/bin/* /host/opt/cni/bin/
+
+    mkdir -force /host/etc/cni/net.d
+    Set-Content `
+      -Encoding Ascii `
+      -Path /host/etc/cni/net.d/10-flannel.conf `
+      -Value ($cniJson | ConvertTo-Json -Depth 100)
+
   cni-conf.json: |
     {
       "name": "cbr0",

@@ -8,7 +8,6 @@ import tarfile
 from threading import Timer
 
 import jinja2
-import six
 import tenacity
 
 from e2e_runner import (
@@ -17,6 +16,70 @@ from e2e_runner import (
 )
 
 logging = logger.get_logger(__name__)
+
+
+def str2bool(v):
+    if v.lower() == 'true':
+        return True
+    elif v.lower() == 'false':
+        return False
+    else:
+        raise configargparse.ArgumentTypeError("Boolean value expected")
+
+
+def get_go_path():
+    return os.environ.get("GOPATH") or "/go"
+
+
+def get_k8s_folder():
+    return os.path.join(get_go_path(), "src", "k8s.io", "kubernetes")
+
+
+def retry_on_error(max_attempts=5, max_sleep_seconds=60):
+    return tenacity.retry(
+        stop=tenacity.stop_after_attempt(max_attempts),
+        wait=tenacity.wait_exponential(max=max_sleep_seconds),
+        reraise=True)
+
+
+def get_kubectl_bin():
+    if os.environ.get("KUBECTL_PATH"):
+        return os.environ.get("KUBECTL_PATH")
+    else:
+        return os.path.join(get_k8s_folder(), "cluster/kubectl.sh")
+
+
+def render_template(template_file, output_file, context={}, searchpath="/"):
+    template_loader = jinja2.FileSystemLoader(searchpath=searchpath)
+    template_env = jinja2.Environment(loader=template_loader)
+    template = template_env.get_template(template_file)
+    with open(output_file, 'w') as f:
+        f.write(template.render(context))
+
+
+def check_port_open(host, port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.settimeout(1)
+        s.connect((host, port))
+        return True
+    except (ConnectionRefusedError,
+            socket.timeout,
+            OSError):
+        return False
+    finally:
+        s.close()
+
+
+def wait_for_port_connectivity(address, port, max_wait=300):
+    i = 0
+    while not check_port_open(address, port) and i < max_wait:
+        time.sleep(1)
+        i += 1
+    if i == max_wait:
+        err_msg = "Connection failed on port {}".format(port)
+        logging.error(err_msg)
+        raise exceptions.ConnectionFailed(err_msg)
 
 
 def run_cmd(cmd, timeout=(3 * 3600), env=None, stdout=False, stderr=False,
@@ -47,70 +110,6 @@ def run_cmd(cmd, timeout=(3 * 3600), env=None, stdout=False, stderr=False,
         return stdout, stderr, proc.returncode
     finally:
         timer.cancel()
-
-
-def get_go_path():
-    return os.environ.get("GOPATH") or "/go"
-
-
-def get_k8s_folder():
-    gopath = get_go_path()
-    return os.path.join(gopath, "src", "k8s.io", "kubernetes")
-
-
-def retry_on_error(max_attempts=5, max_sleep_seconds=60):
-    return tenacity.retry(
-        stop=tenacity.stop_after_attempt(max_attempts),
-        wait=tenacity.wait_exponential(max=max_sleep_seconds),
-        reraise=True)
-
-
-@retry_on_error()
-def download_file(url, dst):
-    _, _, ret = run_cmd(["wget", "-q", url, "-O", dst], stderr=True)
-    if ret != 0:
-        logging.error("Failed to download file: %s", url)
-    return ret
-
-
-def get_kubectl_bin():
-    if os.environ.get("KUBECTL_PATH"):
-        return os.environ.get("KUBECTL_PATH")
-    else:
-        return os.path.join(get_k8s_folder(), "cluster/kubectl.sh")
-
-
-def render_template(template_file, output_file, context={}, searchpath="/"):
-    template_loader = jinja2.FileSystemLoader(searchpath=searchpath)
-    template_env = jinja2.Environment(loader=template_loader)
-    template = template_env.get_template(template_file)
-    with open(output_file, 'w') as f:
-        f.write(template.render(context))
-
-
-def check_port_open(host, port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        s.settimeout(1)
-        s.connect((host, port))
-        return True
-    except (six.moves.builtins.ConnectionRefusedError,
-            socket.timeout,
-            OSError):
-        return False
-    finally:
-        s.close()
-
-
-def wait_for_port_connectivity(address, port, max_wait=300):
-    i = 0
-    while not check_port_open(address, port) and i < max_wait:
-        time.sleep(1)
-        i += 1
-    if i == max_wait:
-        err_msg = "Connection failed on port {}".format(port)
-        logging.error(err_msg)
-        raise exceptions.ConnectionFailed(err_msg)
 
 
 def run_shell_cmd(cmd, cwd=None, env=None, sensitive=False,
@@ -150,16 +149,6 @@ def clone_git_repo(repo_url, branch_name, local_dir):
         raise exceptions.GitCloneFailed(
             "Git Clone Failed with error: {}.".format(err))
     logging.info("Succesfully cloned git repo.")
-
-
-def str2bool(v):
-    if v.lower() == 'true':
-        return True
-    elif v.lower() == 'false':
-        return False
-    else:
-        raise configargparse.ArgumentTypeError(
-            'Boolean value expected')
 
 
 def run_remote_ssh_cmd(cmd, ssh_user, ssh_address, ssh_key_path=None,

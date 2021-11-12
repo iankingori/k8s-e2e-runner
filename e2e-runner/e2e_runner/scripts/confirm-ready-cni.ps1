@@ -1,14 +1,25 @@
 $ErrorActionPreference = "Stop"
 
-$CNI_CONF_DIR = Join-Path $env:SystemDrive "etc\cni\net.d"
+$DOCKER_CNI_CONF_DIR = Join-Path $env:SystemDrive "etc\cni\net.d"
+$CONTAINERD_CNI_CONF_DIR = Join-Path $env:SystemDrive "containerd\cni\conf"
 
 
-if(!(Test-Path "$CNI_CONF_DIR\10-flannel.conf")) {
+function Get-FlannelCNIConf {
+    foreach($dir in @($CONTAINERD_CNI_CONF_DIR, $DOCKER_CNI_CONF_DIR)) {
+        if(Test-Path "${dir}\10-flannel.conf") {
+            return "${dir}\10-flannel.conf"
+        }
+    }
+}
+
+
+$cniConf = Get-FlannelCNIConf
+if(!$cniConf) {
     Write-Output $false
     exit 0
 }
 
-$networkName = (cat "$CNI_CONF_DIR\10-flannel.conf" | ConvertFrom-Json).Name
+$networkName = (cat $cniConf | ConvertFrom-Json).Name
 $hnsNetwork = Get-HnsNetwork | Where-Object Name -eq $networkName
 if(!$hnsNetwork) {
     Write-Output $false

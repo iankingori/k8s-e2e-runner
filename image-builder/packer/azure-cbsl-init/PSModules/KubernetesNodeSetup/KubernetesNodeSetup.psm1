@@ -1,5 +1,16 @@
 $ErrorActionPreference = "Stop"
 
+$global:CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
+$global:TMP_DIR = Join-Path $env:SystemDrive "tmp"
+
+# https://github.com/containerd/containerd/releases
+$global:CRI_CONTAINERD_VERSION = "v1.6.0-beta.1"
+# https://github.com/kubernetes-sigs/cri-tools/releases
+$global:CRICTL_VERSION = "v1.22.0"
+# https://github.com/rancher/wins/releases
+$global:WINS_VERSION = "v0.1.1"
+
+
 function Install-LatestWindowsUpdates {
     Param(
         #
@@ -93,59 +104,89 @@ function Install-CloudbaseInit {
     }
 }
 
-function Disable-Docker {
-    # Return early if Docker is not installed
-    $dockerdBin = Get-Command "dockerd" -ErrorAction SilentlyContinue
-    if(!$dockerdBin) {
-        return
+function Install-Wins {
+    Write-Output "Installing Wins Windows service"
+    Start-FileDownload "https://github.com/rancher/wins/releases/download/${WINS_VERSION}/wins.exe" "$KUBERNETES_DIR\wins.exe"
+    wins.exe srv app run --register
+    if($LASTEXITCODE) {
+        Throw "Failed to register wins Windows service"
     }
+    Start-Service -Name "rancher-wins"
+}
 
-    # Disable Docker system service
-    Stop-Service -Name "Docker"
-    Set-Service -Name "Docker" -StartupType Disabled
+function Start-DockerImagesPull {
+    Confirm-EnvVarsAreSet -EnvVars @(
+        "ACR_NAME",
+        "ACR_USER_NAME",
+        "ACR_USER_PASSWORD",
+        "KUBERNETES_VERSION")
 
-    # Remove Docker from the system PATH
-    $systemPath = [Environment]::GetEnvironmentVariable("PATH", [System.EnvironmentVariableTarget]::Machine).Split(';')
-    $newSystemPath = $systemPath | Where-Object { $_ -ne "${env:ProgramFiles}\Docker" }
-    [Environment]::SetEnvironmentVariable("PATH", ($newSystemPath -join ';'), [System.EnvironmentVariableTarget]::Machine)
+    docker login "${env:ACR_NAME}.azurecr.io" -u "${env:ACR_USER_NAME}" -p "${env:ACR_USER_PASSWORD}"
+    if($LASTEXITCODE) {
+        Throw "Failed to login to registry ${env:ACR_NAME}.azurecr.io"
+    }
+    $images = Get-ContainerImages -ContainerRegistry "${env:ACR_NAME}.azurecr.io" -KubernetesVersion $env:KUBERNETES_VERSION
+    foreach($img in $images) {
+        Start-ExecuteWithRetry {
+            docker.exe image pull $img
+            if($LASTEXITCODE) {
+                Throw "Failed to pull image: $img"
+            }
+        }
+    }
+    docker logout "${env:ACR_NAME}.azurecr.io"
+    if($LASTEXITCODE) {
+        Throw "Failed to logout from registry ${env:ACR_NAME}.azurecr.io"
+    }
+}
+
+function Start-ContainerdImagesPull {
+    Confirm-EnvVarsAreSet -EnvVars @(
+        "ACR_NAME",
+        "ACR_USER_NAME",
+        "ACR_USER_PASSWORD",
+        "KUBERNETES_VERSION")
+
+    $images = Get-ContainerImages -ContainerRegistry "${env:ACR_NAME}.azurecr.io" -KubernetesVersion $env:KUBERNETES_VERSION
+    foreach($img in $images) {
+        Start-ExecuteWithRetry {
+            ctr.exe -n k8s.io image pull -u "${env:ACR_USER_NAME}:${env:ACR_USER_PASSWORD}" $img
+            if($LASTEXITCODE) {
+                Throw "Failed to pull image: $img"
+            }
+        }
+    }
 }
 
 function Install-Containerd {
-    mkdir -force $CONTAINERD_DIR
-    mkdir -force $KUBERNETES_DIR
-    mkdir -force $VAR_LOG_DIR
-    mkdir -force "$ETC_DIR\cni\net.d"
-    mkdir -force "$OPT_DIR\cni\bin"
+    Install-NSSM
 
-    Start-FileDownload "https://github.com/containerd/containerd/releases/download/v${CRI_CONTAINERD_VERSION}/cri-containerd-cni-${CRI_CONTAINERD_VERSION}-windows-amd64.tar.gz" "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
+    $directories = @(
+        $CONTAINERD_DIR,
+        $VAR_LOG_DIR
+    )
+    foreach ($dir in $directories) {
+        New-Item -ItemType Directory -Force -Path $dir
+    }
+
+    Start-FileDownload "https://github.com/containerd/containerd/releases/download/${CRI_CONTAINERD_VERSION}/cri-containerd-cni-$($CRI_CONTAINERD_VERSION.Trim('v'))-windows-amd64.tar.gz" "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
     tar xzf $env:TEMP\cri-containerd-windows-amd64.tar.gz -C $CONTAINERD_DIR
     if($LASTEXITCODE) {
         Throw "Failed to unzip containerd.zip"
     }
-    Add-ToSystemPath $CONTAINERD_DIR
     Remove-Item -Force "$env:TEMP\cri-containerd-windows-amd64.tar.gz"
 
-    Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/v${CRICTL_VERSION}/crictl-v${CRICTL_VERSION}-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
-    tar xzf $env:TEMP\crictl-windows-amd64.tar.gz -C $KUBERNETES_DIR
+    Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
+    tar xzf $env:TEMP\crictl-windows-amd64.tar.gz -C $CONTAINERD_DIR
     if($LASTEXITCODE) {
         Throw "Failed to unzip crictl.zip"
     }
     Remove-Item -Force "$env:TEMP\crictl-windows-amd64.tar.gz"
 
-    Copy-Item "$PSScriptRoot\containerd\nat.conf" "$ETC_DIR\cni\net.d\"
-    foreach($cniBin in @("nat.exe", "sdnbridge.exe", "sdnoverlay.exe")) {
-        Move-Item "$CONTAINERD_DIR\cni\$cniBin" "$OPT_DIR\cni\bin\"
-    }
     $k8sPauseImage = Get-KubernetesPauseImage
     Get-Content "$PSScriptRoot\containerd\config.toml" | `
         ForEach-Object { $_ -replace "{{K8S_PAUSE_IMAGE}}", $k8sPauseImage } | `
         Out-File "$CONTAINERD_DIR\config.toml" -Encoding ascii
-
-    # TODO: Remove these binaries downloads, once those bundled with the stable package pass Windows conformance testing.
-    Start-FileDownload "https://capzwin.blob.core.windows.net/bin/containerd-shim-runhcs-v1.exe" "$CONTAINERD_DIR\containerd-shim-runhcs-v1.exe"
-    foreach($cniBin in @("nat.exe", "sdnbridge.exe", "sdnoverlay.exe")) {
-        Start-FileDownload "https://capzwin.blob.core.windows.net/bin/$cniBin" "$OPT_DIR\cni\bin\$cniBin"
-    }
 
     nssm install containerd $CONTAINERD_DIR\containerd.exe --config $CONTAINERD_DIR\config.toml
     if($LASTEXITCODE) {
@@ -159,46 +200,40 @@ function Install-Containerd {
     if($LASTEXITCODE) {
         Throw "Failed to set AppStderr for containerd service"
     }
-
-    nssm set containerd Start SERVICE_DEMAND_START
+    nssm set containerd Start SERVICE_AUTO_START
     if($LASTEXITCODE) {
-        Throw "Failed to set containerd manual start type"
+        Throw "Failed to set containerd automatic startup type"
     }
 
     $env:CONTAINER_RUNTIME_ENDPOINT = "npipe:\\.\pipe\containerd-containerd"
     [Environment]::SetEnvironmentVariable("CONTAINER_RUNTIME_ENDPOINT", $env:CONTAINER_RUNTIME_ENDPOINT, [System.EnvironmentVariableTarget]::Machine)
 
-    Start-Service -Name "containerd"
+    Add-ToSystemPath $CONTAINERD_DIR
 }
 
-function Set-DockerConfig {
-    Set-Content -Path "$env:ProgramData\docker\config\daemon.json" `
-                -Value '{ "bridge" : "none" }' -Encoding Ascii
+function Install-Docker {
+    Install-PackageProvider -Name "NuGet" -Force -Confirm:$false
+    Install-Module -Repository "PSGallery" -Name "DockerMsftProvider" -Force -Confirm:$false
+    Install-Package -ProviderName "DockerMsftProvider" -Name "Docker" -Force -Confirm:$false
 
-    Set-Service -Name "docker" -StartupType Manual
+    $configDir = Join-Path $env:ProgramData "docker\config"
+    New-Item -ItemType Directory -Force -Path $configDir
+    Set-Content -Path "${configDir}\daemon.json" -Value '{ "bridge" : "none" }' -Encoding Ascii
+
+    Set-Service -Name "Docker" -StartupType Automatic
 }
 
 function Install-ContainerdKubernetesNode {
-    Param(
-        [String]$KubernetesVersion="v1.22.2"
-    )
+    Confirm-EnvVarsAreSet -EnvVars @(
+        "ACR_NAME",
+        "ACR_USER_NAME",
+        "ACR_USER_PASSWORD",
+        "KUBERNETES_VERSION")
 
-    Confirm-EnvVarsAreSet -EnvVars @("ACR_NAME", "ACR_USER_NAME", "ACR_USER_PASSWORD")
-    Disable-Docker
-    Install-NSSM
-    Install-Containerd
-    Install-Kubelet -KubernetesVersion $KubernetesVersion -ContainerRuntimeServiceName "containerd"
-    Install-ContainerNetworkingPlugins
+    New-Item -ItemType Directory -Force -Path $TMP_DIR
 
-    $images = Get-ContainerImages -ContainerRegistry "${env:ACR_NAME}.azurecr.io" -KubernetesVersion $KubernetesVersion
-    foreach($img in $images) {
-        Start-ExecuteWithRetry {
-            ctr.exe -n k8s.io image pull -u "${env:ACR_USER_NAME}:${env:ACR_USER_PASSWORD}" $img
-            if($LASTEXITCODE) {
-                Throw "Failed to pull image: $img"
-            }
-        }
-    }
+    Install-Kubelet -KubernetesVersion $env:KUBERNETES_VERSION
+    Start-ContainerdImagesPull
 
     nssm stop containerd
     if($LASTEXITCODE) {
@@ -213,33 +248,17 @@ function Install-ContainerdKubernetesNode {
 }
 
 function Install-DockerKubernetesNode {
-    Param(
-        [String]$KubernetesVersion="v1.22.2"
-    )
+    Confirm-EnvVarsAreSet -EnvVars @(
+        "ACR_NAME",
+        "ACR_USER_NAME",
+        "ACR_USER_PASSWORD",
+        "KUBERNETES_VERSION")
 
-    Confirm-EnvVarsAreSet -EnvVars @("ACR_NAME", "ACR_USER_NAME", "ACR_USER_PASSWORD")
-    Install-NSSM
-    Set-DockerConfig
-    Install-Kubelet -KubernetesVersion $KubernetesVersion -ContainerRuntimeServiceName "docker"
-    Install-ContainerNetworkingPlugins
+    New-Item -ItemType Directory -Force -Path $TMP_DIR
 
-    docker login "${env:ACR_NAME}.azurecr.io" -u "${env:ACR_USER_NAME}" -p "${env:ACR_USER_PASSWORD}"
-    if($LASTEXITCODE) {
-        Throw "Failed to login to login to registry ${env:ACR_NAME}.azurecr.io"
-    }
-    $images = Get-ContainerImages -ContainerRegistry "${env:ACR_NAME}.azurecr.io" -KubernetesVersion $KubernetesVersion
-    foreach($img in $images) {
-        Start-ExecuteWithRetry {
-            docker.exe image pull $img
-            if($LASTEXITCODE) {
-                Throw "Failed to pull image: $img"
-            }
-        }
-    }
-    docker logout "${env:ACR_NAME}.azurecr.io"
-    if($LASTEXITCODE) {
-        Throw "Failed to login from registry ${env:ACR_NAME}.azurecr.io"
-    }
+    Install-Kubelet -KubernetesVersion $env:KUBERNETES_VERSION
+    Start-DockerImagesPull
+
     Stop-Service "Docker"
 
     $hnsNetworks = Get-HnsNetwork

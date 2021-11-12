@@ -25,7 +25,7 @@
       "name": "k8s-e2e-image-builder-{{ timestamp }}",
 
       "subscription_id": "{{ user `subscription_id` }}",
-      "tenant_id": "{{ user `tennant_id` }}",
+      "tenant_id": "{{ user `tenant_id` }}",
       "client_id": "{{ user `client_id` }}",
       "client_secret": "{{ user `client_secret` }}",
 

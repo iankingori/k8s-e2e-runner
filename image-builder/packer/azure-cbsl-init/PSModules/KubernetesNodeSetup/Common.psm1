@@ -1,16 +1,13 @@
+$ErrorActionPreference = "Stop"
+
 $global:KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
-$global:CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
 $global:VAR_LOG_DIR = Join-Path $env:SystemDrive "var\log"
 $global:VAR_LIB_DIR = Join-Path $env:SystemDrive "var\lib"
 $global:ETC_DIR = Join-Path $env:SystemDrive "etc"
 $global:NSSM_DIR = Join-Path $env:ProgramFiles "nssm"
-$global:OPT_DIR = Join-Path $env:SystemDrive "opt"
 
-$global:CNI_PLUGINS_VERSION = "1.0.1"
-$global:WINS_VERSION = "0.1.1"
-$global:FLANNEL_VERSION = "0.15.0"
-$global:CRI_CONTAINERD_VERSION = "1.5.7"
-$global:CRICTL_VERSION = "1.22.0"
+# https://github.com/flannel-io/flannel/releases
+$global:FLANNEL_VERSION = "v0.15.0"
 
 $global:NSSM_URL = "https://k8stestinfrabinaries.blob.core.windows.net/nssm-mirror/nssm-2.24.zip"
 
@@ -122,9 +119,27 @@ function Get-KubernetesPauseImage {
     return "mcr.microsoft.com/oss/kubernetes/pause:3.6"
 }
 
+function Get-ContainerRuntime {
+    $dockerdBin = Get-Command "dockerd" -ErrorAction SilentlyContinue
+    if($dockerdBin) {
+        return "docker"
+    }
+    $containerd = Get-Command "containerd" -ErrorAction SilentlyContinue
+    if($containerd) {
+        return "containerd"
+    }
+    Throw "Could not find any container runtime installed"
+}
+
 function Install-NSSM {
     Write-Output "Installing NSSM"
-    mkdir -Force $NSSM_DIR
+    $nssm = Get-Command "nssm" -ErrorAction SilentlyContinue
+    if($nssm) {
+        Write-Output "NSSM is already installed"
+        return
+    }
+
+    New-Item -ItemType Directory -Force -Path $NSSM_DIR
 
     Start-FileDownload $NSSM_URL "$env:TEMP\nssm.zip"
     tar -C "$NSSM_DIR" -xvf $env:TEMP\nssm.zip --strip-components 2 */win64/*.exe
@@ -138,41 +153,35 @@ function Install-NSSM {
 
 function Install-Kubelet {
     Param(
-        [parameter(Mandatory=$true)]
-        [string]$KubernetesVersion,
-        [parameter(Mandatory=$true)]
-        [string]$ContainerRuntimeServiceName
+        [Parameter(Mandatory=$true)]
+        [string]$KubernetesVersion
     )
 
-    mkdir -force $KUBERNETES_DIR
-    Add-ToSystemPath $KUBERNETES_DIR
+    Install-NSSM
+
+    $directories = @(
+        $KUBERNETES_DIR,
+        "$ETC_DIR\kubernetes\pki",
+        "$VAR_LIB_DIR\kubelet\etc\kubernetes",
+        "$VAR_LIB_DIR\kubelet\etc\kubernetes\manifests",
+        "$VAR_LOG_DIR\kubelet"
+    )
+    foreach ($dir in $directories) {
+        New-Item -ItemType Directory -Force -Path $dir
+    }
 
     Start-FileDownload "https://dl.k8s.io/$KubernetesVersion/bin/windows/amd64/kubelet.exe" "$KUBERNETES_DIR\kubelet.exe"
     Start-FileDownload "https://dl.k8s.io/$KubernetesVersion/bin/windows/amd64/kubeadm.exe" "$KUBERNETES_DIR\kubeadm.exe"
-    Start-FileDownload "https://github.com/rancher/wins/releases/download/v${WINS_VERSION}/wins.exe" "$KUBERNETES_DIR\wins.exe"
 
-    Write-Output "Registering wins Windows service"
-    wins.exe srv app run --register
-    if($LASTEXITCODE) {
-        Throw "Failed to register wins Windows service"
-    }
-    Start-Service rancher-wins
-
-    mkdir -force "$VAR_LOG_DIR\kubelet"
-    mkdir -force "$VAR_LIB_DIR\kubelet\etc\kubernetes"
-    mkdir -force "$VAR_LIB_DIR\kubelet\etc\kubernetes\manifests"
-    mkdir -force "$ETC_DIR\kubernetes\pki"
-    New-Item -Path "$VAR_LIB_DIR\kubelet\etc\kubernetes\pki" -Type SymbolicLink `
-             -Value "$ETC_DIR\kubernetes\pki"
-    Copy-Item -Force -Path "$PSScriptRoot\scripts\start-kubelet.ps1" -Destination "$KUBERNETES_DIR\StartKubelet.ps1"
+    New-Item -Type SymbolicLink -Force -Path "$VAR_LIB_DIR\kubelet\etc\kubernetes\pki" -Value "$ETC_DIR\kubernetes\pki"
+    Copy-Item -Force -Path "$PSScriptRoot\scripts\start-kubelet.ps1" -Destination "$KUBERNETES_DIR\start-kubelet.ps1"
 
     Write-Output "Registering kubelet service"
-
-    nssm install kubelet (Get-Command powershell).Source "-ExecutionPolicy Bypass -NoProfile" $KUBERNETES_DIR\StartKubelet.ps1
+    nssm install kubelet (Get-Command powershell).Source "-ExecutionPolicy Bypass -NoProfile -File $KUBERNETES_DIR\start-kubelet.ps1"
     if($LASTEXITCODE) {
         Throw "Failed to register kubelet Windows service"
     }
-    nssm set kubelet DependOnService $ContainerRuntimeServiceName
+    nssm set kubelet DependOnService (Get-ContainerRuntime)
     if($LASTEXITCODE) {
         Throw "Failed to set kubelet DependOnService"
     }
@@ -186,28 +195,17 @@ function Install-Kubelet {
         Throw "Failed to set kubelet manual start type"
     }
 
+    Add-ToSystemPath $KUBERNETES_DIR
+
     New-NetFirewallRule -Name "kubelet" -DisplayName "kubelet" -Enabled True `
                         -Direction Inbound -Protocol TCP -Action Allow -LocalPort 10250
 }
 
-function Install-ContainerNetworkingPlugins {
-    mkdir -force "$OPT_DIR\cni\bin"
-
-    Start-FileDownload "https://github.com/containernetworking/plugins/releases/download/v${CNI_PLUGINS_VERSION}/cni-plugins-windows-amd64-v${CNI_PLUGINS_VERSION}.tgz" `
-                       "$env:TEMP\cni-plugins.tgz"
-    tar -xf $env:TEMP\cni-plugins.tgz -C "$OPT_DIR\cni\bin"
-    if($LASTEXITCODE) {
-        Throw "Failed to extract cni-plugins.tgz"
-    }
-    Start-FileDownload "https://capzwin.blob.core.windows.net/bin/flannel.exe" "$OPT_DIR\cni\bin\flannel.exe"
-    Remove-Item -Force $env:TEMP\cni-plugins.tgz
-}
-
 function Get-ContainerImages {
     Param(
-        [parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true)]
         [string]$ContainerRegistry,
-        [parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true)]
         [string]$KubernetesVersion
     )
 
@@ -216,7 +214,7 @@ function Get-ContainerImages {
         (Get-KubernetesPauseImage),
         (Get-NanoServerImage),
         (Get-ServerCoreImage),
-        "${ContainerRegistry}/flannel-windows:v${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",
+        "${ContainerRegistry}/flannel-windows:${FLANNEL_VERSION}-windowsservercore-${windowsRelease}",
         "${ContainerRegistry}/kube-proxy-windows:${KubernetesVersion}-windowsservercore-${windowsRelease}"
     )
 }
@@ -230,4 +228,23 @@ function Confirm-EnvVarsAreSet {
             Throw "Missing required environment variable: $var"
         }
     }
+}
+
+function Install-OpenSSHServer {
+    # Install OpenSSH
+    Start-ExecuteWithRetry { Get-WindowsCapability -Online -Name OpenSSH* | Add-WindowsCapability -Online }
+    Set-Service -Name sshd -StartupType Automatic
+    Start-Service sshd
+
+    # Set PowerShell as default shell
+    New-ItemProperty `
+        -PropertyType String -Force -Name DefaultShell `
+        -Path "HKLM:\SOFTWARE\OpenSSH" -Value (Get-Command powershell).Source
+
+    # Remove unified authorized_keys file for admin users
+    $configFile = Join-Path $env:ProgramData "ssh\sshd_config"
+    $config = Get-Content $configFile | `
+        ForEach-Object { $_ -replace '(.*Match Group administrators.*)', '# $1' } | `
+        ForEach-Object { $_ -replace '(.*AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys.*)', '# $1' }
+    Set-Content -Path $configFile -Value $config -Encoding Ascii
 }

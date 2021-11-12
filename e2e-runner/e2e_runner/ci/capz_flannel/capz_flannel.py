@@ -1,12 +1,11 @@
-import re
 import os
 import subprocess
 import time
 import sh
+import urllib
 import yaml
 
 from datetime import datetime
-from distutils.util import strtobool
 from tenacity import (
     Retrying,
     stop_after_delay,
@@ -81,26 +80,24 @@ class CapzFlannelCI(base.CI):
     def up(self):
         start = time.time()
         self.deployer.up()
-        if self.opts.flannel_mode == constants.FLANNEL_MODE_L2BRIDGE:
-            self.deployer.connect_agents_to_controlplane_subnet()
-        self.deployer.setup_ssh_config()
+
         self._setup_kubeconfig()
         self._install_patches()
         if "k8sbins" in self.deployer.bins_built:
             self._upload_kube_proxy_windows_bin()
+
         self._add_flannel_cni()
         self._wait_for_ready_cni()
         if self.opts.flannel_mode == constants.FLANNEL_MODE_OVERLAY:
             self._allocate_win_source_vip()
+
         self._add_kube_proxy_windows()
         self._wait_for_ready_pods()
+
         self.logging.info("The cluster provisioned in %.2f minutes",
                           (time.time() - start) / 60.0)
-        self._validate_cluster()
-        # Once the CAPZ cluster is deployed, we don't need the
-        # bootstrap VM anymore.
-        self.deployer.collect_bootstrap_vm_logs()
-        self.deployer.cleanup_bootstrap_vm()
+        self.logging.info("Validating cluster")
+        self._validate_k8s_api_versions()
 
     def down(self):
         self.deployer.down(wait=False)
@@ -214,7 +211,7 @@ class CapzFlannelCI(base.CI):
                 "node-role.kubernetes.io/master=NoSchedule"
             ])
         self.logging.info("Downloading repo-list")
-        utils.download_file(self.opts.repo_list, "/tmp/repo-list")
+        urllib.request.urlretrieve(self.opts.repo_list, "/tmp/repo-list")
         os.environ["KUBE_TEST_REPO_LIST"] = "/tmp/repo-list"
 
     def _install_patches(self):
@@ -277,7 +274,7 @@ class CapzFlannelCI(base.CI):
 
     def _prepull_images(self, timeout=3600):
         prepull_yaml_path = "/tmp/prepull-windows-images.yaml"
-        utils.download_file(self.opts.prepull_yaml, prepull_yaml_path)
+        urllib.request.urlretrieve(self.opts.prepull_yaml, prepull_yaml_path)
         self.logging.info("Starting Windows images pre-pull")
         utils.retry_on_error()(utils.run_shell_cmd)(
             [self.kubectl, "apply", "-f", prepull_yaml_path])
@@ -301,11 +298,6 @@ class CapzFlannelCI(base.CI):
         utils.retry_on_error()(utils.run_shell_cmd)(
             [self.kubectl, "delete", "--wait", "-f", prepull_yaml_path])
 
-    def _validate_cluster(self):
-        self.logging.info("Validating cluster")
-        self._validate_k8s_api_versions()
-        self._validate_k8s_api_container_images()
-
     def _validate_k8s_api_versions(self):
         self.logging.info("Validating K8s API versions")
         output, _ = utils.retry_on_error()(
@@ -317,37 +309,17 @@ class CapzFlannelCI(base.CI):
             if node_info["kubeletVersion"] != self.ci_version:
                 raise Exception(
                     "Wrong kubelet version on node %s. "
-                    "Expected %s, but found %s" %
-                    (node_name, self.ci_version, node_info["kubeletVersion"]))
+                    "Expected %s, but found %s" % (
+                        node_name,
+                        self.ci_version,
+                        node_info["kubeletVersion"]))
             if node_info["kubeProxyVersion"] != self.ci_version:
                 raise Exception(
                     "Wrong kube-proxy version on node %s. "
-                    "Expected %s, but found %s" %
-                    (node_name, self.ci_version, node_info["kubeletVersion"]))
-
-    def _validate_k8s_api_container_images(self):
-        self.logging.info("Validating K8s API container images")
-        output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
-            self.kubectl, "get", "nodes", "-o", "yaml", "-l",
-            "kubernetes.io/os=linux"
-        ])
-        nodes = yaml.safe_load(output.decode())
-        images_tag = self.ci_version.replace("+", "_").strip("v")
-        name_regex = re.compile(r"^(k8s.gcr.io/kube-.*):v(.*)$")
-        for node in nodes["items"]:
-            non_ci_images_names = []
-            for image in node["status"]["images"]:
-                non_ci_images_names += [
-                    name for name in image["names"]
-                    if (name_regex.match(name)
-                        and name_regex.match(name).group(2) != images_tag)]
-                if len(non_ci_images_names) > 0:
-                    self.logging.error(
-                        "Found the following non-CI images %s on the "
-                        "node %s.", non_ci_images_names,
-                        node["metadata"]["name"])
-                    raise Exception("Found non-CI container images on "
-                                    "node %s" % node["metadata"]["name"])
+                    "Expected %s, but found %s" % (
+                        node_name,
+                        self.ci_version,
+                        node_info["kubeProxyVersion"]))
 
     def _wait_for_ready_pods(self):
         self.logging.info("Waiting for all the pods to be ready")
@@ -359,9 +331,9 @@ class CapzFlannelCI(base.CI):
     def _upload_kube_proxy_windows_bin(self):
         self.logging.info("Uploading the kube-proxy.exe to the Windows agents")
         win_node_addresses = self.deployer.windows_private_addresses
-        kube_proxy_bin = "%s/%s/kube-proxy.exe" % (
+        kube_proxy_bin = "{}/{}/kube-proxy.exe".format(
             utils.get_k8s_folder(),
-            constants.KUBERNETES_WINDOWS_BINS_LOCATION)
+            "_output/local/bin/windows/amd64")
         self._run_remote_cmd("mkdir -force /build", win_node_addresses)
         self._upload_to(
             kube_proxy_bin, "/build/kube-proxy.exe", win_node_addresses)
@@ -401,7 +373,7 @@ class CapzFlannelCI(base.CI):
                     except Exception:
                         cni_ready = False
                         break
-                    cni_ready = strtobool(stdout.decode().strip())
+                    cni_ready = utils.str2bool(stdout.decode().strip())
                     if not cni_ready:
                         break
                 assert cni_ready
@@ -413,6 +385,7 @@ class CapzFlannelCI(base.CI):
         server_core_tag = "windowsservercore-%s" % (
             self.opts.base_container_image_tag)
         context = {
+            "container_runtime": self.opts.container_runtime,
             "kubernetes_version": self.kubernetes_version,
             "server_core_tag": server_core_tag,
             "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),
@@ -440,6 +413,8 @@ class CapzFlannelCI(base.CI):
         context = {
             "server_core_tag": server_core_tag,
             "container_runtime": self.opts.container_runtime,
+            "control_plane_cidr": self.opts.control_plane_subnet_cidr_block,
+            "node_cidr": self.opts.node_subnet_cidr_block,
             "mode": mode
         }
         kube_flannel_windows = "/tmp/kube-flannel-windows.yaml"
@@ -455,54 +430,66 @@ class CapzFlannelCI(base.CI):
         os.environ["KUBECONFIG"] = self.deployer.capz_kubeconfig_path
 
     def _build_k8s_artifacts(self):
+        # Clone Kubernetes git repository
         local_k8s_path = utils.get_k8s_folder()
         remote_k8s_path = self.deployer.remote_k8s_path
         self.deployer.remote_clone_git_repo(
             self.opts.k8s_repo, self.opts.k8s_branch, remote_k8s_path)
+
+        # Build Linux binaries
         self.logging.info("Building K8s Linux binaries")
         cmd = ('make '
                'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm" '
                'KUBE_BUILD_PLATFORMS="linux/amd64"')
         self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
         del os.environ["KUBECTL_PATH"]
+
+        # Build Windows binaries
         self.logging.info("Building K8s Windows binaries")
         cmd = ('make '
                'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm cmd/kube-proxy" '
                'KUBE_BUILD_PLATFORMS="windows/amd64"')
         self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
+
+        # Download binaries from the bootstrap VM
         os.makedirs(local_k8s_path, exist_ok=True)
         self.deployer.download_from_bootstrap_vm(
             "{}/".format(remote_k8s_path), local_k8s_path)
+
+        # Build Linux DaemonSet container images
         self.logging.info("Building K8s Linux DaemonSet container images")
-        cmd = ("KUBE_FASTBUILD=true KUBE_BUILD_CONFORMANCE=n make "
-               "quick-release-images")
+        cmd = ("KUBE_FASTBUILD=true KUBE_BUILD_CONFORMANCE=n "
+               "make quick-release-images")
         self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
-        kubeadm_bin = os.path.join(constants.KUBERNETES_LINUX_BINS_LOCATION,
-                                   'kubeadm')
-        out, _ = utils.run_shell_cmd(
-            [kubeadm_bin, "version", "-o=short"], local_k8s_path)
+
+        # Discover the K8s version built
+        kubeadm_bin = os.path.join(
+            local_k8s_path, "_output/local/bin/linux/amd64/kubeadm")
+        out, _ = utils.run_shell_cmd([kubeadm_bin, "version", "-o=short"])
         self.ci_version = out.decode().strip()
         self.deployer.ci_version = self.ci_version
-        self.logging.info("Copying binaries to remote artifacts directory")
-        linux_bin_dir = "%s/%s/bin/linux/amd64" % (
+
+        # Copy artifacts to their own directory on the bootstrap VM
+        self.logging.info("Copying K8s artifacts to their own directory")
+        linux_bin_dir = "{}/{}/bin/linux/amd64".format(
             self.deployer.remote_artifacts_dir, self.ci_version)
-        windows_bin_dir = "%s/%s/bin/windows/amd64" % (
+        windows_bin_dir = "{}/{}/bin/windows/amd64".format(
             self.deployer.remote_artifacts_dir, self.ci_version)
-        images_dir = "%s/%s/images" % (
+        images_dir = "{}/{}/images".format(
             self.deployer.remote_artifacts_dir, self.ci_version)
         script = [
             "mkdir -p {0} {1} {2}".format(
                 linux_bin_dir, windows_bin_dir, images_dir)]
         for bin_name in ["kubectl", "kubelet", "kubeadm"]:
-            linux_bin_path = "%s/%s/%s" % (
+            linux_bin_path = "{}/{}/{}".format(
                 remote_k8s_path,
-                constants.KUBERNETES_LINUX_BINS_LOCATION,
+                "_output/local/bin/linux/amd64",
                 bin_name)
             script.append("cp {0} {1}".format(linux_bin_path, linux_bin_dir))
         for bin_name in ["kubectl", "kubelet", "kubeadm", "kube-proxy"]:
-            win_bin_path = "%s/%s/%s.exe" % (
+            win_bin_path = "{}/{}/{}.exe".format(
                 remote_k8s_path,
-                constants.KUBERNETES_WINDOWS_BINS_LOCATION,
+                "_output/local/bin/windows/amd64",
                 bin_name)
             script.append("cp {0} {1}".format(win_bin_path, windows_bin_dir))
         images_names = [
@@ -510,13 +497,15 @@ class CapzFlannelCI(base.CI):
             "kube-proxy.tar", "kube-scheduler.tar"
         ]
         for image_name in images_names:
-            image_path = "%s/%s/%s" % (
+            image_path = "{}/{}/{}".format(
                 remote_k8s_path,
-                constants.KUBERNETES_IMAGES_LOCATION,
+                "_output/release-images/amd64",
                 image_name)
             script.append("cp {0} {1}".format(image_path, images_dir))
         script.append("chmod 644 {0}/*".format(images_dir))
         self.deployer.run_cmd_on_bootstrap_vm(script)
+
+        # Setup the E2E tests and the kubetest
         self._setup_e2e_tests()
         self._setup_kubetest()
 
@@ -559,18 +548,17 @@ class CapzFlannelCI(base.CI):
             self.opts.containerd_shim_repo,
             self.opts.containerd_shim_branch, remote_containerd_shim_path)
         self.logging.info("Building containerd shim")
-        build_cmd = ("GOOS=windows GO111MODULE=on "
-                     "go build -mod=vendor -o {0} {1}".format(
-                         constants.CONTAINERD_SHIM_BIN,
-                         constants.CONTAINERD_SHIM_DIR))
+        build_cmd = (
+            "GOOS=windows GO111MODULE=on go build -mod=vendor "
+            "-o containerd-shim-runhcs-v1.exe ./cmd/containerd-shim-runhcs-v1")
         self.deployer.run_cmd_on_bootstrap_vm(
             cmd=[build_cmd], cwd=remote_containerd_shim_path)
         self.logging.info("Copying binaries to remote artifacts directory")
         artifacts_containerd_bin_dir = os.path.join(
             self.deployer.remote_artifacts_dir, "containerd/bin")
         script = ["mkdir -p {0}".format(artifacts_containerd_bin_dir)]
-        containerd_shim_bin = os.path.join(remote_containerd_shim_path,
-                                           constants.CONTAINERD_SHIM_BIN)
+        containerd_shim_bin = os.path.join(
+            remote_containerd_shim_path, "containerd-shim-runhcs-v1.exe")
         script.append("cp {0} {1}".format(
             containerd_shim_bin, artifacts_containerd_bin_dir))
         self.deployer.run_cmd_on_bootstrap_vm(script)

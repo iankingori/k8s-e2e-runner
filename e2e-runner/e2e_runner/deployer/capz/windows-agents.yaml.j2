@@ -1,5 +1,20 @@
 ---
-apiVersion: cluster.x-k8s.io/v1alpha4
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineHealthCheck
+metadata:
+  name: {{ cluster_name }}-md-win-mhc
+spec:
+  clusterName: {{ cluster_name }}
+  nodeStartupTimeout: 20m
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/deployment-name: {{ cluster_name }}-md-win
+  unhealthyConditions:
+    - type: Ready
+      status: Unknown
+      timeout: 5m
+---
+apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
 metadata:
   name: {{ cluster_name }}-md-win
@@ -13,23 +28,40 @@ spec:
     spec:
       bootstrap:
         configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha4
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
           kind: KubeadmConfigTemplate
           name: {{ cluster_name }}-md-win
       clusterName: {{ cluster_name }}
       infrastructureRef:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: AzureMachineTemplate
         name: {{ cluster_name }}-md-win
       version: {{ ci_version }}
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureMachineTemplate
 metadata:
+{%- if container_runtime == "docker" %}
+  annotations:
+    runtime: dockershim
+{%- endif %}
+{%- if container_runtime == "containerd" %}
+  annotations:
+    runtime: containerd
+{%- endif %}
   name: {{ cluster_name }}-md-win
   namespace: default
 spec:
   template:
+    metadata:
+{%- if container_runtime == "docker" %}
+      annotations:
+        runtime: dockershim
+{%- endif %}
+{%- if container_runtime == "containerd" %}
+      annotations:
+        runtime: containerd
+{%- endif %}
     spec:
       osDisk:
         diskSizeGB: 128
@@ -54,7 +86,7 @@ spec:
         id: {{ win_minion_image_id }}
 {%- endif %}
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1alpha4
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
 metadata:
   name: {{ cluster_name }}-md-win
@@ -72,12 +104,24 @@ spec:
         permissions: "0644"
       joinConfiguration:
         nodeRegistration:
+{%- if container_runtime == "containerd" %}
+          criSocket: npipe:////./pipe/containerd-containerd
+{%- endif %}
           kubeletExtraArgs:
+            azure-container-registry-config: c:/k/azure.json
             cloud-config: c:/k/azure.json
             cloud-provider: azure
+{%- if container_runtime == "containerd" %}
+            feature-gates: WindowsHostProcessContainers=true
+{%- endif %}
 {%- raw %}
           name: '{{ ds.meta_data["local_hostname"] }}'
 {%- endraw %}
       preKubeadmCommands:
       - curl.exe -Lo /run/kubeadm/kubeadm-bootstrap.ps1 http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.ps1
-      - powershell -C "/run/kubeadm/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -CIVersion {{ ci_version }} -SSHPublicKey '{{ azure_ssh_public_key }}'{% if k8s_bins %} -K8sBins{% endif %}{% if sdn_cni_bins %} -SDNCNIBins{% endif %}{% if containerd_bins %} -ContainerdBins{% endif %}{% if containerd_shim_bins %} -ContainerdShimBins{% endif %}"
+      - powershell -C "/run/kubeadm/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -CIVersion {{ ci_version }}{% if k8s_bins %} -K8sBins{% endif %}{% if sdn_cni_bins %} -SDNCNIBins{% endif %}{% if containerd_bins %} -ContainerdBins{% endif %}{% if containerd_shim_bins %} -ContainerdShimBins{% endif %}"
+      users:
+      - groups: Administrators
+        name: capi
+        sshAuthorizedKeys:
+        - {{ azure_ssh_public_key }}

@@ -1,5 +1,5 @@
 ---
-apiVersion: cluster.x-k8s.io/v1alpha4
+apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   labels:
@@ -12,20 +12,24 @@ spec:
       cidrBlocks:
       - {{ cluster_network_subnet }}
   controlPlaneRef:
-    apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
     kind: KubeadmControlPlane
     name: {{ cluster_name }}-control-plane
   infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
     kind: AzureCluster
     name: {{ cluster_name }}
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureCluster
 metadata:
   name: {{ cluster_name }}
   namespace: default
 spec:
+  identityRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: AzureClusterIdentity
+    name: cluster-identity
   location: {{ azure_location }}
   networkSpec:
     vnet:
@@ -37,3 +41,19 @@ spec:
         role: node
   resourceGroup: {{ cluster_name }}
   subscriptionID: {{ azure_subscription_id }}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: AzureClusterIdentity
+metadata:
+  labels:
+    clusterctl.cluster.x-k8s.io/move-hierarchy: "true"
+  name: cluster-identity
+  namespace: default
+spec:
+  allowedNamespaces: {}
+  clientID: {{ azure_client_id }}
+  clientSecret:
+    name: cluster-identity-secret
+    namespace: default
+  tenantID: {{ azure_tenant_id }}
+  type: ServicePrincipal
