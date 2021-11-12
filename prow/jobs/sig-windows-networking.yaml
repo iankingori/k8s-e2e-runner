@@ -87,7 +87,7 @@ periodics:
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|should.not.be.able.to.create.pods.with.unknown.usernames
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
         - --k8s-branch=master
         - --build=k8sbins
         - --build=containerdbins
@@ -122,7 +122,7 @@ periodics:
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|should.not.be.able.to.create.pods.with.unknown.usernames
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
         - --k8s-branch=master
         - --build=k8sbins
         - --build=containerdbins
@@ -223,7 +223,7 @@ periodics:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|should.not.be.able.to.create.pods.with.unknown.usernames
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -255,7 +255,7 @@ periodics:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook|should.not.be.able.to.create.pods.with.unknown.usernames
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
@@ -287,7 +287,7 @@ periodics:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x-claudiubelu
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x-claudiubelu.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|should.not.be.able.to.create.pods.with.unknown.usernames
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -320,7 +320,7 @@ periodics:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x-claudiubelu
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x-claudiubelu.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook|should.be.able.to.create.a.functioning.NodePort.service|should.be.able.to.change.the.type.from.ExternalName.to.NodePort
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook|should.be.able.to.create.a.functioning.NodePort.service|should.be.able.to.change.the.type.from.ExternalName.to.NodePort|should.not.be.able.to.create.pods.with.unknown.usernames
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
@@ -353,7 +353,7 @@ periodics:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|should.not.be.able.to.create.pods.with.unknown.usernames
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -386,7 +386,7 @@ periodics:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook|should.not.be.able.to.create.pods.with.unknown.usernames
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
