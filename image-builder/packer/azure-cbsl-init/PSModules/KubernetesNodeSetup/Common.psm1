@@ -248,3 +248,11 @@ function Install-OpenSSHServer {
         ForEach-Object { $_ -replace '(.*AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys.*)', '# $1' }
     Set-Content -Path $configFile -Value $config -Encoding Ascii
 }
+
+function Get-WindowsBuildInfo {
+    $p = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+    $table = New-Object System.Data.DataTable
+    $table.Columns.AddRange(@("Release", "Version", "Build"))
+    $table.Rows.Add($p.ProductName, $p.ReleaseId, "$($p.CurrentBuild).$($p.UBR)") | Out-Null
+    return $table
+}

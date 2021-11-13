@@ -8,6 +8,7 @@ Confirm-EnvVarsAreSet -EnvVars @(
 
 Get-NetAdapter -Physical | Rename-NetAdapter -NewName "packer"
 
+Get-WindowsBuildInfo
 if([System.Convert]::ToBoolean($env:INSTALL_LATEST_WINDOWS_UPDATES)) {
     Install-LatestWindowsUpdates
 }
