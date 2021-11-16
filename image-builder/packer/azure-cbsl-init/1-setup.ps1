@@ -24,3 +24,4 @@ switch ($env:CONTAINER_RUNTIME) {
 Install-Wins
 Install-OpenSSHServer
 Install-CloudbaseInit
+Get-WindowsBuildInfo

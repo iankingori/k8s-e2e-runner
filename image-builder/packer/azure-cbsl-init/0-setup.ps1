@@ -4,12 +4,16 @@ Import-Module KubernetesNodeSetup
 
 Confirm-EnvVarsAreSet -EnvVars @(
     "CONTAINER_RUNTIME",
-    "INSTALL_LATEST_WINDOWS_UPDATES")
+    "WU_INSTALL_LATEST")
 
 Get-NetAdapter -Physical | Rename-NetAdapter -NewName "packer"
 
-if([System.Convert]::ToBoolean($env:INSTALL_LATEST_WINDOWS_UPDATES)) {
-    Install-LatestWindowsUpdates
+Get-WindowsBuildInfo
+if([System.Convert]::ToBoolean($env:WU_INSTALL_LATEST)) {
+    Install-WindowsUpdates
+}
+if($env:WU_INSTALL_KB_IDS) {
+    Install-WindowsUpdates -KBArticleID ($env:WU_INSTALL_KB_IDS -split ",")
 }
 Install-RequiredWindowsFeatures
 

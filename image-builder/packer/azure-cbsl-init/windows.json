@@ -15,7 +15,8 @@
     "image_offer": "{{ user `image_offer` }}",
     "image_sku": "{{ user `image_sku` }}",
     "image_version": "{{ user `image_version` }}",
-    "install_latest_windows_updates": "{{ user `install_latest_windows_updates` }}",
+    "wu_install_latest": "{{ user `wu_install_latest` }}",
+    "wu_install_kb_ids": "{{ user `wu_install_kb_ids` }}",
     "location": "{{ user `location` }}",
     "vm_size": "{{ user `vm_size` }}"
   },
@@ -61,7 +62,8 @@
       "type": "powershell",
       "environment_vars": [
         "CONTAINER_RUNTIME={{ user `container_runtime` }}",
-        "INSTALL_LATEST_WINDOWS_UPDATES={{ user `install_latest_windows_updates` }}"
+        "WU_INSTALL_LATEST={{ user `wu_install_latest` }}",
+        "WU_INSTALL_KB_IDS={{ user `wu_install_kb_ids` }}"
       ],
       "script": "0-setup.ps1"
     },
