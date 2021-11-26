@@ -1,7 +1,7 @@
 ARG BASE_IMAGE="mcr.microsoft.com/windows/servercore:ltsc2019"
 ARG WINS_VERSION="v0.1.1"
-ARG YQ_VERSION="v4.13.4"
-ARG FLANNEL_VERSION="v0.15.0"
+ARG YQ_VERSION="v4.15.1"
+ARG FLANNEL_VERSION="v0.15.1"
 ARG CNI_PLUGINS_VERSION="v1.0.1"
 ARG FLANNEL_CNI_PLUGIN_VERSION="v1.0"
 
@@ -19,8 +19,8 @@ RUN mkdir -p /k/flannel /opt/cni/bin
 ADD https://github.com/rancher/wins/releases/download/${WINS_VERSION}/wins.exe /wins.exe
 ADD https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_windows_amd64.exe /yq.exe
 ADD https://github.com/coreos/flannel/releases/download/${FLANNEL_VERSION}/flanneld.exe /k/flannel/flanneld.exe
-ADD https://github.com/flannel-io/cni-plugin/releases/download/${FLANNEL_CNI_PLUGIN_VERSION}/flannel.exe /opt/cni/bin/flannel.exe
 ADD https://github.com/containernetworking/plugins/releases/download/${CNI_PLUGINS_VERSION}/cni-plugins-windows-amd64-${CNI_PLUGINS_VERSION}.tgz /tmp/cni-plugins.tgz
+ADD https://github.com/flannel-io/cni-plugin/releases/download/${FLANNEL_CNI_PLUGIN_VERSION}/flannel.exe /opt/cni/bin/flannel.exe
 
 RUN tar -xzvf /tmp/cni-plugins.tgz -C /opt/cni/bin && rm /tmp/cni-plugins.tgz
 

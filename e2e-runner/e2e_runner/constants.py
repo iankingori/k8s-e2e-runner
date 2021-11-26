@@ -1,6 +1,6 @@
 AZURE_LOCATIONS = ["eastus2", "westeurope", "westus2", "southcentralus"]
 
-DEFAULT_KUBERNETES_VERSION = "v1.22.3"
+DEFAULT_KUBERNETES_VERSION = "v1.22.4"
 
 SHARED_IMAGE_GALLERY_TYPE = "shared-image-gallery"
 MANAGED_IMAGE_TYPE = "managed-image"
