@@ -58,7 +58,7 @@ function Start-FileDownload {
     )
     Write-Output "Downloading $URL to $Destination"
     Start-ExecuteWithRetry -ScriptBlock {
-        Invoke-Expression "curl.exe -L -s -o $Destination $URL"
+        Invoke-Expression "curl.exe --fail -L -s -o $Destination $URL"
     } -MaxRetryCount $RetryCount -RetryInterval 3 -RetryMessage "Failed to download $URL. Retrying"
 }
 
