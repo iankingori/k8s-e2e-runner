@@ -1,7 +1,7 @@
 {
   "image_offer": "WindowsServer",
   "image_publisher": "MicrosoftWindowsServer",
-  "image_sku": "2019-datacenter-core-smalldisk-g2",
+  "image_sku": "2019-datacenter-core-with-containers-smalldisk-g2",
   "image_version": "latest",
   "wu_install_latest": "false",
   "wu_install_kb_ids": "",
