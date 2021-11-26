@@ -7,7 +7,7 @@ $global:ETC_DIR = Join-Path $env:SystemDrive "etc"
 $global:NSSM_DIR = Join-Path $env:ProgramFiles "nssm"
 
 # https://github.com/flannel-io/flannel/releases
-$global:FLANNEL_VERSION = "v0.15.0"
+$global:FLANNEL_VERSION = "v0.15.1"
 
 $global:NSSM_URL = "https://k8stestinfrabinaries.blob.core.windows.net/nssm-mirror/nssm-2.24.zip"
 

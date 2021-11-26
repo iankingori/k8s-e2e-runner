@@ -29,7 +29,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.11.26
         - --cluster-name=capzflannel-l2br-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-master
@@ -62,7 +62,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.11.26
         - --cluster-name=capzflannel-ovrl-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master
@@ -97,7 +97,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.26
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
@@ -132,7 +132,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.26
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-dsr-disabled-master
@@ -165,7 +165,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=False
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.11.26
         - --cluster-name=capzdocker-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-dsr-disabled-master
@@ -198,7 +198,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=False
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.11.26
         - --cluster-name=capzdocker-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
@@ -230,7 +230,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.26
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
@@ -262,7 +262,7 @@ periodics:
         - --win-minion-count=2
         - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.26
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable
@@ -295,7 +295,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=ltsc2022
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.11.26
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable
@@ -328,7 +328,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=ltsc2022
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.11.26
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
 - name: k8s-e2e-sac2004-containerd-flannel-sdnbridge-stable
@@ -361,7 +361,7 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=2004
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.11.26
         - --cluster-name=capzctrd2004-$(BUILD_ID)
 
 - name: k8s-e2e-sac2004-containerd-flannel-sdnoverlay-stable
@@ -394,5 +394,5 @@ periodics:
         - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=2004
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.11.16
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.11.26
         - --cluster-name=capzctrd2004-$(BUILD_ID)

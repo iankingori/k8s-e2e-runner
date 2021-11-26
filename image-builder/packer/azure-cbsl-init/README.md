@@ -36,8 +36,8 @@ The current scripts support the following K8s Windows workers configurations:
     export ACR_USER_NAME="<ACR_USER_NAME>"
     export ACR_USER_PASSWORD="<ACR_USER_PASSWORD>"
 
-    export KUBERNETES_VERSION="v1.22.3"
-    export FLANNEL_VERSION="v0.15.0"
+    export KUBERNETES_VERSION="v1.22.4"
+    export FLANNEL_VERSION="v0.15.1"
     ```
 
 2. Build the container images for the chosen K8s Windows worker configuration:

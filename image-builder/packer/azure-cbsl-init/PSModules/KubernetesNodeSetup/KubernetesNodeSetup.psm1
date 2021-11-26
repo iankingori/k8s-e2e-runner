@@ -4,7 +4,7 @@ $global:CONTAINERD_DIR = Join-Path $env:SystemDrive "containerd"
 $global:TMP_DIR = Join-Path $env:SystemDrive "tmp"
 
 # https://github.com/containerd/containerd/releases
-$global:CRI_CONTAINERD_VERSION = "v1.6.0-beta.1"
+$global:CRI_CONTAINERD_VERSION = "v1.6.0-beta.3"
 # https://github.com/kubernetes-sigs/cri-tools/releases
 $global:CRICTL_VERSION = "v1.22.0"
 # https://github.com/rancher/wins/releases
