@@ -1,5 +1,38 @@
 periodics:
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master
+  cron: "0 0/12 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
+      args:
+        - --test=True
+        - --up=True
+        - --down=True
+        - --parallel-test-nodes=4
+        - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --k8s-branch=master
+        - --build=k8sbins
+        - --build=containerdbins
+        - --build=containerdshim
+        - capz_flannel
+        - --flannel-mode=host-gw
+        - --container-runtime=containerd
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.13
+        - --cluster-name=capzctrd-$(BUILD_ID)
+
+- name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
   cron: "0 6/12 * * *"
   always_run: true
   decorate: true
@@ -27,15 +60,13 @@ periodics:
         - --build=containerdbins
         - --build=containerdshim
         - capz_flannel
-        - --flannel-mode=host-gw
-        - --win-minion-count=2
-        - --enable-win-dsr=True
+        - --flannel-mode=overlay
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.26
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.13
         - --cluster-name=capzctrd-$(BUILD_ID)
 
-- name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
-  cron: "0 9/12 * * *"
+- name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable
+  cron: "0 1 * * *"
   always_run: true
   decorate: true
   labels:
@@ -53,23 +84,166 @@ periodics:
         - --up=True
         - --down=True
         - --parallel-test-nodes=4
-        - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
-        - --k8s-branch=master
-        - --build=k8sbins
-        - --build=containerdbins
-        - --build=containerdshim
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - capz_flannel
+        - --flannel-mode=host-gw
+        - --container-runtime=docker
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.13
+        - --cluster-name=capzdocker-$(BUILD_ID)
+
+- name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled
+  cron: "0 3 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
+      args:
+        - --test=True
+        - --up=True
+        - --down=True
+        - --parallel-test-nodes=4
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - capz_flannel
+        - --flannel-mode=host-gw
+        - --enable-win-dsr=False
+        - --container-runtime=docker
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.13
+        - --cluster-name=capzdocker-$(BUILD_ID)
+
+- name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable
+  cron: "0 5 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
+      args:
+        - --test=True
+        - --up=True
+        - --down=True
+        - --parallel-test-nodes=4
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
         - --flannel-mode=overlay
-        - --win-minion-count=2
-        - --enable-win-dsr=True
-        - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.26
-        - --cluster-name=capzctrd-$(BUILD_ID)
+        - --container-runtime=docker
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.13
+        - --cluster-name=capzdocker-$(BUILD_ID)
+
+- name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled
+  cron: "0 7 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
+      args:
+        - --test=True
+        - --up=True
+        - --down=True
+        - --parallel-test-nodes=4
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - capz_flannel
+        - --flannel-mode=overlay
+        - --enable-win-dsr=False
+        - --container-runtime=docker
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.13
+        - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
+  cron: "0 9 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
+      args:
+        - --up=True
+        - --test=True
+        - --down=True
+        - --parallel-test-nodes=4
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --build=sdncnibins
+        - capz_flannel
+        - --flannel-mode=host-gw
+        - --container-runtime=containerd
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.13
+        - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
+
+- name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
+  cron: "0 11 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
+      args:
+        - --up=True
+        - --test=True
+        - --down=True
+        - --parallel-test-nodes=4
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --build=sdncnibins
+        - capz_flannel
+        - --flannel-mode=overlay
+        - --container-runtime=containerd
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.13
+        - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
+
+- name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable
   cron: "0 13 * * *"
   always_run: true
   decorate: true
@@ -88,20 +262,81 @@ periodics:
         - --test=True
         - --down=True
         - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|should.not.be.able.to.create.pods.with.unknown.usernames
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
-        - --win-minion-count=2
-        - --enable-win-dsr=True
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.26
-        - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
+        - --base-container-image-tag=ltsc2022
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.12.13
+        - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
-- name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
+- name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable
+  cron: "0 15 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
+      args:
+        - --up=True
+        - --test=True
+        - --down=True
+        - --parallel-test-nodes=4
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|should.be.able.to.create.a.functioning.NodePort.service|should.be.able.to.change.the.type.from.ExternalName.to.NodePort
+        - --build=sdncnibins
+        - capz_flannel
+        - --flannel-mode=overlay
+        - --container-runtime=containerd
+        - --base-container-image-tag=ltsc2022
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.12.13
+        - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
+
+- name: k8s-e2e-sac2004-containerd-flannel-sdnbridge-stable
+  cron: "0 17 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
+      args:
+        - --test=True
+        - --up=True
+        - --down=True
+        - --parallel-test-nodes=4
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --build=sdncnibins
+        - capz_flannel
+        - --flannel-mode=host-gw
+        - --container-runtime=containerd
+        - --base-container-image-tag=2004
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.12.13
+        - --cluster-name=capzctrd2004-$(BUILD_ID)
+
+- name: k8s-e2e-sac2004-containerd-flannel-sdnoverlay-stable
   cron: "0 19 * * *"
   always_run: true
   decorate: true
@@ -116,151 +351,18 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --up=True
         - --test=True
+        - --up=True
         - --down=True
         - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook|should.not.be.able.to.create.pods.with.unknown.usernames
+        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
-        - --win-minion-count=2
-        - --enable-win-dsr=True
-        - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.11.26
-        - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
-
-- name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable
-  cron: "0 2 * * *"
-  always_run: true
-  decorate: true
-  labels:
-    preset-ssh-key: "true"
-    preset-prod-azure-account: "true"
-    preset-windows-private-registry-cred: "true"
-  spec:
-    containers:
-    - image: e2eteam/k8s-e2e-runner:latest
-      imagePullPolicy: Always
-      command:
-        - /workspace/entrypoint.sh
-      args:
-        - --up=True
-        - --test=True
-        - --down=True
-        - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x-claudiubelu
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x-claudiubelu.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|should.not.be.able.to.create.pods.with.unknown.usernames
-        - --build=sdncnibins
-        - capz_flannel
-        - --flannel-mode=host-gw
-        - --win-minion-count=2
-        - --enable-win-dsr=True
-        - --container-runtime=containerd
-        - --base-container-image-tag=ltsc2022
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.11.26
-        - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
-
-- name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable
-  cron: "0 8 * * *"
-  always_run: true
-  decorate: true
-  labels:
-    preset-ssh-key: "true"
-    preset-prod-azure-account: "true"
-    preset-windows-private-registry-cred: "true"
-  spec:
-    containers:
-    - image: e2eteam/k8s-e2e-runner:latest
-      imagePullPolicy: Always
-      command:
-        - /workspace/entrypoint.sh
-      args:
-        - --up=True
-        - --test=True
-        - --down=True
-        - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x-claudiubelu
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x-claudiubelu.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook|should.be.able.to.create.a.functioning.NodePort.service|should.be.able.to.change.the.type.from.ExternalName.to.NodePort|should.not.be.able.to.create.pods.with.unknown.usernames
-        - --build=sdncnibins
-        - capz_flannel
-        - --flannel-mode=overlay
-        - --win-minion-count=2
-        - --enable-win-dsr=True
-        - --container-runtime=containerd
-        - --base-container-image-tag=ltsc2022
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.11.26
-        - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
-
-- name: k8s-e2e-sac2004-containerd-flannel-sdnbridge-stable
-  cron: "0 14 * * *"
-  always_run: true
-  decorate: true
-  labels:
-    preset-ssh-key: "true"
-    preset-prod-azure-account: "true"
-    preset-windows-private-registry-cred: "true"
-  spec:
-    containers:
-    - image: e2eteam/k8s-e2e-runner:latest
-      imagePullPolicy: Always
-      command:
-        - /workspace/entrypoint.sh
-      args:
-        - --test=True
-        - --up=True
-        - --down=True
-        - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|should.not.be.able.to.create.pods.with.unknown.usernames
-        - --build=sdncnibins
-        - capz_flannel
-        - --flannel-mode=host-gw
-        - --win-minion-count=2
-        - --enable-win-dsr=True
         - --container-runtime=containerd
         - --base-container-image-tag=2004
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.11.26
-        - --cluster-name=capzctrd2004-$(BUILD_ID)
-
-- name: k8s-e2e-sac2004-containerd-flannel-sdnoverlay-stable
-  cron: "0 20 * * *"
-  always_run: true
-  decorate: true
-  labels:
-    preset-ssh-key: "true"
-    preset-prod-azure-account: "true"
-    preset-windows-private-registry-cred: "true"
-  spec:
-    containers:
-    - image: e2eteam/k8s-e2e-runner:latest
-      imagePullPolicy: Always
-      command:
-        - /workspace/entrypoint.sh
-      args:
-        - --test=True
-        - --up=True
-        - --down=True
-        - --parallel-test-nodes=4
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.22.x
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.22.x.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute.*.http.hook|should.not.be.able.to.create.pods.with.unknown.usernames
-        - --build=sdncnibins
-        - capz_flannel
-        - --flannel-mode=overlay
-        - --win-minion-count=2
-        - --enable-win-dsr=True
-        - --container-runtime=containerd
-        - --base-container-image-tag=2004
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.11.26
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-2004-containerd-cbsl-init:2021.12.13
         - --cluster-name=capzctrd2004-$(BUILD_ID)

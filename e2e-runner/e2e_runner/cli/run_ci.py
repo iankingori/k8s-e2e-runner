@@ -153,7 +153,7 @@ class RunCI(Command):
         p.add_argument(
             "--enable-win-dsr",
             type=utils.str2bool,
-            default=False)
+            default=True)
         p.add_argument(
             "--cluster-name",
             required=True,
