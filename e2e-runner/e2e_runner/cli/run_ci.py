@@ -140,7 +140,7 @@ class RunCI(Command):
         p.add_argument(
             "--base-container-image-tag",
             default="ltsc2019",
-            choices=["ltsc2019", "2004", "ltsc2022"],
+            choices=["ltsc2019", "ltsc2022"],
             help="The base container image used for the kube-proxy / flannel "
                  "CNI. This needs to be adjusted depending on the Windows "
                  "worker Azure image.")
