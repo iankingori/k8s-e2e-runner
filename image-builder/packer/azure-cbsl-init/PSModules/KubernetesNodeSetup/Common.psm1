@@ -91,7 +91,6 @@ function Add-ToSystemPath {
 function Get-WindowsRelease {
     $releases = @{
         17763 = "ltsc2019"
-        19041 = "2004"
         20348 = "ltsc2022"
     }
     $osBuild = [System.Environment]::OSVersion.Version.Build
