@@ -29,7 +29,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=host-gw
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.13
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.15
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
@@ -62,7 +62,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=overlay
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.13
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.15
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable
@@ -91,7 +91,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=host-gw
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.13
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.15
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled
@@ -121,7 +121,7 @@ periodics:
         - --flannel-mode=host-gw
         - --enable-win-dsr=False
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.13
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.15
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable
@@ -150,7 +150,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=overlay
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.13
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.15
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled
@@ -180,7 +180,7 @@ periodics:
         - --flannel-mode=overlay
         - --enable-win-dsr=False
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.13
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.15
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
@@ -210,7 +210,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=host-gw
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.13
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.15
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
@@ -240,7 +240,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=overlay
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.13
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.15
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable
@@ -271,7 +271,7 @@ periodics:
         - --flannel-mode=host-gw
         - --container-runtime=containerd
         - --base-container-image-tag=ltsc2022
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.12.13
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.12.15
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable
@@ -302,5 +302,5 @@ periodics:
         - --flannel-mode=overlay
         - --container-runtime=containerd
         - --base-container-image-tag=ltsc2022
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.12.13
+        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.12.15
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
