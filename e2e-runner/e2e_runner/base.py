@@ -124,6 +124,7 @@ class CI(object):
              '--num-nodes=2 --ginkgo.noColor '
              '--ginkgo.dryRun=%(dryRun)s '
              '--node-os-distro=windows '
+             '--prepull-images=true '
              '--ginkgo.focus=%(focus)s '
              '--ginkgo.skip=%(skip)s') % {
                  "dryRun": self.opts.test_dry_run,
