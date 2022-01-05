@@ -10,18 +10,17 @@ This repository contains the following:
 
     If you want to quickly use the runner, make sure you have Docker installed, and run these:
 
-    ```
+    ```bash
     docker run --rm --entrypoint bash -it e2eteam/k8s-e2e-runner:latest
 
-    pip3 install git+https://github.com/e2e-win/k8s-e2e-runner.git#egg=e2e-runner&subdirectory=e2e-runner
+    pip3 install "git+https://github.com/e2e-win/k8s-e2e-runner.git#egg=e2e-runner&subdirectory=e2e-runner"
     ```
 
     At this point, the runner CI can be executed via `e2e-runner run ci` and customize the job run via parameters. The full list of supported parameters can be found by running:
-    ```
+
+    ```bash
     e2e-runner run ci --help
     ```
-
-* `image-builder`, contains the scripts needed to build custom K8s Windows worker images.
 
 * `prow`, contains all the necessary manifests, and configs for the `sig-windows-networking` Prow infrastructure.
 

@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="mcr.microsoft.com/windows/servercore:ltsc2019"
+ARG BASE_IMAGE="mcr.microsoft.com/powershell:lts-nanoserver-1809"
 ARG WINS_VERSION="v0.1.1"
 ARG YQ_VERSION="v4.16.1"
 ARG FLANNEL_VERSION="v0.15.1"
@@ -32,4 +32,6 @@ COPY --from=prep /opt /opt
 COPY --from=prep /wins.exe /Windows/System32/wins.exe
 COPY --from=prep /yq.exe /Windows/System32/yq.exe
 
-ENV PATH="C:\Windows\System32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0"
+USER ContainerAdministrator
+
+ENV PATH="C:\Windows\system32;C:\Windows;C:\Program Files\PowerShell"

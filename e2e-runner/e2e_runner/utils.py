@@ -5,17 +5,16 @@ import tempfile
 import time
 import socket
 import tarfile
+from urllib.request import urlretrieve
 from threading import Timer
 
 import jinja2
 import tenacity
 
-from e2e_runner import (
-    exceptions,
-    logger,
-)
+from e2e_runner import exceptions as e2e_exceptions
+from e2e_runner import logger as e2e_logger
 
-logging = logger.get_logger(__name__)
+logging = e2e_logger.get_logger(__name__)
 
 
 def str2bool(v):
@@ -77,9 +76,9 @@ def wait_for_port_connectivity(address, port, max_wait=300):
         time.sleep(1)
         i += 1
     if i == max_wait:
-        err_msg = "Connection failed on port {}".format(port)
+        err_msg = f"Connection failed on port {port}"
         logging.error(err_msg)
-        raise exceptions.ConnectionFailed(err_msg)
+        raise e2e_exceptions.ConnectionFailed(err_msg)
 
 
 def run_cmd(cmd, timeout=(3 * 3600), env=None, stdout=False, stderr=False,
@@ -87,8 +86,8 @@ def run_cmd(cmd, timeout=(3 * 3600), env=None, stdout=False, stderr=False,
 
     def kill_proc_timout(proc):
         proc.kill()
-        raise exceptions.CmdTimeoutExceeded(
-            "Timeout of {} exceeded for cmd {}".format(timeout, cmd))
+        raise e2e_exceptions.CmdTimeoutExceeded(
+            f"Timeout of {timeout} exceeded for cmd {cmd}")
 
     FNULL = open(os.devnull, "w")
     f_stderr = FNULL
@@ -118,20 +117,9 @@ def run_shell_cmd(cmd, cwd=None, env=None, sensitive=False,
         cmd, timeout=timeout, stdout=True, stderr=True, shell=True,
         cwd=cwd, env=env, sensitive=sensitive)
     if ret != 0:
-        raise exceptions.ShellCmdFailed(
-            "Failed to execute: {}. Error: {}".format(' '.join(cmd), err))
+        raise e2e_exceptions.ShellCmdFailed(
+            f"Failed to execute: {' '.join(cmd)}. Error: {err}")
     return (out, err)
-
-
-def run_async_shell_cmd(cmd, args, log_prefix=""):
-    def process_stdout(line):
-        logging.info(log_prefix + line.strip())
-
-    def process_stderr(line):
-        logging.warning(log_prefix + line.strip())
-
-    proc = cmd(args, _out=process_stdout, _err=process_stderr, _bg=True)
-    return proc
 
 
 def clone_git_repo(repo_url, branch_name, local_dir):
@@ -146,8 +134,8 @@ def clone_git_repo(repo_url, branch_name, local_dir):
     logging.info("Cloning git repo %s on branch %s", repo_url, branch_name)
     _, err, ret = run_cmd(cmd, timeout=900, stderr=True)
     if ret != 0:
-        raise exceptions.GitCloneFailed(
-            "Git Clone Failed with error: {}.".format(err))
+        raise e2e_exceptions.GitCloneFailed(
+            f"Git Clone Failed with error: {err}.")
     logging.info("Succesfully cloned git repo.")
 
 
@@ -166,7 +154,7 @@ def run_remote_ssh_cmd(cmd, ssh_user, ssh_address, ssh_key_path=None,
     ssh_cmd += [
         "-o", "StrictHostKeyChecking=no",
         "-o", "UserKnownHostsFile=/dev/null",
-        "{}@{}".format(ssh_user, ssh_address),
+        f"{ssh_user}@{ssh_address}",
         "bash", "-s"]
     with tempfile.NamedTemporaryFile() as f:
         f.write(script.encode())
@@ -184,12 +172,17 @@ def rsync_upload(local_path, remote_path,
                "-o StrictHostKeyChecking=no "
                "-o UserKnownHostsFile=/dev/null")
     if ssh_key_path:
-        ssh_cmd += " -i {}".format(ssh_key_path)
+        ssh_cmd += f" -i {ssh_key_path}"
     run_shell_cmd([
-        "rsync", "-rlptD", "-e", '"{}"'.format(ssh_cmd), "--delete",
-        local_path, "{}@{}:{}".format(ssh_user, ssh_address, remote_path)])
+        "rsync", "-rlptD", "-e", f'"{ssh_cmd}"', "--delete",
+        local_path, f"{ssh_user}@{ssh_address}:{remote_path}"])
 
 
 def make_tgz_archive(source_dir, output_file):
     with tarfile.open(output_file, "w:gz") as tar:
         tar.add(source_dir, arcname=os.path.basename(source_dir))
+
+
+@retry_on_error()
+def download_file(url, dest):
+    urlretrieve(url, dest)

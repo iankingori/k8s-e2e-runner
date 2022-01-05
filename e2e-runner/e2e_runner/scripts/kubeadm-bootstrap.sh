@@ -70,7 +70,7 @@ update_k8s() {
 
 catch() {
     # If errors happen, uninstall the kubelet. This will render the machine
-    # not started, and the cluster-api MachineHealthCheck will replace it.
+    # not started, and fail the job.
     apt-get purge kubelet -y
 }
 

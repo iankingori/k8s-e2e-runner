@@ -36,6 +36,7 @@ rm ${GO_VERSION}.linux-amd64.tar.gz
 eval `cat /etc/environment`
 echo "PATH=\"$PATH:/usr/local/go/bin:$HOME/go/bin\"" | sudo tee /etc/environment
 echo "GOPATH=\"$HOME/go\"" | sudo tee -a /etc/environment
+/usr/local/go/bin/go version
 
 retrycmd_if_failure 5 10 5m sudo apt-get install -y \
   apt-transport-https ca-certificates gnupg-agent software-properties-common

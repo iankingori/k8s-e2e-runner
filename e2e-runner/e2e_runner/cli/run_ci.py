@@ -1,19 +1,17 @@
 import os
 import traceback
 
-from cliff.command import Command
+from e2e_runner import logger as e2e_logger
+from e2e_runner import factory as e2e_factory
+from e2e_runner import constants as e2e_constants
+from e2e_runner import utils as e2e_utils
 
-from e2e_runner import (
-    constants,
-    factory,
-    logger,
-    utils
-)
+from cliff.command import Command
 
 
 class RunCI(Command):
     """Run the E2E Runner CI"""
-    logging = logger.get_logger(__name__)
+    logging = e2e_logger.get_logger(__name__)
 
     def get_parser(self, prog_name):
         p = super(RunCI, self).get_parser(prog_name)
@@ -23,70 +21,39 @@ class RunCI(Command):
             default="/tmp/ci_artifacts",
             help="Local path to place all the artifacts.")
         p.add_argument(
-            "--install-patch",
-            action="append",
-            default=[],
-            help="URLs of KBs to install on Windows nodes.")
-        p.add_argument(
-            "--up",
-            type=utils.str2bool,
-            default=False,
-            help="Deploy test cluster.")
-        p.add_argument(
-            "--down",
-            type=utils.str2bool,
-            default=False,
-            help="Destroy cluster on finish.")
-        p.add_argument(
             "--build",
             action="append",
             default=[],
-            choices=["k8sbins", "containerdbins", "containerdshim",
-                     "sdncnibins"],
+            choices=[
+                "k8sbins", "containerdbins", "containerdshim", "sdncnibins",
+            ],
             help="Binaries to build.")
-        p.add_argument(
-            "--test",
-            type=utils.str2bool,
-            default=False,
-            help="Whether to run tests.")
 
-        p.add_argument(
-            "--repo-list",
-            default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list",  # noqa
-            help="Repo list with registries for test images.")
         p.add_argument(
             "--parallel-test-nodes",
             default=1)
         p.add_argument(
-            "--test-dry-run",
-            type=utils.str2bool,
-            default=False)
-        p.add_argument(
-            "--test-focus-regex",
-            default="\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]")  # noqa
-        p.add_argument(
-            "--test-skip-regex",
-            default="\\[LinuxOnly\\]")
-        p.add_argument(
-            "--kubetest-link",
-            help="Download link for a kubetest binary.")
+            "--repo-list",
+            default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list",  # noqa
+            help="Repo list with registries for test images.")
         p.add_argument(
             "--prepull-yaml",
             default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/gce/prepull.yaml",  # noqa
             help="Download link for the manifest file used to pre-pull the "
                  "container images on the nodes.")
         p.add_argument(
-            "--hold",
-            choices=["before", "after"],
-            help="Useful for debugging. Sleeps the process either right "
-                 "before or right after running the tests.")
+            "--test-focus-regex",
+            default="\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]")  # noqa
+        p.add_argument(
+            "--test-skip-regex",
+            default="\\[LinuxOnly\\]")
 
         p.add_argument(
             "--k8s-repo",
             default="https://github.com/kubernetes/kubernetes")
         p.add_argument(
             "--k8s-branch",
-            default=constants.DEFAULT_KUBERNETES_VERSION)
+            default=e2e_constants.DEFAULT_KUBERNETES_VERSION)
 
         p.add_argument(
             "--containerd-repo",
@@ -133,27 +100,21 @@ class RunCI(Command):
             help="Container runtime used by the Kubernetes agents.")
         p.add_argument(
             "--flannel-mode",
-            default=constants.FLANNEL_MODE_OVERLAY,
-            choices=[constants.FLANNEL_MODE_OVERLAY,
-                     constants.FLANNEL_MODE_L2BRIDGE],
+            default=e2e_constants.FLANNEL_MODE_OVERLAY,
+            choices=[e2e_constants.FLANNEL_MODE_OVERLAY,
+                     e2e_constants.FLANNEL_MODE_L2BRIDGE],
             help="Flannel mode used by the CI.")
         p.add_argument(
-            "--base-container-image-tag",
-            default="ltsc2019",
-            choices=["ltsc2019", "ltsc2022"],
-            help="The base container image used for the kube-proxy / flannel "
-                 "CNI. This needs to be adjusted depending on the Windows "
-                 "worker Azure image.")
-        p.add_argument(
             "--kubernetes-version",
-            default=constants.DEFAULT_KUBERNETES_VERSION,
+            default=e2e_constants.DEFAULT_KUBERNETES_VERSION,
             help="The Kubernetes version to deploy. If '--build=k8sbins' is "
                  "specified, this parameter is overwriten by the version of "
                  "the newly built K8s binaries.")
         p.add_argument(
             "--enable-win-dsr",
-            type=utils.str2bool,
-            default=True)
+            type=e2e_utils.str2bool,
+            default=True,
+            help="Enable WinDSR feature for kube-proxy on Windows.")
         p.add_argument(
             "--cluster-name",
             required=True,
@@ -188,63 +149,37 @@ class RunCI(Command):
             default="Standard_D2s_v3",
             help="Size of master virtual machine.")
         p.add_argument(
-            "--win-minion-count",
+            "--win-agents-count",
             type=int,
             default=2,
-            help="Number of Windows minions for the deployment.")
+            help="Number of K8s Windows agents for the deployment.")
         p.add_argument(
-            "--win-minion-size",
+            "--win-os",
+            default="ltsc2019",
+            choices=["ltsc2019", "ltsc2022"],
+            help="The operating system of the K8s Windows agents.")
+        p.add_argument(
+            "--win-agent-size",
             default="Standard_D2s_v3",
-            help="Size of Windows minions.")
-        p.add_argument(
-            "--win-minion-image-type",
-            type=str,
-            default=constants.SHARED_IMAGE_GALLERY_TYPE,
-            choices=[constants.SHARED_IMAGE_GALLERY_TYPE,
-                     constants.MANAGED_IMAGE_TYPE],
-            help="The type of image used to provision Windows agents.")
-        p.add_argument(
-            "--win-minion-image-id",
-            help="The Azure managed image to be used for the Windows agents.")
-        p.add_argument(
-            "--win-minion-gallery-image",
-            help="The Windows minion shared gallery. "
-                 "The parameter shall be given as: <IMG_GALLERY_RG>:<IMG_GALLERY_NAME>:<IMG_DEFINITION>:<IMG_VERSION>")  # noqa
+            help="Size of K8s Windows agents.")
 
     def take_action(self, args):
         self.logging.info("Starting with CI: %s.", args.ci)
-        self.logging.info("Creating artifacts dir: %s.",
-                          args.artifacts_directory)
+        self.logging.info(
+            "Creating artifacts dir: %s.", args.artifacts_directory)
         os.makedirs(args.artifacts_directory, exist_ok=True)
-        ci = factory.get_ci(args.ci)(args)
-
+        ci = e2e_factory.get_ci(args.ci)(args)
         try:
-            # Setup the testing infrastructure
-            ci.setup_infra()
-
-            # Build the binaries to be tested (if needed)
+            ci.setup_bootstrap_vm()
             ci.build(args.build)
-
-            # Set the patches to be applied to the K8s worker nodes
-            ci.set_patches(args.install_patch)
-
-            # Setup the testing cluster
-            if args.up is True:
-                ci.up()
-            else:
-                ci.reclaim()
-
-            # Run the tests
-            if args.test is True:
-                success = ci.test()
-                if success != 0:
-                    raise Exception("CI Tests failed")
-
+            ci.up()
+            ci.cleanup_bootstrap_vm()
+            success = ci.test()
+            if success != 0:
+                raise Exception("CI Tests failed")
         except Exception:
             self.logging.error("{}".format(traceback.format_exc()))
             raise
-
         finally:
             ci.collect_logs()
-            if args.down is True:
-                ci.down()
+            ci.down()

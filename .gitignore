@@ -5,5 +5,8 @@
 __pycache__
 e2e_runner.egg-info
 e2e-runner/.eggs
+e2e-runner/AUTHORS
+e2e-runner/ChangeLog
+e2e-runner/build
 
 image-builder/packer/azure-cbsl-init/packer-manifest.json
