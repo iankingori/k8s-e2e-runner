@@ -3,7 +3,6 @@ set -o nounset
 set -o pipefail
 set -o errexit
 
-GO_VERSION="1.17.3"
 KIND_BIN_URL="https://github.com/kubernetes-sigs/kind/releases/download/v0.11.1/kind-linux-amd64"
 
 function retrycmd_if_failure() {
@@ -29,9 +28,11 @@ retrycmd_if_failure 5 10 5m sudo apt-get install -y \
   build-essential curl wget git libffi-dev libssl-dev \
   rsync unzip net-tools openssh-client vim jq
 
-retrycmd_if_failure 5 10 5m curl -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
-rm go${GO_VERSION}.linux-amd64.tar.gz
+retrycmd_if_failure 10 5 5 curl -s -L https://golang.org/VERSION\?m\=text -o /tmp/golang-version.txt
+GO_VERSION=$(cat /tmp/golang-version.txt)
+retrycmd_if_failure 5 10 5m curl -O https://dl.google.com/go/${GO_VERSION}.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf ${GO_VERSION}.linux-amd64.tar.gz
+rm ${GO_VERSION}.linux-amd64.tar.gz
 eval `cat /etc/environment`
 echo "PATH=\"$PATH:/usr/local/go/bin:$HOME/go/bin\"" | sudo tee /etc/environment
 echo "GOPATH=\"$HOME/go\"" | sudo tee -a /etc/environment

@@ -1,6 +1,5 @@
 FROM ubuntu:20.04
 
-ARG GO_VERSION=1.17.5
 ARG CAPI_VERSION=v1.0.2
 ARG KUBECTL_VERSION=v1.23.0
 
@@ -23,10 +22,12 @@ RUN pip3 install -r /tmp/requirements.txt && \
 # Install Golang
 ENV GOPATH "/home/prow/go"
 ENV PATH "$PATH:/usr/local/go/bin:$GOPATH/bin"
-RUN curl -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
-    rm go${GO_VERSION}.linux-amd64.tar.gz && \
-    mkdir -p $GOPATH
+RUN GO_VERSION=$(curl -s -L https://golang.org/VERSION\?m\=text) && \
+    curl -O https://dl.google.com/go/${GO_VERSION}.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf ${GO_VERSION}.linux-amd64.tar.gz && \
+    rm ${GO_VERSION}.linux-amd64.tar.gz && \
+    mkdir -p $GOPATH && \
+    go version
 
 # Build Kubernetes E2E tests
 RUN mkdir -p $GOPATH/src/k8s.io && \
