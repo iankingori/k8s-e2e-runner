@@ -26,7 +26,7 @@ data:
 
     wins cli process run --path /k/flannel/flanneld.exe --envs "POD_NAME=$env:POD_NAME POD_NAMESPACE=$env:POD_NAMESPACE" --args "--kube-subnet-mgr --ip-masq --kubeconfig-file /k/flannel/kubeconfig.yml"
 
-{% include ("cni/" + container_runtime + "-" + mode + "-windows.yaml.j2") %}
+{% include ("cni/" + container_runtime + "-" + flannel_mode + "-windows.yaml.j2") %}
 
 ---
 apiVersion: apps/v1
@@ -67,9 +67,9 @@ spec:
         effect: NoSchedule
       containers:
       - name: kube-flannel
-        image: k8swin.azurecr.io/flannel-windows:v0.15.1-{{ server_core_tag }}
+        image: k8swin.azurecr.io/flannel-windows:v0.15.1-nanoserver-{{ win_os }}
         command:
-        - powershell
+        - pwsh
         args:
         - -file
         - /etc/kube-flannel-windows/run.ps1

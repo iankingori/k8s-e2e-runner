@@ -14,9 +14,6 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test=True
-        - --up=True
-        - --down=True
         - --parallel-test-nodes=4
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
@@ -29,7 +26,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=host-gw
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.15
+        - --win-os=ltsc2019
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
@@ -47,9 +44,6 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test=True
-        - --up=True
-        - --down=True
         - --parallel-test-nodes=4
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
@@ -62,7 +56,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=overlay
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.15
+        - --win-os=ltsc2019
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable
@@ -80,9 +74,6 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test=True
-        - --up=True
-        - --down=True
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
@@ -91,7 +82,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=host-gw
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.15
+        - --win-os=ltsc2019
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled
@@ -109,9 +100,6 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test=True
-        - --up=True
-        - --down=True
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
@@ -121,7 +109,7 @@ periodics:
         - --flannel-mode=host-gw
         - --enable-win-dsr=False
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.15
+        - --win-os=ltsc2019
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable
@@ -139,9 +127,6 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test=True
-        - --up=True
-        - --down=True
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
@@ -150,7 +135,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=overlay
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.15
+        - --win-os=ltsc2019
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled
@@ -168,9 +153,6 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test=True
-        - --up=True
-        - --down=True
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
@@ -180,7 +162,7 @@ periodics:
         - --flannel-mode=overlay
         - --enable-win-dsr=False
         - --container-runtime=docker
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-docker-cbsl-init:2021.12.15
+        - --win-os=ltsc2019
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
@@ -198,9 +180,6 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --up=True
-        - --test=True
-        - --down=True
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
@@ -210,7 +189,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=host-gw
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.15
+        - --win-os=ltsc2019
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
@@ -228,9 +207,6 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --up=True
-        - --test=True
-        - --down=True
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
@@ -240,7 +216,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=overlay
         - --container-runtime=containerd
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2019-containerd-cbsl-init:2021.12.15
+        - --win-os=ltsc2019
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable
@@ -258,9 +234,6 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --up=True
-        - --test=True
-        - --down=True
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
@@ -270,8 +243,7 @@ periodics:
         - capz_flannel
         - --flannel-mode=host-gw
         - --container-runtime=containerd
-        - --base-container-image-tag=ltsc2022
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.12.15
+        - --win-os=ltsc2022
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable
@@ -289,9 +261,6 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --up=True
-        - --test=True
-        - --down=True
         - --parallel-test-nodes=4
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
@@ -301,6 +270,5 @@ periodics:
         - capz_flannel
         - --flannel-mode=overlay
         - --container-runtime=containerd
-        - --base-container-image-tag=ltsc2022
-        - --win-minion-gallery-image=adtv-capz-win:capz_gallery:ws-ltsc2022-containerd-cbsl-init:2021.12.15
+        - --win-os=ltsc2022
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)

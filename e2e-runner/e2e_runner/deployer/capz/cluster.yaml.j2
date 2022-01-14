@@ -34,13 +34,32 @@ spec:
   networkSpec:
     vnet:
       name: {{ cluster_name }}-vnet
+      cidrBlocks:
+        - {{ vnet_cidr }}
+      peerings:
+        - resourceGroup: {{ cluster_name }}-bootstrap
+          remoteVnetName: {{ bootstrap_vm_vnet_name }}
     subnets:
-      - name: {{ cluster_name }}-controlplane-subnet
+      - name: control-plane-subnet
         role: control-plane
-      - name: {{ cluster_name }}-node-subnet
+        cidrBlocks:
+          - {{ control_plane_subnet_cidr }}
+        routeTable:
+          name: {{ cluster_name }}-node-routetable
+      - name: node-subnet
         role: node
+        cidrBlocks:
+          - {{ node_subnet_cidr }}
+        routeTable:
+          name: {{ cluster_name }}-node-routetable
   resourceGroup: {{ cluster_name }}
   subscriptionID: {{ azure_subscription_id }}
+{%- if resource_group_tags | length > 0 %}
+  additionalTags:
+{%- for key, value in resource_group_tags.items() %}
+    {{ key }}: {{ value }}
+{%- endfor %}
+{%- endif %}
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureClusterIdentity
@@ -57,3 +76,7 @@ spec:
     namespace: default
   tenantID: {{ azure_tenant_id }}
   type: ServicePrincipal
+
+{% include "control-plane.yaml.j2" %}
+
+{% include "windows-agents.yaml.j2" %}

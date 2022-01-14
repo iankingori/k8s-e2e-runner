@@ -10,20 +10,18 @@ data:
   init.ps1: |
     $ErrorActionPreference = "Stop"
 
+    mkdir -force /host/k/kube-proxy
     mkdir -force /host/var/lib/kube-proxy/var/run/secrets/kubernetes.io/serviceaccount
 
     cp -force /var/lib/kube-proxy/* /host/var/lib/kube-proxy
     cp -force /var/run/secrets/kubernetes.io/serviceaccount/* /host/var/lib/kube-proxy/var/run/secrets/kubernetes.io/serviceaccount #FIXME?
 
-{%- if container_runtime == "docker" %}
     $networkName = (Get-Content /host/etc/cni/net.d/10-flannel.conf | ConvertFrom-Json).name
-{%- endif %}
-{%- if container_runtime == "containerd" %}
-    $networkName = (Get-Content /host/containerd/cni/conf/10-flannel.conf | ConvertFrom-Json).name
-{%- endif %}
-
     yq eval -i ".winkernel.networkName = `"`"${networkName}`"`"" /host/var/lib/kube-proxy/config.conf
 {%- if flannel_mode == "overlay" %}
+    cp -force /var/lib/kube-proxy-windows/allocate-source-vip.ps1 /host/k/kube-proxy
+    cp -force /k/kube-proxy/exec_ps.exe /host/k/kube-proxy
+    wins cli process run --path /k/kube-proxy/exec_ps.exe --args "--file /k/kube-proxy/allocate-source-vip.ps1"
     $sourceVip = ((cat /host/k/sourceVip.json | ConvertFrom-Json).ip4.ip -split '/')[0]
     yq eval -i ".winkernel.sourceVip = `"`"${sourceVip}`"`"" /host/var/lib/kube-proxy/config.conf
     yq eval -i '.featureGates.WinOverlay = true' /host/var/lib/kube-proxy/config.conf
@@ -42,6 +40,51 @@ data:
     cp -force /k/kube-proxy/kube-proxy.exe /host/k/kube-proxy/kube-proxy.exe
 
     wins cli process run --path /k/kube-proxy/kube-proxy.exe --args "--v=4 --config=/var/lib/kube-proxy/config.conf --enable-dsr={{ enable_win_dsr }} --hostname-override=$env:NODE_NAME"
+
+  allocate-source-vip.ps1: |
+    $ErrorActionPreference = "Stop"
+
+    $KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
+    $SOURCE_VIP_FILE = Join-Path $KUBERNETES_DIR "sourceVip.json"
+    $CNI_CONF = Join-Path $env:SystemDrive "etc\cni\net.d\10-flannel.conf"
+    $CNI_BIN_DIR = Join-Path $env:SystemDrive "opt\cni\bin"
+
+    if(Test-Path $SOURCE_VIP_FILE) {
+        Write-Output "The $SOURCE_VIP_FILE already exists"
+        exit 0
+    }
+    if(!(Test-Path $CNI_CONF)) {
+        Write-Output "The CNI config file doesn't exist"
+        exit 1
+    }
+    if(!(Test-Path $CNI_BIN_DIR)) {
+        Write-Output "The CNI bin directory doesn't exist"
+        exit 1
+    }
+    $networkName = (cat $CNI_CONF | ConvertFrom-Json).Name
+    $hnsNetwork = Get-HnsNetwork | Where-Object Name -eq $networkName
+    if(!$hnsNetwork) {
+        Write-Output "The HNS network $networkName doesn't exist"
+        exit 1
+    }
+    $subnet = $hnsNetwork.Subnets[0].AddressPrefix
+    $ipamConfig = @"
+    {"cniVersion": "0.2.0", "name": "$networkName", "ipam":{"type":"host-local","ranges":[[{"subnet":"$subnet"}]],"dataDir":"/var/lib/cni/networks"}}
+    "@
+    Set-Content -Path "$KUBERNETES_DIR\sourceVipRequest.json" -Value $ipamConfig -Encoding ascii
+    $env:CNI_COMMAND = "ADD"
+    $env:CNI_CONTAINERID = "dummy"
+    $env:CNI_NETNS = "dummy"
+    $env:CNI_IFNAME = "dummy"
+    $env:CNI_PATH = $CNI_BIN_DIR
+    Get-Content "$KUBERNETES_DIR\sourceVipRequest.json" | & "$env:CNI_PATH\host-local.exe" | Out-File $SOURCE_VIP_FILE -Encoding ascii
+    if($LASTEXITCODE) {
+        Write-Output "Failed to allocate the source VIP"
+        if(Test-Path $SOURCE_VIP_FILE) {
+            Remove-Item -Force $SOURCE_VIP_FILE
+        }
+        exit 1
+    }
 
 ---
 apiVersion: apps/v1
@@ -63,9 +106,9 @@ spec:
       serviceAccountName: kube-proxy
       initContainers:
       - name: init-kube-proxy
-        image: k8swin.azurecr.io/kube-proxy-windows:{{ kubernetes_version }}-{{ server_core_tag }}
+        image: k8swin.azurecr.io/kube-proxy-windows:{{ kubernetes_version }}-nanoserver-{{ win_os }}
         command:
-        - powershell
+        - pwsh
         args:
         - -file
         - /var/lib/kube-proxy-windows/init.ps1
@@ -80,9 +123,9 @@ spec:
           mountPath: /var/lib/kube-proxy-windows
       containers:
       - name: kube-proxy
-        image: k8swin.azurecr.io/kube-proxy-windows:{{ kubernetes_version }}-{{ server_core_tag }}
+        image: k8swin.azurecr.io/kube-proxy-windows:{{ kubernetes_version }}-nanoserver-{{ win_os }}
         command:
-        - powershell
+        - pwsh
         args:
         - -file
         - /var/lib/kube-proxy-windows/run.ps1

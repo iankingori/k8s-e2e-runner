@@ -4,8 +4,10 @@ import random
 import shutil
 import yaml
 
+import tenacity
+
 from pathlib import Path
-from functools import cached_property
+from urllib.parse import urlparse
 
 from azure.core import exceptions as azure_exceptions
 from azure.identity import ClientSecretCredential
@@ -18,104 +20,87 @@ from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.compute import ComputeManagementClient
 
-from tenacity import (
-    Retrying,
-    stop_after_delay,
-    wait_exponential,
-    retry_if_exception_type,
-)
-from e2e_runner import (
-    base,
-    constants,
-    exceptions,
-    logger,
-    utils
-)
+from e2e_runner import base as e2e_base
+from e2e_runner import logger as e2e_logger
+from e2e_runner import constants as e2e_constants
+from e2e_runner import exceptions as e2e_exceptions
+from e2e_runner import utils as e2e_utils
 
 
-class CAPZProvisioner(base.Deployer):
+class CAPZProvisioner(e2e_base.Deployer):
 
-    def __init__(self, opts, container_runtime="docker",
-                 flannel_mode=constants.FLANNEL_MODE_OVERLAY,
-                 kubernetes_version=constants.DEFAULT_KUBERNETES_VERSION,
-                 resource_group_tags={}):
-        super(CAPZProvisioner, self).__init__()
+    def __init__(self, opts, resource_group_tags={}):
+        super(CAPZProvisioner, self).__init__(opts)
 
         self.e2e_runner_dir = str(Path(__file__).parents[2])
         self.capz_dir = os.path.dirname(__file__)
+        self.logging = e2e_logger.get_logger(__name__)
 
-        self.logging = logger.get_logger(__name__)
-        self.kubectl = utils.get_kubectl_bin()
-        self.flannel_mode = flannel_mode
-        self.container_runtime = container_runtime
+        self.resource_group_tags = resource_group_tags
+        self.kubectl = e2e_utils.get_kubectl_bin()
         self.bins_built = []
-        self.ci_version = kubernetes_version
-
+        self.kubernetes_version = self.opts.kubernetes_version
         self.mgmt_kubeconfig_path = "/tmp/mgmt-kubeconfig.yaml"
         self.capz_kubeconfig_path = "/tmp/capz-kubeconfig.yaml"
 
-        self.cluster_name = opts.cluster_name
-        self.cluster_network_subnet = opts.cluster_network_subnet
-
-        self.azure_location = opts.location
-        self.master_vm_size = opts.master_vm_size
-        self.vnet_cidr_block = opts.vnet_cidr_block
-        self.control_plane_subnet_cidr_block = \
-            opts.control_plane_subnet_cidr_block
-        self.node_subnet_cidr_block = opts.node_subnet_cidr_block
-        self.resource_group_tags = resource_group_tags
-
-        self.win_minion_count = opts.win_minion_count
-        self.win_minion_size = opts.win_minion_size
-        self.win_minion_image_type = opts.win_minion_image_type
-        self.win_minion_gallery_image = opts.win_minion_gallery_image
-        self.win_minion_image_id = opts.win_minion_image_id
-
         self.bootstrap_vm = None
+        self.bootstrap_vm_rg_name = f"{self.opts.cluster_name}-bootstrap"
+        self.bootstrap_vm_vnet_name = "k8s-bootstrap-vnet"
+        self.bootstrap_vm_vnet_cidr_block = "192.168.0.0/16"
+        self.bootstrap_vm_subnet_name = "k8s-bootstrap-subnet"
+        self.bootstrap_vm_subnet_cidr = "192.168.0.0/24"
+        self.bootstrap_vm_nsg_name = "k8s-bootstrap-nsg"
         self.bootstrap_vm_name = "k8s-bootstrap"
         self.bootstrap_vm_nic_name = "k8s-bootstrap-nic"
         self.bootstrap_vm_public_ip_name = "k8s-bootstrap-public-ip"
-        self.bootstrap_vm_size = opts.bootstrap_vm_size
+        self.bootstrap_vm_size = self.opts.bootstrap_vm_size
         self.bootstrap_vm_logs_dir = os.path.join(
-            opts.artifacts_directory, "bootstrap_vm_logs")
+            self.opts.artifacts_directory, "bootstrap_vm_logs")
 
         self._set_azure_variables()
         credentials, subscription_id = self._get_azure_credentials()
-
         self.resource_mgmt_client = ResourceManagementClient(
             credentials, subscription_id)
-        self.network_client = NetworkManagementClient(credentials,
-                                                      subscription_id)
-        self.compute_client = ComputeManagementClient(credentials,
-                                                      subscription_id)
+        self.network_client = NetworkManagementClient(
+            credentials, subscription_id)
+        self.compute_client = ComputeManagementClient(
+            credentials, subscription_id)
 
-    @cached_property
+    @property
     def master_public_address(self):
-        cmd = [
-            self.kubectl, "get", "cluster", "--kubeconfig",
-            self.mgmt_kubeconfig_path, self.cluster_name, "-o",
-            "custom-columns=MASTER_ADDRESS:.spec.controlPlaneEndpoint.host",
-            "--no-headers"
-        ]
-        output, _ = utils.retry_on_error()(utils.run_shell_cmd)(cmd)
-        return output.decode().strip()
+        if os.path.exists(self.capz_kubeconfig_path):
+            master_address, _ = self._parse_capz_kubeconfig()
+            return master_address
+        if self.bootstrap_vm:
+            column = "MASTER_ADDRESS:.spec.controlPlaneEndpoint.host"
+            output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
+                self.kubectl, "get", "cluster", "--kubeconfig",
+                self.mgmt_kubeconfig_path, self.opts.cluster_name,
+                "-o", f"custom-columns={column}",  "--no-headers"
+            ])
+            return output.decode().strip()
+        raise Exception("Could not find K8s master address")
 
-    @cached_property
+    @property
     def master_public_port(self):
-        cmd = [
-            self.kubectl, "get", "cluster", "--kubeconfig",
-            self.mgmt_kubeconfig_path, self.cluster_name, "-o",
-            "custom-columns=MASTER_PORT:.spec.controlPlaneEndpoint.port",
-            "--no-headers"
-        ]
-        output, _ = utils.retry_on_error()(utils.run_shell_cmd)(cmd)
-        return output.decode().strip()
+        if os.path.exists(self.capz_kubeconfig_path):
+            _, master_port = self._parse_capz_kubeconfig()
+            return master_port
+        if self.bootstrap_vm:
+            output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
+                self.kubectl, "get", "cluster", "--kubeconfig",
+                self.mgmt_kubeconfig_path, self.opts.cluster_name, "-o",
+                "custom-columns=MASTER_PORT:.spec.controlPlaneEndpoint.port",
+                "--no-headers"
+            ])
+            return int(output.decode().strip())
+        raise Exception("Could not find K8s master port")
 
-    @cached_property
+    @property
     def linux_private_addresses(self):
         return self._get_agents_private_addresses("linux")
 
-    @cached_property
+    @property
     def windows_private_addresses(self):
         return self._get_agents_private_addresses("windows")
 
@@ -160,160 +145,99 @@ class CAPZProvisioner(base.Deployer):
     def bootstrap_vm_public_ip(self):
         return self.bootstrap_vm['public_ip']
 
-    @utils.retry_on_error()
-    def setup_infra(self):
-        self.logging.info("Setting up the testing infra")
-        try:
-            self._create_resource_group()
-            self._create_vnet()
-            self._create_control_plane_subnet()
-            self._create_node_subnet()
-            self._create_bootstrap_vm()
-        except Exception as ex:
-            self.down()  # Deletes the resource group
-            raise ex
-
     def up(self):
         self._setup_capz_components()
         self._create_capz_cluster()
-        self._create_capz_control_plane()
-        self._create_capz_windows_agents()
+        self._wait_capz_control_plane()
         self._setup_capz_kubeconfig()
-        self._setup_ssh_config()
-        # Once the CAPZ cluster is deployed, we don't need the
-        # bootstrap VM anymore.
-        self.collect_bootstrap_vm_logs()
-        self.cleanup_bootstrap_vm()
 
-    def down(self, wait=True):
-        self.logging.info("Deleting Azure resource group")
-        client = self.resource_mgmt_client
+    def down(self):
+        self.logging.info("Deleting bootstrap resource group")
+        self._delete_resource_group(self.bootstrap_vm_rg_name, wait=False)
+        self.logging.info("Deleting CAPZ cluster resource group")
+        self._delete_resource_group(self.opts.cluster_name, wait=False)
+
+    @e2e_utils.retry_on_error()
+    def setup_bootstrap_vm(self):
+        self.logging.info("Setting up the bootstrap VM")
         try:
-            delete_async_operation = utils.retry_on_error()(
-                client.resource_groups.begin_delete)(self.cluster_name)
-            if wait:
-                delete_async_operation.wait()
-        except azure_exceptions.ResourceNotFoundError as e:
-            cloud_error_data = e.error
-            if cloud_error_data.error == "ResourceGroupNotFound":
-                self.logging.warning("Resource group %s does not exist",
-                                     self.cluster_name)
-            else:
-                raise e
+            self._create_bootstrap_resource_group()
+            self._create_bootstrap_vnet()
+            self._create_bootstrap_subnet()
+            self.bootstrap_vm = self._create_bootstrap_azure_vm()
+            self._init_bootstrap_vm()
+            self._setup_mgmt_kubeconfig()
+        except Exception as ex:
+            self._delete_resource_group(self.bootstrap_vm_rg_name, wait=True)
+            raise ex
 
-    def reclaim(self):
-        self._setup_capz_kubeconfig()
+    def cleanup_bootstrap_vm(self):
+        self.collect_bootstrap_vm_logs()
+        self.logging.info("Cleaning up the bootstrap VM")
+        self.logging.info("Deleting bootstrap VM resource group")
+        self._delete_resource_group(self.bootstrap_vm_rg_name, wait=False)
+        self.bootstrap_vm = None
 
-    def add_win_agents_kubelet_args(self, kubelet_args):
-        extra_kubelet_args = ' '.join(kubelet_args)
-        self.logging.info(
-            "Adding the following extra args to the Windows agents "
-            "kubelets: %s", extra_kubelet_args)
-        kubeadm_flags_env_file = '/var/lib/kubelet/kubeadm-flags.env'
-        local_kubeadm_flags_env_file = '/tmp/kubeadm-flags.env'
-        for win_address in self.windows_private_addresses:
-            self.download_from_k8s_node(
-                kubeadm_flags_env_file,
-                local_kubeadm_flags_env_file,
-                win_address)
-            with open(local_kubeadm_flags_env_file, 'r') as f:
-                flags = f.read().strip('KUBELET_KUBEADM_ARGS="\n')
-            flags += ' {}'.format(extra_kubelet_args)
-            kubeadm_flags_env = 'KUBELET_KUBEADM_ARGS="{}"\n'.format(flags)
-            with open(local_kubeadm_flags_env_file, 'w') as f:
-                f.write(kubeadm_flags_env)
-            self.upload_to_k8s_node(
-                local_kubeadm_flags_env_file,
-                kubeadm_flags_env_file,
-                win_address)
-            self.run_cmd_on_k8s_node('nssm restart kubelet', win_address)
-
-    @utils.retry_on_error()
-    def upload_to_bootstrap_vm(self, local_path, remote_path="www/"):
-        utils.rsync_upload(
+    @e2e_utils.retry_on_error()
+    def upload_to_bootstrap_vm(self, local_path, remote_path):
+        e2e_utils.rsync_upload(
             local_path=local_path, remote_path=remote_path,
             ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
             ssh_key_path=os.environ["SSH_KEY"])
 
-    @utils.retry_on_error()
+    @e2e_utils.retry_on_error()
     def download_from_bootstrap_vm(self, remote_path, local_path):
-        ssh_cmd = ("ssh -q -i {} "
-                   "-o StrictHostKeyChecking=no "
-                   "-o UserKnownHostsFile=/dev/null".format(
-                       os.environ["SSH_KEY"]))
-        utils.run_shell_cmd([
-            "rsync", "-rlptD", "-e", '"{}"'.format(ssh_cmd), "--delete",
-            "capi@{}:{}".format(self.bootstrap_vm_public_ip, remote_path),
-            local_path])
+        ssh_key_path = os.environ["SSH_KEY"]
+        ssh_cmd = (
+            f"ssh -q -i {ssh_key_path} "
+            f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null")
+        e2e_utils.run_shell_cmd([
+            "rsync", "-rlptD", "-e", f'"{ssh_cmd}"', "--delete",
+            f"capi@{self.bootstrap_vm_public_ip}:{remote_path}", local_path])
 
-    @utils.retry_on_error()
+    @e2e_utils.retry_on_error()
     def run_cmd_on_bootstrap_vm(self, cmd, timeout=3600, cwd="~",
                                 return_result=False):
-        return utils.run_remote_ssh_cmd(
+        return e2e_utils.run_remote_ssh_cmd(
             cmd=cmd, ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
             ssh_key_path=os.environ["SSH_KEY"], cwd=cwd, timeout=timeout,
             return_result=return_result)
 
     def remote_clone_git_repo(self, repo_url, branch_name, remote_dir):
-        clone_cmd = ("test -e {0} || "
-                     "git clone --single-branch {1} --branch {2} {0}").format(
-                         remote_dir, repo_url, branch_name)
+        clone_cmd = (
+            f"test -e {remote_dir} || "
+            f"git clone --single-branch "
+            f"{repo_url} --branch {branch_name} {remote_dir}")
         self.run_cmd_on_bootstrap_vm([clone_cmd])
 
-    @utils.retry_on_error()
+    @e2e_utils.retry_on_error()
     def run_cmd_on_k8s_node(self, cmd, node_address):
-        cmd = ["ssh", node_address, "'{}'".format(cmd)]
-        return utils.run_shell_cmd(cmd, timeout=600)
+        cmd = ["ssh", node_address, f"'{cmd}'"]
+        return e2e_utils.run_shell_cmd(cmd, timeout=600)
 
-    @utils.retry_on_error()
+    @e2e_utils.retry_on_error()
     def download_from_k8s_node(self, remote_path, local_path, node_address):
-        cmd = ["scp", "-r",
-               "{}:{}".format(node_address, remote_path), local_path]
-        utils.run_shell_cmd(cmd, timeout=600)
+        cmd = ["scp", "-r", f"{node_address}:{remote_path}", local_path]
+        e2e_utils.run_shell_cmd(cmd, timeout=600)
 
-    @utils.retry_on_error()
+    @e2e_utils.retry_on_error()
     def upload_to_k8s_node(self, local_path, remote_path, node_address):
-        cmd = ["scp", "-r",
-               local_path, "{}:{}".format(node_address, remote_path)]
-        utils.run_shell_cmd(cmd, timeout=600)
+        cmd = ["scp", "-r", local_path, f"{node_address}:{remote_path}"]
+        e2e_utils.run_shell_cmd(cmd, timeout=600)
 
     def check_k8s_node_connection(self, node_address):
         cmd = ["ssh", self.master_public_address,
-               "'nc -w 5 -z %s 22'" % node_address]
+               f"'nc -w 5 -z {node_address} 22'"]
         try:
-            utils.run_shell_cmd(cmd, sensitive=True, timeout=60)
-        except exceptions.ShellCmdFailed:
+            e2e_utils.run_shell_cmd(cmd, sensitive=True, timeout=60)
+        except e2e_exceptions.ShellCmdFailed:
             return False
         return True
-
-    def cleanup_bootstrap_vm(self):
-        self.logging.info("Cleaning up the bootstrap VM")
-        # The below deployer properties are cached, after their first call.
-        # However, they use the management CAPI cluster (from the bootstrap
-        # VM) to find the appropriate values when first called. Therefore,
-        # make sure we cache them before cleaning up the bootstrap VM.
-        self.master_public_address
-        self.master_public_port
-        self.linux_private_addresses
-        self.windows_private_addresses
-        self.logging.info("Deleting bootstrap VM")
-        utils.retry_on_error()(
-            self.compute_client.virtual_machines.begin_delete)(
-                self.cluster_name, self.bootstrap_vm_name).wait()
-        self.logging.info("Deleting bootstrap VM NIC")
-        utils.retry_on_error()(
-            self.network_client.network_interfaces.begin_delete)(
-                self.cluster_name, self.bootstrap_vm_nic_name).wait()
-        self.logging.info("Deleting bootstrap VM public IP")
-        utils.retry_on_error()(
-            self.network_client.public_ip_addresses.begin_delete)(
-                self.cluster_name, self.bootstrap_vm_public_ip_name).wait()
-        self.bootstrap_vm = None
 
     def collect_bootstrap_vm_logs(self):
         self.logging.info("Collecting logs from bootstrap VM")
         os.makedirs(self.bootstrap_vm_logs_dir, exist_ok=True)
-        output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
+        output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
             self.kubectl, "get", "pods",
             "--kubeconfig", self.mgmt_kubeconfig_path,
             "-A", "-o", "yaml"])
@@ -322,57 +246,82 @@ class CAPZProvisioner(base.Deployer):
             name = pod['metadata']['name']
             ns = pod['metadata']['namespace']
             for container in pod['spec']['containers']:
-                output, _ = utils.retry_on_error()(utils.run_shell_cmd)([
+                container_name = container['name']
+                out, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
                     self.kubectl, "logs",
                     "--kubeconfig", self.mgmt_kubeconfig_path,
-                    "-n", ns, name, container["name"]])
+                    "-n", ns, name, container_name])
                 log_file = os.path.join(
                     self.bootstrap_vm_logs_dir,
-                    '{}_{}_{}.log'.format(ns, name, container['name']))
+                    f"{ns}_{name}_{container_name}.log")
                 with open(log_file, 'wb') as f:
-                    f.write(output)
-        utils.make_tgz_archive(
+                    f.write(out)
+        e2e_utils.make_tgz_archive(
             self.bootstrap_vm_logs_dir,
-            "{}.tar.gz".format(self.bootstrap_vm_logs_dir))
+            f"{self.bootstrap_vm_logs_dir}.tar.gz")
         shutil.rmtree(self.bootstrap_vm_logs_dir)
 
-    def _setup_ssh_config(self):
+    def wait_windows_agents(self, timeout=3600):
+        self.logging.info(
+            "Waiting up to %.2f minutes for the Windows agents",
+            timeout / 60.0)
+        self._wait_for_running_machinepool(
+            name=f"{self.opts.cluster_name}-mp-win",
+            timeout=timeout)
+        self.logging
+        self.logging.info("Windows agents are ready")
+
+    def setup_ssh_config(self):
         ssh_dir = os.path.join(os.environ["HOME"], ".ssh")
         os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
         ssh_config = [
-            "Host %s" % self.master_public_address,
-            "HostName %s" % self.master_public_address,
+            f"Host {self.master_public_address}",
+            f"HostName {self.master_public_address}",
             "User capi",
             "StrictHostKeyChecking no",
             "UserKnownHostsFile /dev/null",
-            "IdentityFile %s" % os.environ["SSH_KEY"],
+            f"IdentityFile {os.environ['SSH_KEY']}",
             ""
         ]
-        k8s_master_ssh_host = self.master_public_address
-        agents_private_addresses = self.windows_private_addresses + \
-            self.linux_private_addresses
+        agents_private_addresses = \
+            self.windows_private_addresses + self.linux_private_addresses
         for address in agents_private_addresses:
             ssh_config += [
-                "Host %s" % address,
-                "HostName %s" % address,
+                f"Host {address}",
+                f"HostName {address}",
                 "User capi",
-                "ProxyCommand ssh -q %s -W %%h:%%p" % k8s_master_ssh_host,
+                f"ProxyCommand ssh -q {self.master_public_address} -W %h:%p",
                 "StrictHostKeyChecking no",
                 "UserKnownHostsFile /dev/null",
-                "IdentityFile %s" % os.environ["SSH_KEY"],
+                f"IdentityFile {os.environ['SSH_KEY']}",
                 ""
             ]
         ssh_config_file = os.path.join(ssh_dir, "config")
         with open(ssh_config_file, "w") as f:
             f.write("\n".join(ssh_config))
 
+    def _delete_resource_group(self, resource_group_name, wait=True):
+        self.logging.info("Deleting resource group %s", resource_group_name)
+        client = self.resource_mgmt_client
+        try:
+            delete_async_operation = e2e_utils.retry_on_error()(
+                client.resource_groups.begin_delete)(resource_group_name)
+            if wait:
+                delete_async_operation.wait()
+        except azure_exceptions.ResourceNotFoundError as e:
+            if e.error.code == "ResourceGroupNotFound":
+                self.logging.warning(
+                    "Resource group %s does not exist", resource_group_name)
+            else:
+                raise e
+
     def _get_agents_private_addresses(self, operating_system):
         cmd = [
             self.kubectl, "get", "nodes", "--kubeconfig",
             self.capz_kubeconfig_path, "-o", "yaml"
         ]
-        output, _ = utils.retry_on_error()(
-            utils.run_shell_cmd)(cmd, sensitive=True)
+        output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+            cmd, sensitive=True)
         addresses = []
         nodes = yaml.safe_load(output)
         for node in nodes['items']:
@@ -393,20 +342,6 @@ class CAPZProvisioner(base.Deployer):
             addresses.append(node_addresses[0])
         return addresses
 
-    def _parse_win_minion_image_gallery(self):
-        split = self.win_minion_gallery_image.split(":")
-        if len(split) != 4:
-            err_msg = ("Incorrect format for the --win-minion-image-gallery "
-                       "parameter")
-            self.logging.error(err_msg)
-            raise Exception(err_msg)
-        return {
-            "resource_group": split[0],
-            "gallery_name": split[1],
-            "image_definition": split[2],
-            "image_version": split[3]
-        }
-
     def _get_azure_credentials(self):
         credentials = ClientSecretCredential(
             client_id=os.environ["AZURE_CLIENT_ID"],
@@ -419,19 +354,19 @@ class CAPZProvisioner(base.Deployer):
         self.logging.info("Waiting up to %.2f minutes for VM %s to provision",
                           timeout / 60.0, self.bootstrap_vm_name)
         valid_vm_states = ["Creating", "Updating", "Succeeded"]
-        for attempt in Retrying(
-                stop=stop_after_delay(timeout),
-                wait=wait_exponential(max=30),
-                retry=retry_if_exception_type(AssertionError),
+        for attempt in tenacity.Retrying(
+                stop=tenacity.stop_after_delay(timeout),
+                wait=tenacity.wait_exponential(max=30),
+                retry=tenacity.retry_if_exception_type(AssertionError),
                 reraise=True):
             with attempt:
-                vm = utils.retry_on_error()(
+                vm = e2e_utils.retry_on_error()(
                     self.compute_client.virtual_machines.get)(
-                        self.cluster_name,
+                        self.bootstrap_vm_rg_name,
                         self.bootstrap_vm_name)
                 if vm.provisioning_state not in valid_vm_states:
-                    err_msg = 'VM "{}" entered invalid state: "{}"'.format(
-                        self.bootstrap_vm_name, vm.provisioning_state)
+                    err_msg = (f"VM '{self.bootstrap_vm_name}' entered "
+                               f"invalid state: '{vm.provisioning_state}'")
                     self.logging.error(err_msg)
                     raise azure_exceptions.AzureError(err_msg)
                 assert vm.provisioning_state == "Succeeded"
@@ -440,59 +375,59 @@ class CAPZProvisioner(base.Deployer):
     def _create_bootstrap_vm_public_ip(self):
         self.logging.info("Creating bootstrap VM public IP")
         public_ip_parameters = net_models.PublicIPAddress(
-            location=self.azure_location,
+            location=self.opts.location,
             public_ip_address_version="IPv4")
-        return utils.retry_on_error()(
+        return e2e_utils.retry_on_error()(
             self.network_client.public_ip_addresses.begin_create_or_update)(
-                self.cluster_name,
+                self.bootstrap_vm_rg_name,
                 self.bootstrap_vm_public_ip_name,
                 public_ip_parameters).result()
 
     def _create_bootstrap_vm_nic(self):
-        self.logging.info("Creating bootstrap VM NIC")
         public_ip = self._create_bootstrap_vm_public_ip()
-        control_plane_subnet = utils.retry_on_error()(
+        self.logging.info("Creating bootstrap VM NIC")
+        bootstrap_subnet = e2e_utils.retry_on_error()(
             self.network_client.subnets.get)(
-                self.cluster_name,
-                "%s-vnet" % self.cluster_name,
-                "%s-controlplane-subnet" % self.cluster_name)
+                self.bootstrap_vm_rg_name,
+                self.bootstrap_vm_vnet_name,
+                self.bootstrap_vm_subnet_name)
         nic_parameters = net_models.NetworkInterface(
-            location=self.azure_location,
+            location=self.opts.location,
             ip_configurations=[
                 net_models.NetworkInterfaceIPConfiguration(
-                    name="{}-ipconfig".format(self.bootstrap_vm_nic_name),
-                    subnet=control_plane_subnet,
+                    name=f"{self.bootstrap_vm_nic_name}-ipconfig",
+                    subnet=bootstrap_subnet,
                     public_ip_address=public_ip)])
-        return utils.retry_on_error()(
+        return e2e_utils.retry_on_error()(
             self.network_client.network_interfaces.begin_create_or_update)(
-                self.cluster_name,
+                self.bootstrap_vm_rg_name,
                 self.bootstrap_vm_nic_name,
                 nic_parameters).result()
 
-    @utils.retry_on_error()
+    @e2e_utils.retry_on_error()
     def _init_bootstrap_vm(self):
         self.logging.info("Initializing the bootstrap VM")
         cmd = ["mkdir -p www",
                "sudo addgroup --system docker",
                "sudo usermod -aG docker capi"]
-        utils.run_remote_ssh_cmd(
+        e2e_utils.run_remote_ssh_cmd(
             cmd=cmd, ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
             ssh_key_path=os.environ["SSH_KEY"])
-        utils.rsync_upload(
+        self.upload_to_bootstrap_vm(
             local_path=os.path.join(self.e2e_runner_dir, "scripts"),
-            remote_path="www/",
-            ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
-            ssh_key_path=os.environ["SSH_KEY"])
-        cmd = ["bash ./www/scripts/init-bootstrap-vm.sh"]
-        utils.run_remote_ssh_cmd(
-            cmd=cmd, ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
-            ssh_key_path=os.environ["SSH_KEY"], timeout=(60 * 15))
+            remote_path="www/")
+        e2e_utils.run_remote_ssh_cmd(
+            cmd=["bash ./www/scripts/init-bootstrap-vm.sh"],
+            ssh_user="capi",
+            ssh_address=self.bootstrap_vm_public_ip,
+            ssh_key_path=os.environ["SSH_KEY"],
+            timeout=(60 * 15))
 
     def _create_bootstrap_azure_vm(self):
         self.logging.info("Setting up the bootstrap Azure VM")
         vm_nic = self._create_bootstrap_vm_nic()
         vm_parameters = compute_models.VirtualMachine(
-            location=self.azure_location,
+            location=self.opts.location,
             os_profile=compute_models.OSProfile(
                 computer_name=self.bootstrap_vm_name,
                 admin_username="capi",
@@ -532,22 +467,22 @@ class CAPZProvisioner(base.Deployer):
             )
         )
         self.logging.info("Creating bootstrap VM")
-        vm = utils.retry_on_error()(
+        vm = e2e_utils.retry_on_error()(
             self.compute_client.virtual_machines.begin_create_or_update)(
-                self.cluster_name,
+                self.bootstrap_vm_rg_name,
                 self.bootstrap_vm_name,
                 vm_parameters).result()
         vm = self._wait_for_bootstrap_vm()
-        ip_config = utils.retry_on_error()(
+        ip_config = e2e_utils.retry_on_error()(
             self.network_client.network_interfaces.get)(
-                self.cluster_name, vm_nic.name).ip_configurations[0]
+                self.bootstrap_vm_rg_name, vm_nic.name).ip_configurations[0]
         bootstrap_vm_private_ip = ip_config.private_ip_address
-        public_ip = utils.retry_on_error()(
+        public_ip = e2e_utils.retry_on_error()(
             self.network_client.public_ip_addresses.get)(
-                self.cluster_name, self.bootstrap_vm_public_ip_name)
+                self.bootstrap_vm_rg_name, self.bootstrap_vm_public_ip_name)
         bootstrap_vm_public_ip = public_ip.ip_address
         self.logging.info("Waiting for bootstrap VM SSH port to be reachable")
-        utils.wait_for_port_connectivity(bootstrap_vm_public_ip, 22)
+        e2e_utils.wait_for_port_connectivity(bootstrap_vm_public_ip, 22)
         self.logging.info("Finished setting up the bootstrap VM")
         return {
             'private_ip': bootstrap_vm_private_ip,
@@ -555,50 +490,40 @@ class CAPZProvisioner(base.Deployer):
             'vm': vm,
         }
 
-    def _create_resource_group(self):
-        self.logging.info("Creating Azure resource group")
+    def _create_bootstrap_resource_group(self):
+        self.logging.info("Creating bootstrap resource group")
         rg_params = res_models.ResourceGroup(
-            location=self.azure_location,
+            location=self.opts.location,
             tags=self.resource_group_tags)
         self.resource_mgmt_client.resource_groups.create_or_update(
-            self.cluster_name, rg_params)
-        for attempt in Retrying(
-                stop=stop_after_delay(600),
-                wait=wait_exponential(max=30),
-                retry=retry_if_exception_type(AssertionError),
+            self.bootstrap_vm_rg_name, rg_params)
+        for attempt in tenacity.Retrying(
+                stop=tenacity.stop_after_delay(600),
+                wait=tenacity.wait_exponential(max=30),
+                retry=tenacity.retry_if_exception_type(AssertionError),
                 reraise=True):
             with attempt:
-                rg = utils.retry_on_error()(
+                rg = e2e_utils.retry_on_error()(
                     self.resource_mgmt_client.resource_groups.get)(
-                        self.cluster_name)
+                        self.bootstrap_vm_rg_name)
                 assert rg.properties.provisioning_state == "Succeeded"
 
-    @utils.retry_on_error()
-    def _create_vnet(self):
-        self.logging.info("Creating Azure vNET")
+    @e2e_utils.retry_on_error()
+    def _create_bootstrap_vnet(self):
+        self.logging.info("Creating bootstrap Azure vNET")
         vnet_params = net_models.VirtualNetwork(
-            location=self.azure_location,
+            location=self.opts.location,
             address_space=net_models.AddressSpace(
-                address_prefixes=[self.vnet_cidr_block]
+                address_prefixes=[self.bootstrap_vm_vnet_cidr_block]
             )
         )
         return self.network_client.virtual_networks.begin_create_or_update(
-            self.cluster_name,
-            "{}-vnet".format(self.cluster_name),
+            self.bootstrap_vm_rg_name,
+            self.bootstrap_vm_vnet_name,
             vnet_params).result()
 
-    @utils.retry_on_error()
-    def _create_node_route_table(self):
-        self.logging.info("Creating Azure node route table")
-        route_table_params = net_models.RouteTable(
-            location=self.azure_location)
-        return self.network_client.route_tables.begin_create_or_update(
-            self.cluster_name,
-            "{}-node-routetable".format(self.cluster_name),
-            route_table_params).result()
-
-    @utils.retry_on_error()
-    def _create_control_plane_secgroup(self):
+    @e2e_utils.retry_on_error()
+    def _create_bootstrap_secgroup(self):
         secgroup_rules = [
             net_models.SecurityRule(
                 protocol="Tcp",
@@ -625,197 +550,182 @@ class CAPZProvisioner(base.Deployer):
                 direction=net_models.SecurityRuleDirection.inbound,
                 name="Allow_K8s_API")
         ]
-        secgroup_name = "{}-controlplane-nsg".format(self.cluster_name)
+        self.logging.info("Creating bootstrap Azure network security group")
         secgroup_params = net_models.NetworkSecurityGroup(
-            location=self.azure_location,
+            location=self.opts.location,
             security_rules=secgroup_rules)
         nsg_client = self.network_client.network_security_groups
         return nsg_client.begin_create_or_update(
-            self.cluster_name, secgroup_name, secgroup_params).result()
+            self.bootstrap_vm_rg_name,
+            self.bootstrap_vm_nsg_name,
+            secgroup_params).result()
 
-    def _create_control_plane_subnet(self):
-        self.logging.info("Creating Azure vNET control plane subnet")
-        nsg = self._create_control_plane_secgroup()
-        route_table = self._create_node_route_table()
+    def _create_bootstrap_subnet(self):
+        self.logging.info("Creating bootstrap Azure vNET subnet")
+        nsg = self._create_bootstrap_secgroup()
         subnet_params = net_models.Subnet(
-            address_prefix=self.control_plane_subnet_cidr_block,
-            network_security_group=nsg,
-            route_table=route_table)
-        return utils.retry_on_error()(
+            address_prefix=self.bootstrap_vm_subnet_cidr,
+            network_security_group=nsg)
+        return e2e_utils.retry_on_error()(
             self.network_client.subnets.begin_create_or_update)(
-                self.cluster_name,
-                "{}-vnet".format(self.cluster_name),
-                "{}-controlplane-subnet".format(self.cluster_name),
+                self.bootstrap_vm_rg_name,
+                self.bootstrap_vm_vnet_name,
+                self.bootstrap_vm_subnet_name,
                 subnet_params).result()
 
-    @utils.retry_on_error()
-    def _create_node_secgroup(self):
-        secgroup_name = "{}-node-nsg".format(self.cluster_name)
-        secgroup_params = net_models.NetworkSecurityGroup(
-            location=self.azure_location)
-        nsg_client = self.network_client.network_security_groups
-        return nsg_client.begin_create_or_update(
-            self.cluster_name, secgroup_name, secgroup_params).result()
+    def _get_image_sku_k8s_release(self):
+        release = e2e_constants.DEFAULT_KUBERNETES_VERSION.strip("v")
+        return release.replace(".", "dot")
 
-    def _create_node_subnet(self):
-        self.logging.info("Creating Azure vNET node subnet")
-        nsg = self._create_node_secgroup()
-        route_table = self._create_node_route_table()
-        subnet_params = net_models.Subnet(
-            address_prefix=self.node_subnet_cidr_block,
-            network_security_group=nsg,
-            route_table=route_table)
-        return utils.retry_on_error()(
-            self.network_client.subnets.begin_create_or_update)(
-                self.cluster_name,
-                "{}-vnet".format(self.cluster_name),
-                "{}-node-subnet".format(self.cluster_name),
-                subnet_params).result()
+    def _get_image_sku_windows(self):
+        release = self._get_image_sku_k8s_release()
+        os_version = 2019
+        if self.opts.win_os == "ltsc2022":
+            os_version = 2022
+        sku = f"k8s-{release}-windows-{os_version}"
+        if self.opts.container_runtime == "containerd":
+            sku += "-containerd"
+        return sku
 
-    def _create_bootstrap_vm(self):
-        try:
-            self.bootstrap_vm = self._create_bootstrap_azure_vm()
-            self._init_bootstrap_vm()
-            self._setup_mgmt_kubeconfig()
-        except Exception as ex:
-            self.cleanup_bootstrap_vm()
-            raise ex
-
-    def _capz_context(self):
-        bootstrap_vm_address = "{}:8081".format(self.bootstrap_vm_private_ip)
+    def _get_capz_context(self):
+        control_plane_subnet_cidr = self.opts.control_plane_subnet_cidr_block
         context = {
-            "cluster_name": self.cluster_name,
-            "cluster_network_subnet": self.cluster_network_subnet,
-            "azure_location": self.azure_location,
+            "cluster_name": self.opts.cluster_name,
+            "bootstrap_vm_vnet_name": self.bootstrap_vm_vnet_name,
+            "resource_group_tags": self.resource_group_tags,
+            "vnet_cidr": self.opts.vnet_cidr_block,
+            "control_plane_subnet_cidr": control_plane_subnet_cidr,
+            "node_subnet_cidr": self.opts.node_subnet_cidr_block,
+            "cluster_network_subnet": self.opts.cluster_network_subnet,
+            "azure_location": self.opts.location,
             "azure_subscription_id": os.environ["AZURE_SUBSCRIPTION_ID"],
             "azure_tenant_id": os.environ["AZURE_TENANT_ID"],
             "azure_client_id": os.environ["AZURE_CLIENT_ID"],
             "azure_client_secret": os.environ["AZURE_CLIENT_SECRET"],
             "azure_ssh_public_key": os.environ["AZURE_SSH_PUBLIC_KEY"],
             "azure_ssh_public_key_b64": os.environ["AZURE_SSH_PUBLIC_KEY_B64"],
-            "master_vm_size": self.master_vm_size,
-            "win_minion_count": self.win_minion_count,
-            "win_minion_size": self.win_minion_size,
-            "win_minion_image_type": self.win_minion_image_type,
-            "bootstrap_vm_address": bootstrap_vm_address,
-            "ci_version": self.ci_version,
-            "flannel_mode": self.flannel_mode,
-            "container_runtime": self.container_runtime,
+            "master_vm_size": self.opts.master_vm_size,
+            "win_agents_count": self.opts.win_agents_count,
+            "win_agent_size": self.opts.win_agent_size,
+            "bootstrap_vm_address": f"{self.bootstrap_vm_private_ip}:8081",
+            "kubernetes_version": self.kubernetes_version,
+            "flannel_mode": self.opts.flannel_mode,
+            "container_runtime": self.opts.container_runtime,
+            "image_sku_k8s_release": self._get_image_sku_k8s_release(),
+            "image_sku_windows": self._get_image_sku_windows(),
             "k8s_bins": "k8sbins" in self.bins_built,
             "sdn_cni_bins": "sdncnibins" in self.bins_built,
             "containerd_bins": "containerdbins" in self.bins_built,
             "containerd_shim_bins": "containerdshim" in self.bins_built,
         }
-        if self.win_minion_image_type == constants.SHARED_IMAGE_GALLERY_TYPE:
-            parsed = self._parse_win_minion_image_gallery()
-            context["win_minion_image_rg"] = parsed["resource_group"]
-            context["win_minion_image_gallery"] = parsed["gallery_name"]
-            context["win_minion_image_definition"] = parsed["image_definition"]
-            context["win_minion_image_version"] = parsed["image_version"]
-        elif self.win_minion_image_type == constants.MANAGED_IMAGE_TYPE:
-            context["win_minion_image_id"] = self.win_minion_image_id
         return context
 
     def _create_capz_cluster(self):
         self.logging.info("Create CAPZ cluster")
-
         output_file = "/tmp/capz-cluster.yaml"
-        context = self._capz_context()
-        utils.render_template(
+        context = self._get_capz_context()
+        e2e_utils.render_template(
             "cluster.yaml.j2", output_file, context, self.capz_dir)
-        utils.retry_on_error()(utils.run_shell_cmd)([
+        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
             self.kubectl, "apply", "--kubeconfig",
             self.mgmt_kubeconfig_path, "-f", output_file
         ])
 
-    def _create_capz_control_plane(self, timeout=3600):
-        self.logging.info("Create CAPZ control-plane")
-
-        output_file = "/tmp/capz-control-plane.yaml"
-        context = self._capz_context()
-        utils.render_template(
-            "control-plane.yaml.j2", output_file, context, self.capz_dir)
-        utils.retry_on_error()(utils.run_shell_cmd)([
-            self.kubectl, "apply", "--kubeconfig",
-            self.mgmt_kubeconfig_path, "-f", output_file
-        ])
-
+    def _wait_capz_control_plane(self, timeout=1800):
         self.logging.info(
-            "Waiting up to %.2f minutes for the CAPZ control-plane.",
+            "Waiting up to %.2f minutes for the CAPZ control-plane",
             timeout / 60.0)
         self._wait_for_running_capz_machines(
             wanted_count=1,
             selector="cluster.x-k8s.io/control-plane=",
             timeout=timeout)
-
         self.logging.info("Control-plane is ready")
-
-    def _create_capz_windows_agents(self, timeout=7200):
-        self.logging.info("Create CAPZ Windows agents")
-
-        output_file = "/tmp/capz-windows-agents.yaml"
-        context = self._capz_context()
-        utils.render_template(
-            "windows-agents.yaml.j2", output_file, context, self.capz_dir)
-        utils.retry_on_error()(utils.run_shell_cmd)([
-            self.kubectl, "apply", "--kubeconfig",
-            self.mgmt_kubeconfig_path, "-f", output_file
-        ])
-
-        self.logging.info(
-            "Waiting up to %.2f minutes for CAPZ Windows agents",
-            timeout / 60.0)
-        self._wait_for_running_capz_machines(
-            wanted_count=2,
-            selector="cluster.x-k8s.io/deployment-name={}-md-win".format(
-                self.cluster_name),
-            timeout=timeout)
-
-        self.logging.info("All CAPZ Windows agents are ready")
 
     def _setup_mgmt_kubeconfig(self):
         self.logging.info("Setting up the management cluster kubeconfig")
-
         self.download_from_bootstrap_vm(
             ".kube/config", self.mgmt_kubeconfig_path)
         with open(self.mgmt_kubeconfig_path, 'r') as f:
             cfg = yaml.safe_load(f.read())
-
-        cfg["clusters"][0]["cluster"]["server"] = "https://{}:6443".format(
-            self.bootstrap_vm_public_ip)
-
+        public_endpoint = f"https://{self.bootstrap_vm_public_ip}:6443"
+        cfg["clusters"][0]["cluster"]["server"] = public_endpoint
         with open(self.mgmt_kubeconfig_path, 'w') as f:
             f.write(yaml.safe_dump(cfg))
 
-    @utils.retry_on_error()
+    def _parse_capz_kubeconfig(self):
+        with open(self.capz_kubeconfig_path, 'r') as f:
+            cfg = yaml.safe_load(f.read())
+        endpoint = urlparse(cfg["clusters"][0]["cluster"]["server"])
+        k8s_address = endpoint.hostname
+        k8s_port = endpoint.port
+        if k8s_port is None:
+            if endpoint.scheme == "http":
+                k8s_port = 80
+            elif endpoint.scheme == "https":
+                k8s_port = 443
+            else:
+                raise Exception(
+                    f"Unknown k8s endpoint scheme: {endpoint.scheme}")
+        return k8s_address, k8s_port
+
+    @e2e_utils.retry_on_error()
     def _setup_capz_kubeconfig(self):
         self.logging.info("Setting up CAPZ kubeconfig")
-        cmd = [
+        output, _ = e2e_utils.run_shell_cmd([
             "clusterctl", "get", "kubeconfig",
             "--kubeconfig", self.mgmt_kubeconfig_path,
-            self.cluster_name
-        ]
-        output, _ = utils.run_shell_cmd(cmd)
+            self.opts.cluster_name
+        ])
         with open(self.capz_kubeconfig_path, 'w') as f:
             f.write(output.decode())
 
-    def _wait_for_running_capz_machines(self, wanted_count,
-                                        selector="", timeout=3600):
+    def _wait_for_running_machinepool(
+            self, name, selector="", timeout=3600):
+
+        cmd = [
+            self.kubectl, "get", "machinepool", name,
+            "--kubeconfig", self.mgmt_kubeconfig_path,
+            "-l", f"'{selector}'",
+            "-o", "yaml"
+        ]
+        for attempt in tenacity.Retrying(
+                stop=tenacity.stop_after_delay(timeout),
+                wait=tenacity.wait_exponential(max=30),
+                retry=tenacity.retry_if_exception_type(AssertionError),
+                reraise=True):
+            with attempt:
+                out, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+                    cmd, sensitive=True)
+                machine_pool = yaml.safe_load(out.decode())
+                status = machine_pool.get("status")
+                assert status is not None, "Machine pool status is None"
+                replicas = status.get("replicas")
+                ready_replicas = status.get("readyReplicas")
+                assert replicas == ready_replicas, (
+                    f"Machine pool replicas ({replicas}) != "
+                    f"ready replicas ({ready_replicas})")
+                phase = status.get("phase")
+                assert phase == "Running", (
+                    f"Machine pool phase ({phase}) != Running")
+
+    def _wait_for_running_capz_machines(
+            self, wanted_count, selector="", timeout=3600):
+
         cmd = [
             self.kubectl, "get", "machine",
             "--kubeconfig", self.mgmt_kubeconfig_path,
-            "-l", "'{}'".format(selector),
+            "-l", f"'{selector}'",
             "-o", "yaml"
         ]
-        for attempt in Retrying(
-                stop=stop_after_delay(timeout),
-                wait=wait_exponential(max=30),
-                retry=retry_if_exception_type(AssertionError),
+        for attempt in tenacity.Retrying(
+                stop=tenacity.stop_after_delay(timeout),
+                wait=tenacity.wait_exponential(max=30),
+                retry=tenacity.retry_if_exception_type(AssertionError),
                 reraise=True):
             with attempt:
-                output, _ = utils.retry_on_error()(
-                    utils.run_shell_cmd)(cmd, sensitive=True)
-                machines = yaml.safe_load(output.decode())
+                out, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+                    cmd, sensitive=True)
+                machines = yaml.safe_load(out.decode())
                 running_machines = []
                 for machine in machines["items"]:
                     status = machine.get("status")
@@ -823,27 +733,34 @@ class CAPZProvisioner(base.Deployer):
                         continue
                     if status.get("phase") == "Running":
                         running_machines.append(machine)
-                assert len(running_machines) == wanted_count
+                assert len(running_machines) == wanted_count, (
+                    f"Expected {wanted_count} running CAPZ machines, "
+                    f"but found {len(running_machines)}")
 
     def _setup_capz_components(self):
         self.logging.info("Creating CAPI cluster identity")
+        client_secret = os.environ["AZURE_CLIENT_SECRET"]
         cmd = [
             self.kubectl, "create",
             "--kubeconfig", self.mgmt_kubeconfig_path,
             "secret", "generic",
             "cluster-identity-secret",
-            "--from-literal=clientSecret='{}'".format(
-                os.environ["AZURE_CLIENT_SECRET"])
+            f"--from-literal=clientSecret='{client_secret}'"
         ]
-        utils.retry_on_error()(utils.run_shell_cmd)(cmd, sensitive=True)
+        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+            cmd, sensitive=True)
 
         self.logging.info("Setup the Azure Cluster API components")
-        utils.retry_on_error()(utils.run_shell_cmd)([
-            "clusterctl", "init",
-            "--kubeconfig", self.mgmt_kubeconfig_path,
-            "--infrastructure", "azure",
-            "--wait-providers",
-        ])
+        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+            cmd=[
+                "clusterctl", "init",
+                "--kubeconfig", self.mgmt_kubeconfig_path,
+                "--infrastructure", "azure",
+                "--wait-providers",
+            ],
+            env={
+                "EXP_MACHINE_POOL": "true"
+            })
 
     def _set_azure_variables(self):
         # Define the required env variables list
@@ -867,13 +784,14 @@ class CAPZProvisioner(base.Deployer):
         # base64 variants
         for env_var in required_env_vars:
             if not os.environ.get(env_var):
-                raise Exception("Env variable %s is not set" % env_var)
+                raise Exception(f"Env variable {env_var} is not set")
             os.environ[env_var] = os.environ.get(env_var).strip()
-            b64_env_var = "%s_B64" % env_var
+            b64_env_var = f"{env_var}_B64"
             os.environ[b64_env_var] = base64.b64encode(
                 os.environ.get(env_var).encode()).decode()
 
         # Set Azure location if it's not set already
-        if not self.azure_location:
-            self.azure_location = random.choice(constants.AZURE_LOCATIONS)
-        self.logging.info("Using Azure location %s", self.azure_location)
+        if not self.opts.location:
+            self.opts.location = random.choice(
+                e2e_constants.AZURE_LOCATIONS)
+        self.logging.info("Using Azure location %s", self.opts.location)

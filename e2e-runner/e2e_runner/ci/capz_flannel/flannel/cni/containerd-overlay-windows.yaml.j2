@@ -10,15 +10,14 @@
     $cniJson.delegate.AdditionalArgs[1].Value.Settings.DestinationPrefix = $serviceSubnet
     $cniJson.delegate.AdditionalArgs[2].Value.Settings.ProviderAddress = $networkJson.AddressCIDR.Split('/')[0]
 
-    cp -force /opt/cni/bin/* /host/containerd/cni/bin/
+    mkdir -force /host/opt/cni/bin
+    cp -force /opt/cni/bin/* /host/opt/cni/bin/
 
+    mkdir -force /host/etc/cni/net.d
     Set-Content `
       -Encoding Ascii `
-      -Path /host/containerd/cni/conf/10-flannel.conf `
+      -Path /host/etc/cni/net.d/10-flannel.conf `
       -Value ($cniJson | ConvertTo-Json -Depth 100)
-
-    $nat = Get-Item /host/containerd/cni/conf/*nat.conf
-    Rename-Item -Path $nat -NewName nat.conf
 
   cni-conf.json: |
     {
