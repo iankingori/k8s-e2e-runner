@@ -9,6 +9,7 @@ from datetime import datetime
 import configargparse
 import sh
 
+from azure.core import exceptions as azure_exceptions
 from azure.identity import ClientSecretCredential
 from azure.mgmt.resource import ResourceManagementClient
 
@@ -103,7 +104,13 @@ def is_rg_older(creation_timestamp_tag, max_age_minutes):
 def delete_resource_group(client, rg_name, dry_run=False):
     if not dry_run:
         logger.info('Deleting the resource group "%s".', rg_name)
-        client.resource_groups.begin_delete(rg_name)
+        try:
+            client.resource_groups.begin_delete(rg_name)
+        except azure_exceptions.ResourceNotFoundError as e:
+            if e.error.code == "ResourceGroupNotFound":
+                logging.warning("Resource group %s does not exist", rg_name)
+            else:
+                raise e
     else:
         logger.info('Dry-run: The resource group "%s" would be deleted.',
                     rg_name)
