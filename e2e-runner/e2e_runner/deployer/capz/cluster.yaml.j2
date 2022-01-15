@@ -57,7 +57,7 @@ spec:
 {%- if resource_group_tags | length > 0 %}
   additionalTags:
 {%- for key, value in resource_group_tags.items() %}
-    {{ key }}: {{ value }}
+    {{ key }}: "{{ value }}"
 {%- endfor %}
 {%- endif %}
 ---
