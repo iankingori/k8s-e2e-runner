@@ -23,6 +23,7 @@ periodics:
         - --build=k8sbins
         - --build=containerdbins
         - --build=containerdshim
+        - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
         - --container-runtime=containerd
@@ -53,6 +54,7 @@ periodics:
         - --build=k8sbins
         - --build=containerdbins
         - --build=containerdshim
+        - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
         - --container-runtime=containerd
