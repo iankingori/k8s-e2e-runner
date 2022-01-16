@@ -269,7 +269,7 @@ class CapzFlannelCI(e2e_base.CI):
     @e2e_utils.retry_on_error(max_attempts=3)
     def _wait_for_ready_pods(self):
         self.logging.info("Waiting for all the pods to be ready")
-        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
+        e2e_utils.run_shell_cmd([
             self.kubectl, "wait", "--for=condition=Ready",
             "--timeout", "10m", "pods", "--all", "--all-namespaces"
         ])
