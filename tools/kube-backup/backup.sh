@@ -1,4 +1,6 @@
 #!/bin/bash
+set -o errexit
+set -o pipefail
 
 log_msg() {
 	echo "$(date -R) - $1"
@@ -12,17 +14,19 @@ mkdir -p "${BACKUP_DIR}/configmaps"
 mkdir -p "${BACKUP_DIR}/secrets"
 
 # Backup configmaps
-if [ -z "${BACKUP_CONFIGMAPS}" ]; then
+if [[ -z "${BACKUP_CONFIGMAPS}" ]]; then
 	log_msg "BACKUP_CONFIGMAPS is empty. Not backing up any configmaps."
 else
 	for configmap in ${BACKUP_CONFIGMAPS//,/ }; do
-		log_msg "Backing up configmap '${configmap}'..."
-		kubectl get configmap "${configmap}" -o yaml > "${BACKUP_DIR}/configmaps/${configmap}.yaml"
+		ns=$(echo $configmap | cut -d '/' -f1)
+		name=$(echo $configmap | cut -d '/' -f2)
+		log_msg "Backing up configmap '${name}' from namespace '${ns}'..."
+		kubectl get configmap -n "${ns}" "${name}" -o yaml > "${BACKUP_DIR}/configmaps/${ns}_${name}.yaml"
 	done
 fi
 
 # Backup secrets
-if [ -z "${BACKUP_SECRETS}" ]; then
+if [[ -z "${BACKUP_SECRETS}" ]]; then
 	log_msg "BACKUP_SECRETS is empty. Not backing up any secrets."
 else
 	for secret in ${BACKUP_SECRETS//,/ }; do
@@ -40,7 +44,7 @@ tar -Pzcf "/tmp/${ARCHIVE_NAME}.tar.gz" "${BACKUP_DIR}"
 rm -rf "${BACKUP_DIR}"
 
 # Encrypt backup archive
-if [ -z "${ENCRYPTION_KEY}" ]; then
+if [[ -z "${ENCRYPTION_KEY}" ]]; then
 	log_msg "ENCRYPTION_KEY is empty. Skipping archive encryption and upload..."
 	exit
 else
@@ -74,14 +78,14 @@ rm "/tmp/${ARCHIVE_NAME}.key.enc"
 rm "/tmp/${ARCHIVE_NAME}.tar.gz.enc"
 
 # Cleanup old blobs
-if [ -n "${BACKUP_KEEP_DAYS}" ]; then
+if [[ -n "${BACKUP_KEEP_DAYS}" ]]; then
 	ALL_BLOBS=$(az storage blob list --container-name "${AZURE_STORAGE_CONTAINER_PROW_BKP}" --account-key "${AZURE_STORAGE_ACCOUNT_KEY}")
 	for blob in $(echo "${ALL_BLOBS}" | jq -r '.[] | .name + "," + .properties.lastModified'); do
 		BLOB_FILE=$(echo "${blob}" | cut -d, -f1)
 		BLOB_DATE=$(echo "${blob}" | cut -d, -f2)
 		BLOB_AGE=$(dateutils.ddiff -f "%d" "${BLOB_DATE}" now)
 
-		if [ "${BLOB_AGE}" -gt "${BACKUP_KEEP_DAYS}" ]; then
+		if [[ "${BLOB_AGE}" -gt "${BACKUP_KEEP_DAYS}" ]]; then
 			log_msg "Deleting blob ${BLOB_FILE} (age: ${BLOB_AGE}D)"
 			az storage blob delete --container-name "${AZURE_STORAGE_CONTAINER_PROW_BKP}" \
 				--account-key "${AZURE_STORAGE_ACCOUNT_KEY}" --name "${BLOB_FILE}"

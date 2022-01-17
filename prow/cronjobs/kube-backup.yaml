@@ -52,7 +52,7 @@ spec:
             - name: BACKUP_KEEP_DAYS
               value: "90"
             - name: BACKUP_CONFIGMAPS
-              value: "config,plugins,job-config"
+              value: "default/config,default/plugins,default/job-config"
             - name: BACKUP_SECRETS
               value: "default/hmac-token,default/oauth-token,test-pods/azcreds,test-pods/prod-azcreds,test-pods/service-account,test-pods/ssh-key-default,test-pods/aks-azure-cred,test-pods/aks-azure-cred-upstream,test-pods/aks-azure-ssh,test-pods/aks-azure-storage,test-pods/aks-docker-pass,test-pods/aks-service-account,test-pods/aks-ssh-key-secret,test-pods/kubeconfig"
             - name: ENCRYPTION_KEY
