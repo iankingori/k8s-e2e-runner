@@ -149,6 +149,7 @@ function Update-Kubernetes {
     foreach($bin in $binaries) {
         Start-FileDownload "$CIPackagesBaseURL/$CIVersion/bin/windows/amd64/$bin" "$KUBERNETES_DIR\$bin"
     }
+    Start-FileDownload "$CIPackagesBaseURL/scripts/kubelet-start.ps1" "$KUBERNETES_DIR\StartKubelet.ps1"
 }
 
 function Update-SDNCNI {
