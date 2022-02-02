@@ -759,7 +759,8 @@ class CAPZProvisioner(e2e_base.Deployer):
                 "--wait-providers",
             ],
             env={
-                "EXP_MACHINE_POOL": "true"
+                "EXP_MACHINE_POOL": "true",
+                "GITHUB_TOKEN": os.environ["GITHUB_TOKEN"],
             })
 
     def _set_azure_variables(self):
