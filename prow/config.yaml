@@ -89,3 +89,12 @@ presets:
   - name: windows-private-registry-cred
     mountPath: /etc/docker-cred/
     readOnly: true
+
+- labels:
+    preset-github-readonly-token: "true"
+  env:
+  - name: GITHUB_TOKEN
+    valueFrom:
+      secretKeyRef:
+        key: GITHUB_TOKEN
+        name: github-readonly-token
