@@ -1,6 +1,6 @@
 FROM ubuntu:20.04
 
-ARG CAPI_VERSION=v1.0.2
+ARG CAPI_VERSION=v1.1.0
 ARG KUBECTL_VERSION=v1.23.0
 
 # Install system APT packages & dependencies

@@ -372,16 +372,19 @@ class CAPZProvisioner(e2e_base.Deployer):
                 assert vm.provisioning_state == "Succeeded"
         return vm
 
+    @e2e_utils.retry_on_error()
     def _create_bootstrap_vm_public_ip(self):
         self.logging.info("Creating bootstrap VM public IP")
         public_ip_parameters = net_models.PublicIPAddress(
             location=self.opts.location,
             public_ip_address_version="IPv4")
-        return e2e_utils.retry_on_error()(
-            self.network_client.public_ip_addresses.begin_create_or_update)(
-                self.bootstrap_vm_rg_name,
-                self.bootstrap_vm_public_ip_name,
-                public_ip_parameters).result()
+        self.network_client.public_ip_addresses.begin_create_or_update(
+            self.bootstrap_vm_rg_name,
+            self.bootstrap_vm_public_ip_name,
+            public_ip_parameters).wait()
+        return self.network_client.public_ip_addresses.get(
+            self.bootstrap_vm_rg_name,
+            self.bootstrap_vm_public_ip_name)
 
     def _create_bootstrap_vm_nic(self):
         public_ip = self._create_bootstrap_vm_public_ip()
@@ -398,11 +401,15 @@ class CAPZProvisioner(e2e_base.Deployer):
                     name=f"{self.bootstrap_vm_nic_name}-ipconfig",
                     subnet=bootstrap_subnet,
                     public_ip_address=public_ip)])
-        return e2e_utils.retry_on_error()(
+        e2e_utils.retry_on_error()(
             self.network_client.network_interfaces.begin_create_or_update)(
                 self.bootstrap_vm_rg_name,
                 self.bootstrap_vm_nic_name,
-                nic_parameters).result()
+                nic_parameters).wait()
+        return e2e_utils.retry_on_error()(
+            self.network_client.network_interfaces.get)(
+                self.bootstrap_vm_rg_name,
+                self.bootstrap_vm_nic_name)
 
     @e2e_utils.retry_on_error()
     def _init_bootstrap_vm(self):
@@ -467,11 +474,11 @@ class CAPZProvisioner(e2e_base.Deployer):
             )
         )
         self.logging.info("Creating bootstrap VM")
-        vm = e2e_utils.retry_on_error()(
+        e2e_utils.retry_on_error()(
             self.compute_client.virtual_machines.begin_create_or_update)(
                 self.bootstrap_vm_rg_name,
                 self.bootstrap_vm_name,
-                vm_parameters).result()
+                vm_parameters).wait()
         vm = self._wait_for_bootstrap_vm()
         ip_config = e2e_utils.retry_on_error()(
             self.network_client.network_interfaces.get)(
@@ -517,10 +524,13 @@ class CAPZProvisioner(e2e_base.Deployer):
                 address_prefixes=[self.bootstrap_vm_vnet_cidr_block]
             )
         )
-        return self.network_client.virtual_networks.begin_create_or_update(
+        self.network_client.virtual_networks.begin_create_or_update(
             self.bootstrap_vm_rg_name,
             self.bootstrap_vm_vnet_name,
-            vnet_params).result()
+            vnet_params).wait()
+        return self.network_client.virtual_networks.get(
+            self.bootstrap_vm_rg_name,
+            self.bootstrap_vm_vnet_name)
 
     @e2e_utils.retry_on_error()
     def _create_bootstrap_secgroup(self):
@@ -555,10 +565,13 @@ class CAPZProvisioner(e2e_base.Deployer):
             location=self.opts.location,
             security_rules=secgroup_rules)
         nsg_client = self.network_client.network_security_groups
-        return nsg_client.begin_create_or_update(
+        nsg_client.begin_create_or_update(
             self.bootstrap_vm_rg_name,
             self.bootstrap_vm_nsg_name,
-            secgroup_params).result()
+            secgroup_params).wait()
+        return nsg_client.get(
+            self.bootstrap_vm_rg_name,
+            self.bootstrap_vm_nsg_name)
 
     def _create_bootstrap_subnet(self):
         self.logging.info("Creating bootstrap Azure vNET subnet")
@@ -566,12 +579,17 @@ class CAPZProvisioner(e2e_base.Deployer):
         subnet_params = net_models.Subnet(
             address_prefix=self.bootstrap_vm_subnet_cidr,
             network_security_group=nsg)
-        return e2e_utils.retry_on_error()(
+        e2e_utils.retry_on_error()(
             self.network_client.subnets.begin_create_or_update)(
                 self.bootstrap_vm_rg_name,
                 self.bootstrap_vm_vnet_name,
                 self.bootstrap_vm_subnet_name,
-                subnet_params).result()
+                subnet_params).wait()
+        return e2e_utils.retry_on_error()(
+            self.network_client.subnets.get)(
+                self.bootstrap_vm_rg_name,
+                self.bootstrap_vm_vnet_name,
+                self.bootstrap_vm_subnet_name)
 
     def _get_image_sku_k8s_release(self):
         release = e2e_constants.DEFAULT_KUBERNETES_VERSION.strip("v")
