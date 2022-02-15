@@ -41,7 +41,7 @@ image-endpoint: npipe:\\.\pipe\containerd-containerd
 # https://github.com/rancher/wins/releases
 $global:WINS_VERSION = "v0.1.1"
 # https://github.com/kubernetes-sigs/cri-tools/releases
-$global:CRICTL_VERSION = "v1.22.0"
+$global:CRICTL_VERSION = "v1.23.0"
 
 
 function Start-ExecuteWithRetry {
