@@ -1,6 +1,6 @@
 REGISTRY := k8swin.azurecr.io
 FLANNEL_VERSION ?= v0.15.1
-KUBERNETES_VERSION ?= v1.23.0
+KUBERNETES_VERSION ?= v1.23.3
 
 .PHONY: all
 all: buildx-flannel buildx-kube-proxy

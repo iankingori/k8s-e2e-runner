@@ -253,6 +253,7 @@ periodics:
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
+        - --enable-win-dsr=False
         - --container-runtime=containerd
         - --win-os=ltsc2022
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
