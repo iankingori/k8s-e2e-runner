@@ -8,7 +8,6 @@ from datetime import datetime
 
 from e2e_runner import base as e2e_base
 from e2e_runner import logger as e2e_logger
-from e2e_runner import constants as e2e_constants
 from e2e_runner import utils as e2e_utils
 
 from e2e_runner.deployer.capz import capz
@@ -286,7 +285,7 @@ class CapzFlannelCI(e2e_base.CI):
 
     def _add_kube_proxy_windows(self):
         context = {
-            "kubernetes_version": e2e_constants.DEFAULT_KUBERNETES_VERSION,
+            "kubernetes_version": self.deployer.k8s_image_version,
             "container_runtime": self.opts.container_runtime,
             "win_os": self.opts.win_os,
             "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),

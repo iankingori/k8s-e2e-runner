@@ -145,6 +145,12 @@ class CAPZProvisioner(e2e_base.Deployer):
     def bootstrap_vm_public_ip(self):
         return self.bootstrap_vm['public_ip']
 
+    @property
+    def k8s_image_version(self):
+        if "k8sbins" in self.bins_built:
+            return e2e_constants.DEFAULT_KUBERNETES_VERSION
+        return self.kubernetes_version
+
     def up(self):
         self._setup_capz_components()
         self._create_capz_cluster()
@@ -592,7 +598,7 @@ class CAPZProvisioner(e2e_base.Deployer):
                 self.bootstrap_vm_subnet_name)
 
     def _get_image_sku_k8s_release(self):
-        release = e2e_constants.DEFAULT_KUBERNETES_VERSION.strip("v")
+        release = self.k8s_image_version.strip("v")
         return release.replace(".", "dot")
 
     def _get_image_sku_windows(self):
