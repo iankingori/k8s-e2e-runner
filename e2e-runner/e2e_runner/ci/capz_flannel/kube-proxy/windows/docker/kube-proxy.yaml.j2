@@ -106,7 +106,7 @@ spec:
       serviceAccountName: kube-proxy
       initContainers:
       - name: init-kube-proxy
-        image: k8swin.azurecr.io/kube-proxy-windows:{{ kubernetes_version }}-nanoserver-{{ win_os }}
+        image: k8swin.azurecr.io/kube-proxy-{{ container_runtime }}-windows:{{ kubernetes_version }}-nanoserver-{{ win_os }}
         command:
         - pwsh
         args:
@@ -123,7 +123,7 @@ spec:
           mountPath: /var/lib/kube-proxy-windows
       containers:
       - name: kube-proxy
-        image: k8swin.azurecr.io/kube-proxy-windows:{{ kubernetes_version }}-nanoserver-{{ win_os }}
+        image: k8swin.azurecr.io/kube-proxy-{{ container_runtime }}-windows:{{ kubernetes_version }}-nanoserver-{{ win_os }}
         command:
         - pwsh
         args:

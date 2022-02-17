@@ -11,37 +11,15 @@ Param(
 
 $ErrorActionPreference = "Stop"
 
+$global:BUILD_DIR = Join-Path $env:SystemDrive "build"
 $global:KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
 $global:CONTAINERD_DIR = Join-Path $env:ProgramFiles "containerd"
-$global:CNI_CONF_DIR = Join-Path $env:SystemDrive "etc\cni\net.d"
-$global:NAT_CONF = @"
-{
-    "cniVersion": "0.2.0",
-    "name": "nat",
-    "type": "nat",
-    "master": "eth0",
-    "ipam": {
-        "subnet": "172.21.32.0/12",
-        "routes": [
-            {
-                "GW": "172.21.32.1"
-            }
-        ]
-    },
-    "capabilities": {
-        "portMappings": true,
-        "dns": true
-    }
-}
-"@
 $global:CRICTL_YAML = @"
 runtime-endpoint: npipe:\\.\pipe\containerd-containerd
 image-endpoint: npipe:\\.\pipe\containerd-containerd
 "@
-# https://github.com/rancher/wins/releases
-$global:WINS_VERSION = "v0.1.1"
 # https://github.com/kubernetes-sigs/cri-tools/releases
-$global:CRICTL_VERSION = "v1.22.0"
+$global:CRICTL_VERSION = "v1.23.0"
 
 
 function Start-ExecuteWithRetry {
@@ -119,20 +97,6 @@ function Set-PowerProfile {
     }
 }
 
-function Install-Wins {
-    $svc = Get-Service -Name "rancher-wins" -ErrorAction SilentlyContinue
-    if($svc) {
-        return
-    }
-    Write-Output "Installing Wins Windows service"
-    Start-FileDownload "https://github.com/rancher/wins/releases/download/${WINS_VERSION}/wins.exe" "$KUBERNETES_DIR\wins.exe"
-    wins.exe srv app run --register
-    if($LASTEXITCODE) {
-        Throw "Failed to register wins Windows service"
-    }
-    Start-Service -Name "rancher-wins"
-}
-
 function Install-Crictl {
     Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
     tar xzf $env:TEMP\crictl-windows-amd64.tar.gz -C $CONTAINERD_DIR
@@ -140,8 +104,8 @@ function Install-Crictl {
         Throw "Failed to unzip crictl.zip"
     }
     Remove-Item -Force "$env:TEMP\crictl-windows-amd64.tar.gz"
-    New-Item -ItemType Directory -Force -Path "${env:USERPROFILE}\.crictl"
-    $global:CRICTL_YAML | Out-File -FilePath "${env:USERPROFILE}\.crictl\crictl.yaml" -Encoding ascii
+    New-Item -ItemType Directory -Force -Path "${env:SystemDrive}\Users\capi\.crictl"
+    $global:CRICTL_YAML | Out-File -FilePath "${env:SystemDrive}\Users\capi\.crictl\crictl.yaml" -Encoding ascii
 }
 
 function Update-Kubernetes {
@@ -154,13 +118,14 @@ function Update-Kubernetes {
 
 function Update-SDNCNI {
     $binaries = @("nat.exe", "sdnbridge.exe", "sdnoverlay.exe")
+    New-Item -ItemType Directory -Force -Path "${BUILD_DIR}\cni\bin"
     foreach($bin in $binaries) {
-        Start-FileDownload "$CIPackagesBaseURL/cni/$bin" "${env:SystemDrive}\opt\cni\bin\$bin"
+        Start-FileDownload "$CIPackagesBaseURL/cni/$bin" "$BUILD_DIR\cni\bin\$bin"
     }
 }
 
 function Update-Containerd {
-    Stop-Service -Name "containerd"
+    Stop-Service -Name "containerd" -Force
     $binaries = @("containerd-stress.exe", "containerd.exe", "ctr.exe", "crictl.exe")
     foreach($bin in $binaries) {
         Start-FileDownload "$CIPackagesBaseURL/containerd/bin/$bin" "$CONTAINERD_DIR\$bin"
@@ -203,21 +168,9 @@ try {
     # Set 'Performance' power profile
     Set-PowerProfile -PowerProfile "Performance"
 
-    # Extend system partition to max possible size
-    $driveLetter = "C"
-    $partition = Get-Partition -DriveLetter $driveLetter
-    $supportedSize = Get-PartitionSupportedSize -DriveLetter $driveLetter
-    if ($partition.Size -ne $supportedSize.SizeMax) {
-        Resize-Partition -DriveLetter $driveLetter -Size $supportedSize.SizeMax
-    }
-
-    # Install Wins (needed to run the Windows DaemonSets in the CI)
     $svc = Get-Service -Name "containerd" -ErrorAction SilentlyContinue
     if($svc) {
-        Install-Wins
         Install-Crictl
-        New-Item -ItemType Directory -Force -Path $global:CNI_CONF_DIR
-        $global:NAT_CONF | Out-File -FilePath "${global:CNI_CONF_DIR}\nat.conf" -Encoding ascii
     }
 
     nssm set kubelet Start SERVICE_AUTO_START

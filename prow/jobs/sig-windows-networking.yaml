@@ -85,6 +85,7 @@ periodics:
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
         - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
+        - --kubernetes-version=v1.23.2
         - --flannel-mode=host-gw
         - --container-runtime=docker
         - --win-os=ltsc2019
@@ -112,6 +113,7 @@ periodics:
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
         - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
+        - --kubernetes-version=v1.23.2
         - --flannel-mode=host-gw
         - --enable-win-dsr=False
         - --container-runtime=docker
@@ -140,6 +142,7 @@ periodics:
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
         - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
+        - --kubernetes-version=v1.23.2
         - --flannel-mode=overlay
         - --container-runtime=docker
         - --win-os=ltsc2019
@@ -167,6 +170,7 @@ periodics:
         - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
         - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
+        - --kubernetes-version=v1.23.2
         - --flannel-mode=overlay
         - --enable-win-dsr=False
         - --container-runtime=docker

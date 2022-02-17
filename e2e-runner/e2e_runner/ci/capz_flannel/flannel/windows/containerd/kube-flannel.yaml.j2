@@ -1,0 +1,206 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: kube-flannel-windows-cfg
+  namespace: kube-system
+  labels:
+    tier: node
+    app: flannel
+data:
+  cni-conf.json: |
+{%- if flannel_mode == "host-gw" %}
+    {
+      "name": "cbr0",
+      "cniVersion": "0.3.0",
+      "type": "flannel",
+      "capabilities": {
+        "portMappings": true,
+        "dns": true
+      },
+      "delegate": {
+        "type": "sdnbridge",
+        "master": "eth0",
+        "optionalFlags": {
+          "forceBridgeGateway": true
+        },
+        "AdditionalArgs": [
+          {
+            "Name": "EndpointPolicy",
+            "Value": {
+              "Type": "OutBoundNAT",
+              "Settings": {
+                "Exceptions": []
+              }
+            }
+          },
+          {
+            "Name": "EndpointPolicy",
+            "Value": {
+              "Type": "SDNRoute",
+              "Settings": {
+                "DestinationPrefix": "",
+                "NeedEncap": true
+              }
+            }
+          },
+          {
+            "Name": "EndpointPolicy",
+            "Value": {
+              "Type": "SDNRoute",
+              "Settings": {
+                "DestinationPrefix": "",
+                "NeedEncap": true
+              }
+            }
+          }
+        ]
+      }
+    }
+{%- endif %}
+{%- if flannel_mode == "overlay" %}
+    {
+      "name": "vxlan0",
+      "cniVersion": "0.3.0",
+      "type": "flannel",
+      "capabilities": {
+        "portMappings": true,
+        "dns": true
+      },
+      "delegate": {
+        "type": "sdnoverlay",
+        "AdditionalArgs": [
+          {
+            "Name": "EndpointPolicy",
+            "Value": {
+              "Type": "OutBoundNAT",
+              "Settings": {
+                "Exceptions": []
+              }
+            }
+          },
+          {
+            "Name": "EndpointPolicy",
+            "Value": {
+              "Type": "SDNRoute",
+              "Settings": {
+                "DestinationPrefix": "",
+                "NeedEncap": true
+              }
+            }
+          },
+          {
+            "Name": "EndpointPolicy",
+            "Value": {
+              "Type": "ProviderAddress",
+              "Settings": {
+                "ProviderAddress": ""
+              }
+            }
+          }
+        ]
+      }
+    }
+{%- endif %}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-flannel-ds-windows-amd64
+  namespace: kube-system
+  labels:
+    tier: node
+    app: flannel
+spec:
+  selector:
+    matchLabels:
+      app: flannel
+  template:
+    metadata:
+      labels:
+        tier: node
+        app: flannel
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - windows
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+      securityContext:
+        windowsOptions:
+          hostProcess: true
+          runAsUserName: "NT AUTHORITY\\system"
+      hostNetwork: true
+      serviceAccountName: flannel
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      # Mark the pod as a critical add-on for rescheduling.
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+      initContainers:
+      - name: install-cni
+        image: k8swin.azurecr.io/flannel-{{ container_runtime }}-windows:v0.15.1-nanoserver-{{ win_os }}
+        imagePullPolicy: Always
+        command:
+        - "%CONTAINER_SANDBOX_MOUNT_POINT%\\flannel\\install-cni.exe"
+        volumeMounts:
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
+        - name: flannel-windows-cfg
+          mountPath: /etc/kube-flannel-windows/
+        - name: kubeadm-config
+          mountPath: /etc/kubeadm-config/
+        env:
+        - name: CONTROL_PLANE_CIDR
+          value: "{{ control_plane_cidr }}"
+        - name: NODE_CIDR
+          value: "{{ node_cidr }}"
+      containers:
+      - name: kube-flannel
+        image: k8swin.azurecr.io/flannel-{{ container_runtime }}-windows:v0.15.1-nanoserver-{{ win_os }}
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: kube-proxy
+          mountPath: /flannel-config-file
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+      volumes:
+      - name: flannel-cfg
+        configMap:
+          name: kube-flannel-cfg
+      - name: flannel-windows-cfg
+        configMap:
+          name: kube-flannel-windows-cfg
+      - name: kubeadm-config
+        configMap:
+          name: kubeadm-config
+      - name: kube-proxy
+        configMap:
+          name: kube-proxy
+  updateStrategy:
+    type: RollingUpdate
