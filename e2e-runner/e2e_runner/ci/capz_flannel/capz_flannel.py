@@ -287,14 +287,17 @@ class CapzFlannelCI(e2e_base.CI):
     def _add_kube_proxy_windows(self):
         context = {
             "kubernetes_version": e2e_constants.DEFAULT_KUBERNETES_VERSION,
+            "container_runtime": self.opts.container_runtime,
             "win_os": self.opts.win_os,
             "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),
             "flannel_mode": self.opts.flannel_mode
         }
-        template_file = os.path.join(
-            self.capz_flannel_dir, "kube-proxy/kube-proxy-windows.yaml.j2")
+        searchpath = os.path.join(
+            self.capz_flannel_dir,
+            f"kube-proxy/windows/{self.opts.container_runtime}")
         output_file = "/tmp/kube-proxy-windows.yaml"
-        e2e_utils.render_template(template_file, output_file, context)
+        e2e_utils.render_template(
+            "kube-proxy.yaml.j2", output_file, context, searchpath)
         e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
             [self.kubectl, "apply", "-f", output_file])
 
@@ -311,10 +314,13 @@ class CapzFlannelCI(e2e_base.CI):
         kube_flannel = "/tmp/kube-flannel.yaml"
         e2e_utils.render_template(
             "kube-flannel.yaml.j2", kube_flannel, context, searchpath)
+        windows_searchpath = os.path.join(
+            self.capz_flannel_dir,
+            f"flannel/windows/{self.opts.container_runtime}")
         kube_flannel_windows = "/tmp/kube-flannel-windows.yaml"
         e2e_utils.render_template(
-            "kube-flannel-windows.yaml.j2", kube_flannel_windows,
-            context, searchpath)
+            "kube-flannel.yaml.j2", kube_flannel_windows,
+            context, windows_searchpath)
         e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
             self.kubectl, "apply", "-f", kube_flannel])
         e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
