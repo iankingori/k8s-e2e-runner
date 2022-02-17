@@ -160,7 +160,7 @@ function Update-SDNCNI {
 }
 
 function Update-Containerd {
-    Stop-Service -Name "containerd"
+    Stop-Service -Name "containerd" -Force
     $binaries = @("containerd-stress.exe", "containerd.exe", "ctr.exe", "crictl.exe")
     foreach($bin in $binaries) {
         Start-FileDownload "$CIPackagesBaseURL/containerd/bin/$bin" "$CONTAINERD_DIR\$bin"
