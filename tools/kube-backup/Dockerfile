@@ -1,6 +1,6 @@
 FROM ubuntu:20.04
 
-ENV K8S_VERSION=v1.23.3
+ENV K8S_VERSION=v1.23.4
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \

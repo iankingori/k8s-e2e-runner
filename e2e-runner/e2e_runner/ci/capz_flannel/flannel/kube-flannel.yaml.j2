@@ -180,7 +180,7 @@ spec:
       serviceAccountName: flannel
       initContainers:
       - name: install-cni-plugin
-        image: rancher/mirrored-flannelcni-flannel-cni-plugin:v1.0.0
+        image: rancher/mirrored-flannelcni-flannel-cni-plugin:v1.0.1
         command:
         - cp
         args:
@@ -191,7 +191,7 @@ spec:
         - name: cni-plugin
           mountPath: /opt/cni/bin
       - name: install-cni
-        image: quay.io/coreos/flannel:v0.15.1
+        image: rancher/mirrored-flannelcni-flannel:v0.16.3
         command:
         - cp
         args:
@@ -203,9 +203,11 @@ spec:
           mountPath: /etc/cni/net.d
         - name: flannel-cfg
           mountPath: /etc/kube-flannel/
+        - name: xtables-lock
+          mountPath: /run/xtables.lock
       containers:
       - name: kube-flannel
-        image: quay.io/coreos/flannel:v0.15.1
+        image: rancher/mirrored-flannelcni-flannel:v0.16.3
         command:
         - /opt/bin/flanneld
         args:
@@ -249,3 +251,7 @@ spec:
       - name: flannel-cfg
         configMap:
           name: kube-flannel-cfg
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate

@@ -67,7 +67,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: kube-flannel
-        image: k8swin.azurecr.io/flannel-{{ container_runtime }}-windows:v0.15.1-nanoserver-{{ win_os }}
+        image: k8swin.azurecr.io/flannel-{{ container_runtime }}-windows:v0.16.3-nanoserver-{{ win_os }}
         command:
         - pwsh
         args:
