@@ -1,90 +1,109 @@
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
-kind: MachinePool
+kind: MachineHealthCheck
 metadata:
-  name: {{ cluster_name }}-mp-win
+  name: {{ cluster_name }}-md-win-mhc
+spec:
+  clusterName: {{ cluster_name }}
+  nodeStartupTimeout: 20m
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/deployment-name: {{ cluster_name }}-md-win
+  unhealthyConditions:
+    - type: Ready
+      status: Unknown
+      timeout: 5m
+    - type: Ready
+      status: "False"
+      timeout: 5m
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: {{ cluster_name }}-md-win
   namespace: default
 spec:
   clusterName: {{ cluster_name }}
   replicas: {{ win_agents_count }}
+  selector:
+    matchLabels: null
   template:
     spec:
       bootstrap:
         configRef:
           apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-          kind: KubeadmConfig
-          name: {{ cluster_name }}-mp-win
+          kind: KubeadmConfigTemplate
+          name: {{ cluster_name }}-md-win
       clusterName: {{ cluster_name }}
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-        kind: AzureMachinePool
-        name: {{ cluster_name }}-mp-win
+        kind: AzureMachineTemplate
+        name: {{ cluster_name }}-md-win
       version: {{ kubernetes_version }}
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-kind: AzureMachinePool
+kind: AzureMachineTemplate
 metadata:
-{%- if container_runtime == "docker" %}
   annotations:
-    runtime: dockershim
-{%- endif %}
-{%- if container_runtime == "containerd" %}
-  annotations:
-    runtime: containerd
-{%- endif %}
-  name: {{ cluster_name }}-mp-win
+    runtime: {% if container_runtime == "docker" %}dockershim{% endif %}{% if container_runtime == "containerd" %}containerd{% endif %}
+  name: {{ cluster_name }}-md-win
   namespace: default
 spec:
-  location: {{ azure_location }}
   template:
-    osDisk:
-      diskSizeGB: 128
-      managedDisk:
-        storageAccountType: Premium_LRS
-      osType: Windows
-    sshPublicKey: {{ azure_ssh_public_key_b64 }}
-    vmSize: {{ win_agent_size }}
-    image:
-      marketplace:
-        publisher: cncf-upstream
-        offer: capi-windows
-        sku: {{ image_sku_windows }}
-        version: latest
+    metadata:
+      annotations:
+        runtime: {% if container_runtime == "docker" %}dockershim{% endif %}{% if container_runtime == "containerd" %}containerd{% endif %}
+    spec:
+      osDisk:
+        diskSizeGB: 128
+        managedDisk:
+          storageAccountType: Premium_LRS
+        osType: Windows
+      sshPublicKey: {{ azure_ssh_public_key_b64 }}
+      vmSize: {{ win_agent_size }}
+{%- if flannel_mode == "host-gw" %}
+      enableIPForwarding: true
+{%- endif %}
+      image:
+        marketplace:
+          publisher: cncf-upstream
+          offer: capi-windows
+          sku: {{ image_sku_windows }}
+          version: latest
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-kind: KubeadmConfig
+kind: KubeadmConfigTemplate
 metadata:
-  name: {{ cluster_name }}-mp-win
+  name: {{ cluster_name }}-md-win
   namespace: default
 spec:
-  files:
-  - contentFrom:
-      secret:
-        key: worker-node-azure.json
-        name: {{ cluster_name }}-mp-win-azure-json
-    owner: root:root
-    path: c:/k/azure.json
-    permissions: "0644"
-  joinConfiguration:
-    nodeRegistration:
+  template:
+    spec:
+      files:
+      - contentFrom:
+          secret:
+            key: worker-node-azure.json
+            name: {{ cluster_name }}-md-win-azure-json
+        owner: root:root
+        path: c:/k/azure.json
+        permissions: "0644"
+      joinConfiguration:
+        nodeRegistration:
 {%- if container_runtime == "containerd" %}
-      criSocket: npipe:////./pipe/containerd-containerd
+          criSocket: npipe:////./pipe/containerd-containerd
 {%- endif %}
-      kubeletExtraArgs:
-        azure-container-registry-config: c:/k/azure.json
-        cloud-config: c:/k/azure.json
-        cloud-provider: azure
-{%- if container_runtime == "containerd" %}
-        feature-gates: WindowsHostProcessContainers=true
-{%- endif %}
+          kubeletExtraArgs:
+            azure-container-registry-config: c:/k/azure.json
+            cloud-config: c:/k/azure.json
+            cloud-provider: azure
 {%- raw %}
-      name: '{{ ds.meta_data["local_hostname"] }}'
+          name: '{{ ds.meta_data["local_hostname"] }}'
 {%- endraw %}
-  preKubeadmCommands:
-  - curl.exe -Lo /run/kubeadm/kubeadm-bootstrap.ps1 http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.ps1
-  - powershell -C "/run/kubeadm/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -CIVersion {{ kubernetes_version }}{% if k8s_bins %} -K8sBins{% endif %}{% if sdn_cni_bins %} -SDNCNIBins{% endif %}{% if containerd_bins %} -ContainerdBins{% endif %}{% if containerd_shim_bins %} -ContainerdShimBins{% endif %}"
-  users:
-  - groups: Administrators
-    name: capi
-    sshAuthorizedKeys:
-    - {{ azure_ssh_public_key }}
+      preKubeadmCommands:
+      - curl.exe -Lo /run/kubeadm/kubeadm-bootstrap.ps1 http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.ps1
+      - powershell -C "/run/kubeadm/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }} -CIVersion {{ kubernetes_version }}{% if k8s_bins %} -K8sBins{% endif %}{% if sdn_cni_bins %} -SDNCNIBins{% endif %}{% if containerd_bins %} -ContainerdBins{% endif %}{% if containerd_shim_bins %} -ContainerdShimBins{% endif %}"
+      users:
+      - groups: Administrators
+        name: capi
+        sshAuthorizedKeys:
+        - {{ azure_ssh_public_key }}
