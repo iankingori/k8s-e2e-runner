@@ -29,26 +29,12 @@ RUN GO_VERSION=$(curl -s -L https://golang.org/VERSION\?m\=text) && \
     mkdir -p $GOPATH && \
     go version
 
-# Build Kubernetes E2E tests
-RUN mkdir -p $GOPATH/src/k8s.io && \
-    cd $GOPATH/src/k8s.io && \
-    git clone https://github.com/kubernetes/kubernetes -b $KUBECTL_VERSION && \
-    cd kubernetes && \
-    make WHAT="test/e2e/e2e.test" && \
-    make WHAT="vendor/github.com/onsi/ginkgo/ginkgo"
-
-# Build kubetest
-RUN git clone https://github.com/kubernetes/test-infra /tmp/test-infra && \
-    cd /tmp/test-infra && \
-    GO111MODULE=on go install ./kubetest && \
-    rm -rf /tmp/test-infra
-
 # Install clusterctl
 RUN curl -Lo /usr/local/bin/clusterctl "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CAPI_VERSION}/clusterctl-linux-amd64" && \
     chmod +x /usr/local/bin/clusterctl
 
 # Install kubectl
-RUN curl -Lo /usr/local/bin/kubectl "https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
+RUN curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
     chmod +x /usr/local/bin/kubectl
 ENV KUBECTL_PATH "/usr/local/bin/kubectl"
 
