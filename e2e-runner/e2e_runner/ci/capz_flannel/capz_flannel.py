@@ -63,6 +63,10 @@ class CapzFlannelCI(e2e_base.CI):
             builder_mapping.get(bins, noop_func)()
             self.deployer.bins_built.append(bins)
 
+        # Setup the E2E tests and the kubetest
+        self._setup_e2e_tests()
+        self._setup_kubetest()
+
     def up(self):
         start = time.time()
         self.deployer.up()
@@ -392,9 +396,6 @@ class CapzFlannelCI(e2e_base.CI):
             script.append(f"cp {image_path} {images_dir}")
         script.append(f"chmod 644 {images_dir}/*")
         self.deployer.run_cmd_on_bootstrap_vm(script)
-        # Setup the E2E tests and the kubetest
-        self._setup_e2e_tests()
-        self._setup_kubetest()
 
     def _build_containerd_binaries(self):
         # Clone the git repositories

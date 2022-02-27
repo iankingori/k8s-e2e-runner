@@ -104,8 +104,9 @@ function Install-Crictl {
         Throw "Failed to unzip crictl.zip"
     }
     Remove-Item -Force "$env:TEMP\crictl-windows-amd64.tar.gz"
-    New-Item -ItemType Directory -Force -Path "${env:SystemDrive}\Users\capi\.crictl"
-    $global:CRICTL_YAML | Out-File -FilePath "${env:SystemDrive}\Users\capi\.crictl\crictl.yaml" -Encoding ascii
+    New-Item -ItemType Directory -Force -Path "${env:HOME}\.crictl"
+    $global:CRICTL_YAML | Out-File -FilePath "${env:HOME}\.crictl\crictl.yaml" -Encoding ascii
+    Copy-Item -Recurse -Path "${env:HOME}\.crictl" -Destination "${env:SystemDrive}\Users\capi\.crictl"
 }
 
 function Update-Kubernetes {
@@ -113,7 +114,6 @@ function Update-Kubernetes {
     foreach($bin in $binaries) {
         Start-FileDownload "$CIPackagesBaseURL/$CIVersion/bin/windows/amd64/$bin" "$KUBERNETES_DIR\$bin"
     }
-    Start-FileDownload "$CIPackagesBaseURL/scripts/kubelet-start.ps1" "$KUBERNETES_DIR\StartKubelet.ps1"
 }
 
 function Update-SDNCNI {

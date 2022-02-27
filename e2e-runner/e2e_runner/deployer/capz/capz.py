@@ -267,14 +267,15 @@ class CAPZProvisioner(e2e_base.Deployer):
             f"{self.bootstrap_vm_logs_dir}.tar.gz")
         shutil.rmtree(self.bootstrap_vm_logs_dir)
 
-    def wait_windows_agents(self, timeout=3600):
+    def wait_windows_agents(self, timeout=5400):
         self.logging.info(
             "Waiting up to %.2f minutes for the Windows agents",
             timeout / 60.0)
-        self._wait_for_running_machinepool(
-            name=f"{self.opts.cluster_name}-mp-win",
+        self._wait_for_running_capz_machines(
+            wanted_count=2,
+            selector="cluster.x-k8s.io/deployment-name={}-md-win".format(
+                self.opts.cluster_name),
             timeout=timeout)
-        self.logging
         self.logging.info("Windows agents are ready")
 
     def setup_ssh_config(self):
@@ -783,7 +784,6 @@ class CAPZProvisioner(e2e_base.Deployer):
                 "--wait-providers",
             ],
             env={
-                "EXP_MACHINE_POOL": "true",
                 "GITHUB_TOKEN": os.environ["GITHUB_TOKEN"],
             })
 

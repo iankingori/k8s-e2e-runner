@@ -1,8 +1,8 @@
   configure-cni.ps1: |
     $ErrorActionPreference = "Stop"
 
-    $serviceSubnet = yq eval '.networking.serviceSubnet' /etc/kubeadm-config/ClusterConfiguration
-    $podSubnet = yq eval '.networking.podSubnet' /etc/kubeadm-config/ClusterConfiguration
+    $serviceSubnet = yq '.networking.serviceSubnet' /etc/kubeadm-config/ClusterConfiguration
+    $podSubnet = yq '.networking.podSubnet' /etc/kubeadm-config/ClusterConfiguration
 
     $cniJson = Get-Content /etc/kube-flannel-windows/cni-conf.json | ConvertFrom-Json
     $cniJson.delegate.policies[0].Value.ExceptionList = $serviceSubnet, $podSubnet
