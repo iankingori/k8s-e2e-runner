@@ -42,4 +42,4 @@ get_k8s_logs() {
 get_systemd_logs
 get_k8s_logs
 
-tar -czvf /tmp/logs.tar.gz -C $LOGS_DIR .
+tar -czvf /tmp/logs.tgz -C $LOGS_DIR .
