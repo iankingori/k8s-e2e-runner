@@ -105,25 +105,28 @@ class CI(object):
     def _run_tests(self):
         # Invokes kubetest
         self.logging.info("Running tests on env.")
-        cmd = ["kubetest"]
-        cmd.append("--check-version-skew=false")
-        cmd.append("--ginkgo-parallel=%s" % self.opts.parallel_test_nodes)
-        cmd.append("--verbose-commands=true")
-        cmd.append("--provider=skeleton")
-        cmd.append("--test")
-        cmd.append("--dump=%s" % self.opts.artifacts_directory)
-        cmd.append(
-            ('--test_args=--ginkgo.flakeAttempts=1 '
-             '--test.timeout=2h '
-             '--num-nodes=2 --ginkgo.noColor '
-             '--ginkgo.dryRun=false '
-             '--node-os-distro=windows '
-             '--prepull-images=true '
-             '--ginkgo.focus=%(focus)s '
-             '--ginkgo.skip=%(skip)s') % {
-                 "focus": self.opts.test_focus_regex,
-                 "skip": self.opts.test_skip_regex})
+        test_args = (
+            "--test.timeout=2h "
+            "--num-nodes=2 "
+            "--node-os-distro=windows "
+            "--prepull-images=true "
+            "--ginkgo.noColor "
+            "--ginkgo.dryRun=false "
+            f"--ginkgo.flakeAttempts={self.opts.flake_attempts} "
+            f"--ginkgo.focus={self.opts.test_focus_regex} "
+            f"--ginkgo.skip={self.opts.test_skip_regex}"
+        )
+        cmd = [
+            "kubetest",
+            "--check-version-skew=false",
+            "--verbose-commands=true",
+            "--provider=skeleton",
+            "--test",
+            f"--ginkgo-parallel={self.opts.parallel_test_nodes}",
+            f"--dump={self.opts.artifacts_directory}",
+            f"--test_args={test_args}",
+        ]
         docker_config_file = os.environ.get("DOCKER_CONFIG_FILE")
         if docker_config_file:
-            cmd.append(' --docker-config-file=%s' % docker_config_file)
+            cmd.append(f" --docker-config-file={docker_config_file}")
         return subprocess.call(cmd, cwd=e2e_utils.get_k8s_folder())
