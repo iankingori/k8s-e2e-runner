@@ -101,7 +101,7 @@ class CapzFlannelCI(e2e_base.CI):
         remote_script_path = os.path.join(
             "/tmp", os.path.basename(local_script_path))
         remote_cmd = remote_script_path
-        remote_logs_archive = "/tmp/logs.zip"
+        remote_logs_archive = "/tmp/logs.tgz"
         for node_address in self.deployer.windows_private_addresses:
             try:
                 self._collect_logs(
@@ -121,7 +121,7 @@ class CapzFlannelCI(e2e_base.CI):
         remote_script_path = os.path.join(
             "/tmp", os.path.basename(local_script_path))
         remote_cmd = f"sudo bash {remote_script_path}"
-        remote_logs_archive = "/tmp/logs.tar.gz"
+        remote_logs_archive = "/tmp/logs.tgz"
         for node_address in self.deployer.linux_private_addresses:
             try:
                 self._collect_logs(

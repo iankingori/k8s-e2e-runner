@@ -50,9 +50,18 @@ if(Test-Path $LOGS_DIR) {
 New-Item -ItemType Directory -Path $LOGS_DIR | Out-Null
 
 Get-WindowsLogs
-Get-DockerLogs
+if(Get-Service -Name Docker -ErrorAction SilentlyContinue) {
+    Get-DockerLogs
+}
 Get-KubernetesLogs
 Get-CloudbaseInitLogs
 
-$archivePath = Join-Path (Split-Path -Path $LOGS_DIR -Parent) "logs.zip"
-Compress-Archive -Path $LOGS_DIR -CompressionLevel Optimal -DestinationPath $archivePath -Force
+$acl = Get-Acl -Path $LOGS_DIR
+Get-ChildItem -Recurse -Path $LOGS_DIR | ForEach-Object {
+    Set-Acl -Path $_.FullName -AclObject $acl
+}
+
+tar.exe -czvf /tmp/logs.tgz -C $LOGS_DIR .
+if($LASTEXITCODE) {
+    Throw "Failed to create tar.gz archive"
+}
