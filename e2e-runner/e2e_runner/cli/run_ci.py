@@ -31,10 +31,10 @@ class RunCI(Command):
 
         p.add_argument(
             "--parallel-test-nodes",
-            default=1)
+            default=8)
         p.add_argument(
             "--flake-attempts",
-            default=1,
+            default=2,
             help="Number of attempts to run the flake tests."
         )
         p.add_argument(
