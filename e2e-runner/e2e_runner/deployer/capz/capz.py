@@ -264,7 +264,7 @@ class CAPZProvisioner(e2e_base.Deployer):
                     f.write(out)
         e2e_utils.make_tgz_archive(
             self.bootstrap_vm_logs_dir,
-            f"{self.bootstrap_vm_logs_dir}.tar.gz")
+            f"{self.bootstrap_vm_logs_dir}.tgz")
         shutil.rmtree(self.bootstrap_vm_logs_dir)
 
     def wait_windows_agents(self, timeout=5400):
