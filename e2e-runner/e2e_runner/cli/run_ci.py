@@ -174,17 +174,22 @@ class RunCI(Command):
             "Creating artifacts dir: %s.", args.artifacts_directory)
         os.makedirs(args.artifacts_directory, exist_ok=True)
         ci = e2e_factory.get_ci(args.ci)(args)
+        tests_exit_code = 0
         try:
             ci.setup_bootstrap_vm()
             ci.build(args.build)
             ci.up()
             ci.cleanup_bootstrap_vm()
-            success = ci.test()
-            if success != 0:
-                raise Exception("CI Tests failed")
+            tests_exit_code = ci.test()
+            assert tests_exit_code == 0, "Conformance tests failed"
         except Exception:
             self.logging.error("{}".format(traceback.format_exc()))
             raise
         finally:
             ci.collect_logs()
-            ci.down()
+            if tests_exit_code != 0:
+                self.logging.warning(
+                    "Conformance tests failed. Retain the resource group "
+                    "for debugging purposes.")
+            else:
+                ci.down()
