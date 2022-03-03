@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 
 import logging
-import json
 import os
 
 from datetime import datetime
 
 import configargparse
-import sh
 
 from azure.core import exceptions as azure_exceptions
 from azure.identity import ClientSecretCredential
@@ -67,23 +65,6 @@ def get_azure_credentials():
     return credentials, subscription_id
 
 
-def is_prowjob_finished(build_id):
-    if not build_id:
-        logger.warning("The resource group doesn't have the build id tag.")
-        return False
-    output = sh.kubectl('get', 'prowjob', '-n', 'default', '-o', 'json',
-                        '-l', 'prow.k8s.io/build-id={}'.format(build_id))
-    prowjob = json.loads(output.stdout)
-    if len(prowjob['items']) == 0:
-        logger.info("The prowjob doesn't exist anymore.")
-        return True
-    state = prowjob['items'][0]['status'].get('state')
-    if state != 'pending':
-        logger.info("The prowjob is not running anymore.")
-        return True
-    return False
-
-
 def is_rg_older(creation_timestamp_tag, max_age_minutes):
     if not creation_timestamp_tag:
         logger.warning("The resource group doesn't have the creation "
@@ -128,10 +109,6 @@ def main():
     logger.info("Listing Prow Azure resource groups.")
     for rg in client.resource_groups.list(filter=filter):
         logger.info('Found resource group "%s".', rg.name)
-
-        if is_prowjob_finished(rg.tags.get('buildID')):
-            delete_resource_group(client, rg.name, args.dry_run)
-            continue
 
         if is_rg_older(rg.tags.get('creationTimestamp'), args.max_age_minutes):
             delete_resource_group(client, rg.name, args.dry_run)
