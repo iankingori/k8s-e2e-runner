@@ -109,6 +109,19 @@ function Install-Crictl {
     Copy-Item -Recurse -Path "${env:HOME}\.crictl" -Destination "${env:SystemDrive}\Users\capi\.crictl"
 }
 
+function Set-ContainerdLogFile {
+    Stop-Service -Force -Name containerd
+    containerd.exe --unregister-service
+    if($LASTEXITCODE) {
+        Throw "Failed to unregister containerd service"
+    }
+    containerd.exe --register-service --log-level debug --log-file ${env:SystemDrive}\var\log\containerd.log
+    if($LASTEXITCODE) {
+        Throw "Failed to register containerd service"
+    }
+    Start-Service -Name containerd
+}
+
 function Update-Kubernetes {
     $binaries = @("kubelet.exe", "kubeadm.exe", "kubectl.exe")
     foreach($bin in $binaries) {
@@ -171,6 +184,7 @@ try {
     $svc = Get-Service -Name "containerd" -ErrorAction SilentlyContinue
     if($svc) {
         Install-Crictl
+        Set-ContainerdLogFile
     }
 
     nssm set kubelet Start SERVICE_AUTO_START
