@@ -342,7 +342,7 @@ class CapzFlannelCI(e2e_base.CI):
             f"{remote_k8s_path}/", local_k8s_path)
         # Build Linux DaemonSet container images
         self.logging.info("Building K8s Linux DaemonSet container images")
-        cmd = ("KUBE_FASTBUILD=true KUBE_BUILD_CONFORMANCE=n "
+        cmd = ("KUBE_FASTBUILD=true KUBE_BUILD_CONFORMANCE=y "
                "make quick-release-images")
         self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
         # Discover the K8s version built
@@ -374,7 +374,7 @@ class CapzFlannelCI(e2e_base.CI):
             script.append(f"cp {win_bin_path} {windows_bin_dir}")
         images_names = [
             "kube-apiserver.tar", "kube-controller-manager.tar",
-            "kube-proxy.tar", "kube-scheduler.tar"
+            "kube-proxy.tar", "kube-scheduler.tar", "conformance-amd64.tar"
         ]
         for image_name in images_names:
             image_path = "{}/{}/{}".format(
