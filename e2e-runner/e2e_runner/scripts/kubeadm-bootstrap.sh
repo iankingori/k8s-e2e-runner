@@ -46,7 +46,7 @@ run_cmd_with_retry() {
 
 update_k8s() {
     CI_PACKAGES=("kubectl" "kubelet" "kubeadm")
-    CI_IMAGES=("kube-apiserver" "kube-controller-manager" "kube-proxy" "kube-scheduler" "conformance-amd64")
+    CI_IMAGES=("kube-apiserver" "kube-controller-manager" "kube-proxy" "kube-scheduler" "conformance")
 
     echo "Updating Kubernetes to version: $CI_VERSION"
 

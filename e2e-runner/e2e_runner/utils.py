@@ -167,15 +167,31 @@ def run_remote_ssh_cmd(cmd, ssh_user, ssh_address, ssh_key_path=None,
 
 
 def rsync_upload(local_path, remote_path,
-                 ssh_user, ssh_address, ssh_key_path=None):
+                 ssh_user, ssh_address, ssh_key_path=None, delete=True):
     ssh_cmd = ("ssh -q "
                "-o StrictHostKeyChecking=no "
                "-o UserKnownHostsFile=/dev/null")
     if ssh_key_path:
         ssh_cmd += f" -i {ssh_key_path}"
-    run_shell_cmd([
-        "rsync", "-rlptD", "-e", f'"{ssh_cmd}"', "--delete",
-        local_path, f"{ssh_user}@{ssh_address}:{remote_path}"])
+    rsync_cmd = ["rsync", "-rlptD", "-e", f'"{ssh_cmd}"']
+    if delete:
+        rsync_cmd.append("--delete")
+    rsync_cmd.extend([local_path, f"{ssh_user}@{ssh_address}:{remote_path}"])
+    run_shell_cmd(rsync_cmd)
+
+
+def rsync_download(remote_path, local_path,
+                   ssh_user, ssh_address, ssh_key_path=None, delete=True):
+    ssh_cmd = ("ssh -q "
+               "-o StrictHostKeyChecking=no "
+               "-o UserKnownHostsFile=/dev/null")
+    if ssh_key_path:
+        ssh_cmd += f" -i {ssh_key_path}"
+    rsync_cmd = ["rsync", "-rlptD", "-e", f'"{ssh_cmd}"']
+    if delete:
+        rsync_cmd.append("--delete")
+    rsync_cmd.extend([f"{ssh_user}@{ssh_address}:{remote_path}", local_path])
+    run_shell_cmd(rsync_cmd)
 
 
 def make_tgz_archive(source_dir, output_file):

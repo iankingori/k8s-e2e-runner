@@ -193,13 +193,10 @@ class CAPZProvisioner(e2e_base.Deployer):
 
     @e2e_utils.retry_on_error()
     def download_from_bootstrap_vm(self, remote_path, local_path):
-        ssh_key_path = os.environ["SSH_KEY"]
-        ssh_cmd = (
-            f"ssh -q -i {ssh_key_path} "
-            f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null")
-        e2e_utils.run_shell_cmd([
-            "rsync", "-rlptD", "-e", f'"{ssh_cmd}"', "--delete",
-            f"capi@{self.bootstrap_vm_public_ip}:{remote_path}", local_path])
+        e2e_utils.rsync_download(
+            remote_path=remote_path, local_path=local_path,
+            ssh_user="capi", ssh_address=self.bootstrap_vm_public_ip,
+            ssh_key_path=os.environ["SSH_KEY"])
 
     @e2e_utils.retry_on_error()
     def run_cmd_on_bootstrap_vm(self, cmd, timeout=3600, cwd="~",
@@ -246,7 +243,7 @@ class CAPZProvisioner(e2e_base.Deployer):
         output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
             self.kubectl, "get", "pods",
             "--kubeconfig", self.mgmt_kubeconfig_path,
-            "-A", "-o", "yaml"])
+            "-A", "-o", "yaml"], sensitive=True)
         pods = yaml.safe_load(output)
         for pod in pods['items']:
             name = pod['metadata']['name']
@@ -256,7 +253,7 @@ class CAPZProvisioner(e2e_base.Deployer):
                 out, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
                     self.kubectl, "logs",
                     "--kubeconfig", self.mgmt_kubeconfig_path,
-                    "-n", ns, name, container_name])
+                    "-n", ns, name, container_name], sensitive=True)
                 log_file = os.path.join(
                     self.bootstrap_vm_logs_dir,
                     f"{ns}_{name}_{container_name}.log")
@@ -774,7 +771,6 @@ class CAPZProvisioner(e2e_base.Deployer):
         ]
         e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
             cmd, sensitive=True)
-
         self.logging.info("Setup the Azure Cluster API components")
         e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
             cmd=[
@@ -793,7 +789,6 @@ class CAPZProvisioner(e2e_base.Deployer):
             "AZURE_SUBSCRIPTION_ID", "AZURE_TENANT_ID", "AZURE_CLIENT_ID",
             "AZURE_CLIENT_SECRET", "AZURE_SSH_PUBLIC_KEY"
         ]
-
         # Check for alternate env variables names set in the CI if
         # the expected ones are empty
         if (not os.environ.get("AZURE_SUBSCRIPTION_ID")
@@ -804,7 +799,6 @@ class CAPZProvisioner(e2e_base.Deployer):
                 and os.environ.get("SSH_KEY_PUB")):
             with open(os.environ.get("SSH_KEY_PUB").strip()) as f:
                 os.environ["AZURE_SSH_PUBLIC_KEY"] = f.read().strip()
-
         # Check if the required env variables are set, and set their
         # base64 variants
         for env_var in required_env_vars:
@@ -814,7 +808,6 @@ class CAPZProvisioner(e2e_base.Deployer):
             b64_env_var = f"{env_var}_B64"
             os.environ[b64_env_var] = base64.b64encode(
                 os.environ.get(env_var).encode()).decode()
-
         # Set Azure location if it's not set already
         if not self.opts.location:
             self.opts.location = random.choice(
