@@ -127,6 +127,8 @@ function Update-Kubernetes {
     foreach($bin in $binaries) {
         Start-FileDownload "$CIPackagesBaseURL/$CIVersion/bin/windows/amd64/$bin" "$KUBERNETES_DIR\$bin"
     }
+    New-Item -ItemType Directory -Force -Path $BUILD_DIR
+    Start-FileDownload "$CIPackagesBaseURL/$CIVersion/bin/windows/amd64/kube-proxy.exe" "$BUILD_DIR\kube-proxy.exe"
 }
 
 function Update-SDNCNI {

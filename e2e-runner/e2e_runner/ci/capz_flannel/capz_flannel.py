@@ -74,8 +74,6 @@ class CapzFlannelCI(e2e_base.CI):
         self._add_flannel_cni()
         self.deployer.wait_windows_agents()
         self.deployer.setup_ssh_config()
-        if "k8sbins" in self.deployer.bins_built:
-            self._upload_kube_proxy_windows_bin()
         self._add_kube_proxy_windows()
         self._wait_for_ready_pods()
         elapsed = time.time() - start
@@ -276,16 +274,6 @@ class CapzFlannelCI(e2e_base.CI):
             self.kubectl, "wait", "--for=condition=Ready",
             "--timeout", "10m", "pods", "--all", "--all-namespaces"
         ])
-
-    def _upload_kube_proxy_windows_bin(self):
-        self.logging.info("Uploading the kube-proxy.exe to the Windows agents")
-        win_node_addresses = self.deployer.windows_private_addresses
-        kube_proxy_bin = "{}/{}/kube-proxy.exe".format(
-            e2e_utils.get_k8s_folder(),
-            "_output/local/bin/windows/amd64")
-        self._run_node_cmd("mkdir -force /build", win_node_addresses)
-        self._upload_to_node(
-            kube_proxy_bin, "/build/kube-proxy.exe", win_node_addresses)
 
     def _add_kube_proxy_windows(self):
         context = {
