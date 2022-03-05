@@ -1,16 +1,28 @@
 #!/usr/bin/env bash
-set -o nounset
 set -o pipefail
 set -o errexit
 
-if [[ $# -ne 3 ]]; then
-    echo "USAGE: $0 <CI_PACKAGES_BASE_URL> <CI_VERSION> <K8S_BINS_BUILT>"
-    exit 1
+while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
+    case $1 in
+        --ci-packages-base-url )
+            shift; CI_PACKAGES_BASE_URL="$1"
+            ;;
+        --ci-version )
+            shift; CI_VERSION="$1"
+            ;;
+        --k8s-bins-built )
+            shift; K8S_BINS_BUILT="$1"
+            ;;
+    esac
+    shift
+done
+if [[ "$1" == '--' ]]; then
+    shift
 fi
 
-CI_PACKAGES_BASE_URL=$1
-CI_VERSION=$2
-K8S_BINS_BUILT=$3
+if [[ -z $CI_PACKAGES_BASE_URL ]]; then echo "param --ci-packages-base-url is not set"; exit 1; fi
+if [[ -z $CI_VERSION ]]; then echo "param --ci-version is not set"; exit 1; fi
+if [[ -z $K8S_BINS_BUILT ]]; then echo "param --k8s-bins-built is not set"; exit 1; fi
 
 run_cmd_with_retry() {
     local RETRIES=$1
@@ -34,7 +46,7 @@ run_cmd_with_retry() {
 
 update_k8s() {
     CI_PACKAGES=("kubectl" "kubelet" "kubeadm")
-    CI_IMAGES=("kube-apiserver" "kube-controller-manager" "kube-proxy" "kube-scheduler")
+    CI_IMAGES=("kube-apiserver" "kube-controller-manager" "kube-proxy" "kube-scheduler" "conformance")
 
     echo "Updating Kubernetes to version: $CI_VERSION"
 

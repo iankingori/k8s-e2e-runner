@@ -63,10 +63,6 @@ class CapzFlannelCI(e2e_base.CI):
             builder_mapping.get(bins, noop_func)()
             self.deployer.bins_built.append(bins)
 
-        # Setup the E2E tests and the kubetest
-        self._setup_e2e_tests()
-        self._setup_kubetest()
-
     def up(self):
         start = time.time()
         self.deployer.up()
@@ -74,8 +70,6 @@ class CapzFlannelCI(e2e_base.CI):
         self._add_flannel_cni()
         self.deployer.wait_windows_agents()
         self.deployer.setup_ssh_config()
-        if "k8sbins" in self.deployer.bins_built:
-            self._upload_kube_proxy_windows_bin()
         self._add_kube_proxy_windows()
         self._wait_for_ready_pods()
         elapsed = time.time() - start
@@ -147,62 +141,140 @@ class CapzFlannelCI(e2e_base.CI):
     def _setup_kubeconfig(self):
         os.environ["KUBECONFIG"] = self.deployer.capz_kubeconfig_path
 
-    def _setup_kubetest(self):
-        self.logging.info("Setup Kubetest")
-        remote_dirname = os.path.dirname(self.deployer.remote_test_infra_path)
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=[f"mkdir -p {remote_dirname}"])
-        self.deployer.remote_clone_git_repo(
-            "https://github.com/kubernetes/test-infra.git",
-            "master",
-            self.deployer.remote_test_infra_path)
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=['GO111MODULE=on go install ./kubetest'],
-            cwd=self.deployer.remote_test_infra_path)
-        local_gopath_bin_path = os.path.join(e2e_utils.get_go_path(), "bin")
-        os.makedirs(local_gopath_bin_path, exist_ok=True)
-        self.deployer.download_from_bootstrap_vm(
-            f"{self.deployer.remote_go_path}/bin/kubetest",
-            f"{local_gopath_bin_path}/kubetest")
+    def _conformance_image_tag(self):
+        if "k8sbins" in self.deployer.bins_built:
+            return self.kubernetes_version.replace("+", "_")
+        return self.kubernetes_version
 
-    def _setup_e2e_tests(self):
-        self.logging.info("Setup Kubernetes E2E tests")
-        self.deployer.remote_clone_git_repo(
-            self.opts.k8s_repo, self.opts.k8s_branch,
-            self.deployer.remote_k8s_path)
-        self.logging.info("Building tests")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=['make WHAT="test/e2e/e2e.test"'],
-            cwd=self.deployer.remote_k8s_path)
-        self.logging.info("Building ginkgo")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=['make WHAT="vendor/github.com/onsi/ginkgo/ginkgo"'],
-            cwd=self.deployer.remote_k8s_path)
-        local_k8s_path = e2e_utils.get_k8s_folder()
-        os.makedirs(local_k8s_path, exist_ok=True)
-        self.deployer.download_from_bootstrap_vm(
-            f"{self.deployer.remote_k8s_path}/", local_k8s_path)
+    def _conformance_image_pull_cmd(self):
+        if "k8sbins" in self.deployer.bins_built:
+            # Image is already imported as part of the userdata script.
+            return ""
+        cmd = [
+            "sudo", "ctr", "-n", "k8s.io",
+            "image", "pull",
+            f"k8s.gcr.io/conformance:{self._conformance_image_tag()}"
+        ]
+        return " ".join(cmd)
+
+    def _conformance_tests_cmd(self):
+        cmd = ["sudo", "ctr", "-n", "k8s.io", "run", "--rm", "--net-host"]
+        mounts = [
+            {
+                "src": "/tmp/output",
+                "dst": "/output",
+                "mode": "rw",
+            },
+            {
+                "src": "/tmp/repo-list",
+                "dst": "/tmp/repo-list",
+                "mode": "ro",
+            },
+            {
+                "src": "/etc/kubernetes/admin.conf",
+                "dst": "/tmp/kubeconfig",
+                "mode": "ro",
+            },
+        ]
+        env = {
+            "KUBE_TEST_REPO_LIST": "/tmp/repo-list",
+        }
+        ginkgoFlags = {
+            "noColor": "true",
+            "progress": "true",
+            "trace": "true",
+            "v": "true",
+            "slowSpecThreshold": "120.0",
+            "flakeAttempts": f"{self.opts.flake_attempts}",
+            "nodes": self.opts.parallel_test_nodes,
+            "focus": f"'{self.opts.test_focus_regex}'",
+            "skip": f"'{self.opts.test_skip_regex}'",
+        }
+        e2eFlags = {
+            "kubeconfig": "/tmp/kubeconfig",
+            "provider": "skeleton",
+            "report-dir": "/output",
+            "e2e-output-dir": "/output/e2e-output",
+            "test.timeout": "2h",
+            "num-nodes": "2",
+            "node-os-distro": "windows",
+            "prepull-images": "true",
+            "disable-log-dump": "true",
+        }
+        docker_config_file = os.environ.get("DOCKER_CONFIG_FILE")
+        if docker_config_file:
+            mounts.append({
+                "src": "/tmp/docker-creds-config.json",
+                "dst": "/tmp/docker-creds-config.json",
+                "mode": "ro",
+            })
+            e2eFlags["docker-config-file"] = "/tmp/docker-creds-config.json"
+        for m in mounts:
+            src = m["src"]
+            dst = m["dst"]
+            mode = m.get("mode", "rw")
+            opts = f"rbind:{mode}"
+            cmd.extend([
+                "--mount",
+                f"type=bind,src={src},dst={dst},options={opts}"
+            ])
+        for key in env:
+            cmd.extend([
+                "--env",
+                f"{key}={env[key]}"
+            ])
+        ginkgoArgs = [f"--{k}={v}" for k, v in ginkgoFlags.items()]
+        e2eArgs = [f"--{k}={v}" for k, v in e2eFlags.items()]
+        cmd.extend([
+            f"k8s.gcr.io/conformance:{self._conformance_image_tag()}",
+            "conformance_tests",
+            "/usr/local/bin/ginkgo",
+            *ginkgoArgs,
+            "/usr/local/bin/e2e.test",
+            "--",
+            *e2eArgs,
+        ])
+        return " ".join(cmd)
 
     def _prepare_tests(self):
-        kubectl = e2e_utils.get_kubectl_bin()
-        out, _ = e2e_utils.run_shell_cmd([
-            kubectl, "get", "nodes", "--selector",
-            "beta.kubernetes.io/os=linux", "--no-headers", "-o",
-            "custom-columns=NAME:.metadata.name"
-        ])
-        linux_nodes = out.decode().strip().split("\n")
-        for node in linux_nodes:
-            e2e_utils.run_shell_cmd([
-                kubectl, "taint", "nodes", "--overwrite", node,
-                "node-role.kubernetes.io/master=:NoSchedule"
-            ])
-            e2e_utils.run_shell_cmd([
-                kubectl, "label", "nodes", "--overwrite", node,
-                "node-role.kubernetes.io/master=NoSchedule"
-            ])
+        self._label_linux_nodes_no_schedule()
+        self._prepull_images()
         self.logging.info("Downloading repo-list")
         e2e_utils.download_file(self.opts.repo_list, "/tmp/repo-list")
-        os.environ["KUBE_TEST_REPO_LIST"] = "/tmp/repo-list"
+        self._upload_to_node(
+            "/tmp/repo-list", "/tmp/repo-list",
+            [self.deployer.master_public_address])
+        self._run_node_cmd(
+            "mkdir -p /tmp/output",
+            [self.deployer.master_public_address])
+        docker_config_file = os.environ.get("DOCKER_CONFIG_FILE")
+        if docker_config_file:
+            self._upload_to_node(
+                docker_config_file, "/tmp/docker-creds-config.json",
+                [self.deployer.master_public_address])
+
+    def _run_tests(self):
+        ssh_kwargs = {
+            "ssh_user": "capi",
+            "ssh_address": self.deployer.master_public_address,
+            "ssh_key_path": os.environ["SSH_KEY"],
+        }
+        tests_cmd = [
+            self._conformance_image_pull_cmd(),
+            self._conformance_tests_cmd(),
+        ]
+        tests_timeout = 150 * 60  # 150 minutes
+        try:
+            self.logging.info("Tests cmd\n%s", "\n".join(tests_cmd))
+            e2e_utils.run_remote_ssh_cmd(
+                cmd=tests_cmd, timeout=tests_timeout, **ssh_kwargs)
+        except Exception:
+            return 1
+        finally:
+            e2e_utils.rsync_download(
+                "/tmp/output/", self.opts.artifacts_directory,
+                delete=False, **ssh_kwargs)
+        return 0
 
     def _upload_to_node(self, local_path, remote_path, node_addresses):
         for node_address in node_addresses:
@@ -212,15 +284,6 @@ class CapzFlannelCI(e2e_base.CI):
     def _run_node_cmd(self, cmd, node_addresses):
         for node_address in node_addresses:
             self.deployer.run_cmd_on_k8s_node(cmd, node_address)
-
-    def _prepare_test_env(self):
-        self.logging.info("Preparing test env")
-        os.environ["KUBE_MASTER"] = "local"
-        os.environ["KUBE_MASTER_IP"] = self.deployer.master_public_address
-        os.environ["KUBE_MASTER_URL"] = "https://{}:{}".format(
-            self.deployer.master_public_address,
-            self.deployer.master_public_port)
-        self._prepull_images()
 
     def _prepull_images(self, timeout=3600):
         prepull_yaml_path = "/tmp/prepull-windows-images.yaml"
@@ -277,16 +340,6 @@ class CapzFlannelCI(e2e_base.CI):
             "--timeout", "10m", "pods", "--all", "--all-namespaces"
         ])
 
-    def _upload_kube_proxy_windows_bin(self):
-        self.logging.info("Uploading the kube-proxy.exe to the Windows agents")
-        win_node_addresses = self.deployer.windows_private_addresses
-        kube_proxy_bin = "{}/{}/kube-proxy.exe".format(
-            e2e_utils.get_k8s_folder(),
-            "_output/local/bin/windows/amd64")
-        self._run_node_cmd("mkdir -force /build", win_node_addresses)
-        self._upload_to_node(
-            kube_proxy_bin, "/build/kube-proxy.exe", win_node_addresses)
-
     def _add_kube_proxy_windows(self):
         context = {
             "kubernetes_version": self.deployer.k8s_image_version,
@@ -331,7 +384,6 @@ class CapzFlannelCI(e2e_base.CI):
 
     def _build_k8s_artifacts(self):
         # Clone Kubernetes git repository
-        local_k8s_path = e2e_utils.get_k8s_folder()
         remote_k8s_path = self.deployer.remote_k8s_path
         self.deployer.remote_clone_git_repo(
             self.opts.k8s_repo, self.opts.k8s_branch, remote_k8s_path)
@@ -341,26 +393,23 @@ class CapzFlannelCI(e2e_base.CI):
                'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm" '
                'KUBE_BUILD_PLATFORMS="linux/amd64"')
         self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
-        del os.environ["KUBECTL_PATH"]
         # Build Windows binaries
         self.logging.info("Building K8s Windows binaries")
         cmd = ('make '
                'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm cmd/kube-proxy" '
                'KUBE_BUILD_PLATFORMS="windows/amd64"')
         self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
-        # Download binaries from the bootstrap VM
-        os.makedirs(local_k8s_path, exist_ok=True)
-        self.deployer.download_from_bootstrap_vm(
-            f"{remote_k8s_path}/", local_k8s_path)
         # Build Linux DaemonSet container images
         self.logging.info("Building K8s Linux DaemonSet container images")
-        cmd = ("KUBE_FASTBUILD=true KUBE_BUILD_CONFORMANCE=n "
+        cmd = ("KUBE_FASTBUILD=true KUBE_BUILD_CONFORMANCE=y "
                "make quick-release-images")
         self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
         # Discover the K8s version built
         kubeadm_bin = os.path.join(
-            local_k8s_path, "_output/local/bin/linux/amd64/kubeadm")
-        out, _ = e2e_utils.run_shell_cmd([kubeadm_bin, "version", "-o=short"])
+            remote_k8s_path, "_output/local/bin/linux/amd64/kubeadm")
+        out, _ = self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=[f"{kubeadm_bin} version -o=short"],
+            timeout=30, return_result=True)
         self.kubernetes_version = out.decode().strip()
         self.deployer.kubernetes_version = self.kubernetes_version
         # Copy artifacts to their own directory on the bootstrap VM
@@ -386,7 +435,7 @@ class CapzFlannelCI(e2e_base.CI):
             script.append(f"cp {win_bin_path} {windows_bin_dir}")
         images_names = [
             "kube-apiserver.tar", "kube-controller-manager.tar",
-            "kube-proxy.tar", "kube-scheduler.tar"
+            "kube-proxy.tar", "kube-scheduler.tar", "conformance-amd64.tar"
         ]
         for image_name in images_names:
             image_path = "{}/{}/{}".format(
@@ -394,6 +443,10 @@ class CapzFlannelCI(e2e_base.CI):
                 "_output/release-images/amd64",
                 image_name)
             script.append(f"cp {image_path} {images_dir}")
+        script.append(
+            "mv "
+            f"{images_dir}/conformance-amd64.tar "
+            f"{images_dir}/conformance.tar")
         script.append(f"chmod 644 {images_dir}/*")
         self.deployer.run_cmd_on_bootstrap_vm(script)
 

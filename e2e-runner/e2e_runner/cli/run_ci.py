@@ -31,7 +31,7 @@ class RunCI(Command):
 
         p.add_argument(
             "--parallel-test-nodes",
-            default=8)
+            default=2)
         p.add_argument(
             "--flake-attempts",
             default=2,
@@ -52,6 +52,12 @@ class RunCI(Command):
         p.add_argument(
             "--test-skip-regex",
             default="\\[LinuxOnly\\]")
+        p.add_argument(
+            "--retain-testing-env",
+            type=e2e_utils.str2bool,
+            default=False,
+            help="Retain the testing environment, if the conformance tests "
+                 "failed. Useful for debugging purposes.")
 
         p.add_argument(
             "--k8s-repo",
@@ -187,9 +193,9 @@ class RunCI(Command):
             raise
         finally:
             ci.collect_logs()
-            if tests_exit_code != 0:
+            if tests_exit_code != 0 and args.retain_testing_env:
                 self.logging.warning(
-                    "Conformance tests failed. Retain the resource group "
+                    "Conformance tests failed. Retain the testing env "
                     "for debugging purposes.")
             else:
                 ci.down()
