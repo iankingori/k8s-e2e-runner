@@ -31,7 +31,7 @@ class RunCI(Command):
 
         p.add_argument(
             "--parallel-test-nodes",
-            default=8)
+            default=2)
         p.add_argument(
             "--flake-attempts",
             default=2,
