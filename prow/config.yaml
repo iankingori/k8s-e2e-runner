@@ -105,4 +105,4 @@ presets:
   - name: TEST_FOCUS_REGEX
     value: \\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-network\\].EndpointSlice
   - name: TEST_SKIP_REGEX
-    value: \\[LinuxOnly\\]|\\[Serial\\]|\\[Slow\\]|\\[alpha\\]|GMSA|\\[Feature\\:GPUDevicePlugin\\]
+    value: \\[LinuxOnly\\]|\\[Serial\\]|\\[Slow\\]|\\[alpha\\]|GMSA|\\[Feature\\:GPUDevicePlugin\\]|\\[sig-api-machinery\\].Garbage.collector
