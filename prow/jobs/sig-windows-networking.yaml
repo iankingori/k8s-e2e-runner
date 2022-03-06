@@ -4,6 +4,7 @@ periodics:
   always_run: true
   decorate: true
   labels:
+    preset-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -36,6 +37,7 @@ periodics:
   always_run: true
   decorate: true
   labels:
+    preset-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -68,6 +70,7 @@ periodics:
   always_run: true
   decorate: true
   labels:
+    preset-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -94,6 +97,7 @@ periodics:
   always_run: true
   decorate: true
   labels:
+    preset-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -121,6 +125,7 @@ periodics:
   always_run: true
   decorate: true
   labels:
+    preset-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -147,6 +152,7 @@ periodics:
   always_run: true
   decorate: true
   labels:
+    preset-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -174,6 +180,7 @@ periodics:
   always_run: true
   decorate: true
   labels:
+    preset-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -201,6 +208,7 @@ periodics:
   always_run: true
   decorate: true
   labels:
+    preset-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -228,6 +236,7 @@ periodics:
   always_run: true
   decorate: true
   labels:
+    preset-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -256,6 +265,7 @@ periodics:
   always_run: true
   decorate: true
   labels:
+    preset-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
