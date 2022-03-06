@@ -98,3 +98,11 @@ presets:
       secretKeyRef:
         key: GITHUB_TOKEN
         name: github-readonly-token
+
+- labels:
+    preset-test-regex: "true"
+  env:
+  - name: TEST_FOCUS_REGEX
+    value: \\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-network\\].EndpointSlice
+  - name: TEST_SKIP_REGEX
+    value: \\[LinuxOnly\\]|\\[Serial\\]|\\[Slow\\]|\\[alpha\\]|GMSA|\\[Feature\\:GPUDevicePlugin\\]

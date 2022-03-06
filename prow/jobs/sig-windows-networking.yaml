@@ -17,8 +17,8 @@ periodics:
       args:
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --k8s-branch=master
         - --build=k8sbins
         - --build=containerdbins
@@ -49,8 +49,8 @@ periodics:
       args:
         - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --k8s-branch=master
         - --build=k8sbins
         - --build=containerdbins
@@ -81,8 +81,8 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
         - --flannel-mode=host-gw
         - --container-runtime=docker
@@ -107,8 +107,8 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
         - --flannel-mode=host-gw
         - --enable-win-dsr=False
@@ -134,8 +134,8 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
         - --flannel-mode=overlay
         - --container-runtime=docker
@@ -160,8 +160,8 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
         - --flannel-mode=overlay
         - --enable-win-dsr=False
@@ -187,8 +187,8 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -214,8 +214,8 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
@@ -241,8 +241,8 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -269,8 +269,8 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=\[Conformance\]|\[NodeConformance\]|\[sig-windows\]|\[sig-apps\].CronJob|\[sig-api-machinery\].ResourceQuota|\[sig-network\].EndpointSlice
-        - --test-skip-regex=\[LinuxOnly\]|\[Serial\]|\[Slow\]|\[alpha\]|GMSA|\[Feature\:GPUDevicePlugin\]|should.be.able.to.create.a.functioning.NodePort.service|should.be.able.to.change.the.type.from.ExternalName.to.NodePort
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|should.be.able.to.create.a.functioning.NodePort.service|should.be.able.to.change.the.type.from.ExternalName.to.NodePort
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
