@@ -1,6 +1,7 @@
 import os
 import time
 import yaml
+import json
 
 import tenacity
 
@@ -66,6 +67,7 @@ class CapzFlannelCI(e2e_base.CI):
     def up(self):
         start = time.time()
         self.deployer.up()
+        self._create_metadata_artifact()
         self._setup_kubeconfig()
         self._add_flannel_cni()
         self.deployer.wait_windows_agents()
@@ -125,6 +127,16 @@ class CapzFlannelCI(e2e_base.CI):
                 self.logging.warning(
                     "Cannot collect logs from node %s. Exception details: "
                     "%s. Skipping", node_address, ex)
+
+    def _create_metadata_artifact(self):
+        metadata_path = os.path.join(
+            self.opts.artifacts_directory, "metadata.json")
+        metadata = {
+            "job-version": self.kubernetes_version,
+            "revision": self.kubernetes_version,
+        }
+        with open(metadata_path, "w") as f:
+            json.dump(metadata, f)
 
     def _can_collect_logs(self):
         if "KUBECONFIG" not in os.environ:
