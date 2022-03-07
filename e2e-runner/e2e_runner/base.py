@@ -107,7 +107,6 @@ class CI(object):
             "--prepull-images=true "
             "--ginkgo.noColor "
             "--ginkgo.dryRun=false "
-            f"--ginkgo.flakeAttempts={self.opts.flake_attempts} "
             f"--ginkgo.focus={self.opts.test_focus_regex} "
             f"--ginkgo.skip={self.opts.test_skip_regex}"
         )

@@ -197,7 +197,6 @@ class CapzFlannelCI(e2e_base.CI):
             "trace": "true",
             "v": "true",
             "slowSpecThreshold": "120.0",
-            "flakeAttempts": f"{self.opts.flake_attempts}",
             "nodes": self.opts.parallel_test_nodes,
             "focus": f"'{self.opts.test_focus_regex}'",
             "skip": f"'{self.opts.test_skip_regex}'",
