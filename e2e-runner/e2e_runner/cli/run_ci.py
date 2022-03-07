@@ -33,11 +33,6 @@ class RunCI(Command):
             "--parallel-test-nodes",
             default=8)
         p.add_argument(
-            "--flake-attempts",
-            default=2,
-            help="Number of attempts to run the flake tests."
-        )
-        p.add_argument(
             "--repo-list",
             default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list",  # noqa
             help="Repo list with registries for test images.")
