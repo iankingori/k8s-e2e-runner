@@ -65,118 +65,8 @@ periodics:
         - --win-os=ltsc2019
         - --cluster-name=capzctrd-$(BUILD_ID)
 
-- name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable
-  cron: "0 1 * * *"
-  always_run: true
-  decorate: true
-  labels:
-    preset-test-regex: "true"
-    preset-github-readonly-token: "true"
-    preset-ssh-key: "true"
-    preset-prod-azure-account: "true"
-    preset-windows-private-registry-cred: "true"
-  spec:
-    containers:
-    - image: e2eteam/k8s-e2e-runner:latest
-      imagePullPolicy: Always
-      command:
-         - /workspace/entrypoint.sh
-      args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
-        - capz_flannel
-        - --flannel-mode=host-gw
-        - --container-runtime=docker
-        - --win-os=ltsc2019
-        - --cluster-name=capzdocker-$(BUILD_ID)
-
-- name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled
-  cron: "0 3 * * *"
-  always_run: true
-  decorate: true
-  labels:
-    preset-test-regex: "true"
-    preset-github-readonly-token: "true"
-    preset-ssh-key: "true"
-    preset-prod-azure-account: "true"
-    preset-windows-private-registry-cred: "true"
-  spec:
-    containers:
-    - image: e2eteam/k8s-e2e-runner:latest
-      imagePullPolicy: Always
-      command:
-         - /workspace/entrypoint.sh
-      args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
-        - capz_flannel
-        - --flannel-mode=host-gw
-        - --enable-win-dsr=False
-        - --container-runtime=docker
-        - --win-os=ltsc2019
-        - --cluster-name=capzdocker-$(BUILD_ID)
-
-- name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable
-  cron: "0 5 * * *"
-  always_run: true
-  decorate: true
-  labels:
-    preset-test-regex: "true"
-    preset-github-readonly-token: "true"
-    preset-ssh-key: "true"
-    preset-prod-azure-account: "true"
-    preset-windows-private-registry-cred: "true"
-  spec:
-    containers:
-    - image: e2eteam/k8s-e2e-runner:latest
-      imagePullPolicy: Always
-      command:
-         - /workspace/entrypoint.sh
-      args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
-        - capz_flannel
-        - --flannel-mode=overlay
-        - --container-runtime=docker
-        - --win-os=ltsc2019
-        - --cluster-name=capzdocker-$(BUILD_ID)
-
-- name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled
-  cron: "0 7 * * *"
-  always_run: true
-  decorate: true
-  labels:
-    preset-test-regex: "true"
-    preset-github-readonly-token: "true"
-    preset-ssh-key: "true"
-    preset-prod-azure-account: "true"
-    preset-windows-private-registry-cred: "true"
-  spec:
-    containers:
-    - image: e2eteam/k8s-e2e-runner:latest
-      imagePullPolicy: Always
-      command:
-         - /workspace/entrypoint.sh
-      args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
-        - capz_flannel
-        - --flannel-mode=overlay
-        - --enable-win-dsr=False
-        - --container-runtime=docker
-        - --win-os=ltsc2019
-        - --cluster-name=capzdocker-$(BUILD_ID)
-
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
-  cron: "0 9 * * *"
+  cron: "0 1 * * *"
   always_run: true
   decorate: true
   labels:
@@ -204,7 +94,7 @@ periodics:
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
-  cron: "0 11 * * *"
+  cron: "0 3 * * *"
   always_run: true
   decorate: true
   labels:
@@ -232,7 +122,7 @@ periodics:
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable
-  cron: "0 13 * * *"
+  cron: "0 5 * * *"
   always_run: true
   decorate: true
   labels:
@@ -261,7 +151,7 @@ periodics:
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable
-  cron: "0 15 * * *"
+  cron: "0 7 * * *"
   always_run: true
   decorate: true
   labels:
@@ -287,3 +177,113 @@ periodics:
         - --container-runtime=containerd
         - --win-os=ltsc2022
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
+
+- name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable
+  cron: "0 9 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-test-regex: "true"
+    preset-github-readonly-token: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+         - /workspace/entrypoint.sh
+      args:
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - capz_flannel
+        - --flannel-mode=host-gw
+        - --container-runtime=docker
+        - --win-os=ltsc2019
+        - --cluster-name=capzdocker-$(BUILD_ID)
+
+- name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled
+  cron: "0 11 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-test-regex: "true"
+    preset-github-readonly-token: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+         - /workspace/entrypoint.sh
+      args:
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - capz_flannel
+        - --flannel-mode=host-gw
+        - --enable-win-dsr=False
+        - --container-runtime=docker
+        - --win-os=ltsc2019
+        - --cluster-name=capzdocker-$(BUILD_ID)
+
+- name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable
+  cron: "0 13 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-test-regex: "true"
+    preset-github-readonly-token: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+         - /workspace/entrypoint.sh
+      args:
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - capz_flannel
+        - --flannel-mode=overlay
+        - --container-runtime=docker
+        - --win-os=ltsc2019
+        - --cluster-name=capzdocker-$(BUILD_ID)
+
+- name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled
+  cron: "0 15 * * *"
+  always_run: true
+  decorate: true
+  labels:
+    preset-test-regex: "true"
+    preset-github-readonly-token: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: e2eteam/k8s-e2e-runner:latest
+      imagePullPolicy: Always
+      command:
+         - /workspace/entrypoint.sh
+      args:
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - capz_flannel
+        - --flannel-mode=overlay
+        - --enable-win-dsr=False
+        - --container-runtime=docker
+        - --win-os=ltsc2019
+        - --cluster-name=capzdocker-$(BUILD_ID)
