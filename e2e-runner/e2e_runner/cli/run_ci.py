@@ -31,7 +31,7 @@ class RunCI(Command):
 
         p.add_argument(
             "--parallel-test-nodes",
-            default=8)
+            default=4)
         p.add_argument(
             "--repo-list",
             default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list",  # noqa
