@@ -1,7 +1,7 @@
 FROM ubuntu:20.04
 
-ARG CAPI_VERSION=v1.1.2
-ARG KUBECTL_VERSION=v1.23.4
+ARG CAPI_VERSION=v1.1.3
+ARG KUBECTL_VERSION=v1.23.6
 
 # Install system APT packages & dependencies
 RUN apt-get update && \

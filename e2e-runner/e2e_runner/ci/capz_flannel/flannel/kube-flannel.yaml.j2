@@ -191,7 +191,7 @@ spec:
         - name: cni-plugin
           mountPath: /opt/cni/bin
       - name: install-cni
-        image: rancher/mirrored-flannelcni-flannel:v0.16.3
+        image: rancher/mirrored-flannelcni-flannel:v0.17.0
         command:
         - cp
         args:
@@ -207,7 +207,7 @@ spec:
           mountPath: /run/xtables.lock
       containers:
       - name: kube-flannel
-        image: rancher/mirrored-flannelcni-flannel:v0.16.3
+        image: rancher/mirrored-flannelcni-flannel:v0.17.0
         command:
         - /opt/bin/flanneld
         args:
@@ -233,6 +233,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: EVENT_QUEUE_DEPTH
+          value: "5000"
         volumeMounts:
         - name: run
           mountPath: /run/flannel
