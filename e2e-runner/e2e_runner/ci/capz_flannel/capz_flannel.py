@@ -66,8 +66,8 @@ class CapzFlannelCI(e2e_base.CI):
 
     def up(self):
         start = time.time()
-        self.deployer.up()
         self._create_metadata_artifact()
+        self.deployer.up()
         self._setup_kubeconfig()
         self._add_flannel_cni()
         self.deployer.wait_windows_agents()
