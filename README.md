@@ -11,7 +11,7 @@ This repository contains the following:
     If you want to quickly use the runner, make sure you have Docker installed, and run these:
 
     ```bash
-    docker run --rm --entrypoint bash -it e2eteam/k8s-e2e-runner:latest
+    docker run --rm --entrypoint bash -it ghcr.io/e2e-win/k8s-e2e-runner:master
 
     pip3 install "git+https://github.com/e2e-win/k8s-e2e-runner.git#egg=e2e-runner&subdirectory=e2e-runner"
     ```

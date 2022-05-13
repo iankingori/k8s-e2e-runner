@@ -356,6 +356,7 @@ class CapzFlannelCI(e2e_base.CI):
             "kubernetes_version": self.deployer.k8s_image_version,
             "container_runtime": self.opts.container_runtime,
             "win_os": self.opts.win_os,
+            "container_image_tag": self.opts.container_image_tag,
             "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),
             "flannel_mode": self.opts.flannel_mode
         }
@@ -371,6 +372,7 @@ class CapzFlannelCI(e2e_base.CI):
     def _add_flannel_cni(self):
         context = {
             "win_os": self.opts.win_os,
+            "container_image_tag": self.opts.container_image_tag,
             "cluster_network_subnet": self.opts.cluster_network_subnet,
             "flannel_mode": self.opts.flannel_mode,
             "container_runtime": self.opts.container_runtime,

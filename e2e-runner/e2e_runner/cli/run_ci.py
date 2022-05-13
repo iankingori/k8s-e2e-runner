@@ -117,6 +117,12 @@ class RunCI(Command):
                  "specified, this parameter is overwriten by the version of "
                  "the newly built K8s binaries.")
         p.add_argument(
+            "--container-image-tag",
+            default="master",
+            help="The tag used for all the container images. The existing "
+                 "GitHub workflows used this tag, when building all the "
+                 "images.")
+        p.add_argument(
             "--enable-win-dsr",
             type=e2e_utils.str2bool,
             default=True,
