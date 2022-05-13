@@ -16,7 +16,7 @@ spec:
         spec:
           containers:
           - name: kube-backup
-            image: e2eteam/kube-backup:latest
+            image: ghcr.io/e2e-win/kube-backup:master
             imagePullPolicy: Always
             env:
             - name: AZURE_CLIENT_ID
