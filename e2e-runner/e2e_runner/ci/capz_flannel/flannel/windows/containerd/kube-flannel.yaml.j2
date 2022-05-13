@@ -150,7 +150,7 @@ spec:
         operator: Exists
       initContainers:
       - name: install-cni
-        image: ghcr.io/e2e-win/flannel-{{ container_runtime }}-{{ win_os }}:{{ container_image_tag }}
+        image: ghcr.io/ionutbalutoiu/flannel-{{ container_runtime }}-{{ win_os }}:{{ container_image_tag }}
         imagePullPolicy: Always
         command:
         - "%CONTAINER_SANDBOX_MOUNT_POINT%\\flannel\\install-cni.exe"
@@ -168,7 +168,7 @@ spec:
           value: "{{ node_cidr }}"
       containers:
       - name: kube-flannel
-        image: ghcr.io/e2e-win/flannel-{{ container_runtime }}-{{ win_os }}:{{ container_image_tag }}
+        image: ghcr.io/ionutbalutoiu/flannel-{{ container_runtime }}-{{ win_os }}:{{ container_image_tag }}
         imagePullPolicy: Always
         volumeMounts:
         - name: kube-proxy
