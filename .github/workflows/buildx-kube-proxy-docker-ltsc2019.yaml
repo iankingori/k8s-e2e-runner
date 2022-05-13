@@ -1,0 +1,20 @@
+name: Kube-Proxy Docker LTSC 2019
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  buildx-kube-proxy-docker-ltsc2019:
+    uses: ./.github/workflows/docker-buildx.yaml
+    with:
+      image_name: kube-proxy-docker-ltsc2019
+      context: ./e2e-runner/e2e_runner/ci/capz_flannel/kube-proxy/windows/docker
+      platform: windows/amd64
+      build_args: |
+        BASE_IMAGE=mcr.microsoft.com/powershell:lts-nanoserver-1809
+    secrets: inherit

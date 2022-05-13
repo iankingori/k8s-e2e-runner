@@ -1,0 +1,20 @@
+name: Kube-Proxy Containerd LTSC 2022
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  buildx-kube-proxy-containerd-ltsc2022:
+    uses: ./.github/workflows/docker-buildx.yaml
+    with:
+      image_name: kube-proxy-containerd-ltsc2022
+      context: ./e2e-runner/e2e_runner/ci/capz_flannel/kube-proxy/windows/containerd
+      platform: windows/amd64
+      build_args: |
+        BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022
+    secrets: inherit

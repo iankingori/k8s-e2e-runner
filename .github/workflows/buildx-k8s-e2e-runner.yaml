@@ -1,0 +1,18 @@
+name: Kubernetes E2E Runner
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  buildx-k8s-e2e-runner:
+    uses: ./.github/workflows/docker-buildx.yaml
+    with:
+      image_name: k8s-e2e-runner
+      context: ./e2e-runner
+      platform: linux/amd64
+    secrets: inherit

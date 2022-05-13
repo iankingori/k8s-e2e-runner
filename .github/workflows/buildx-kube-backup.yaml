@@ -1,0 +1,18 @@
+name: Kube-Backup
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  buildx-kube-backup:
+    uses: ./.github/workflows/docker-buildx.yaml
+    with:
+      image_name: kube-backup
+      context: ./tools/kube-backup
+      platform: linux/amd64
+    secrets: inherit
