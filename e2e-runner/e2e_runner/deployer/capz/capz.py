@@ -776,7 +776,7 @@ class CAPZProvisioner(e2e_base.Deployer):
             cmd=[
                 "clusterctl", "init",
                 "--kubeconfig", self.mgmt_kubeconfig_path,
-                "--infrastructure", "azure",
+                "--infrastructure", "azure:v1.3.0",
                 "--wait-providers",
             ],
             env={
