@@ -364,6 +364,7 @@ class CapzFlannelCI(e2e_base.CI):
             "container_runtime": self.opts.container_runtime,
             "win_os": self.opts.win_os,
             "container_image_tag": self.opts.container_image_tag,
+            "container_image_registry": self.opts.container_image_registry,
             "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),
             "flannel_mode": self.opts.flannel_mode
         }
@@ -380,6 +381,7 @@ class CapzFlannelCI(e2e_base.CI):
         context = {
             "win_os": self.opts.win_os,
             "container_image_tag": self.opts.container_image_tag,
+            "container_image_registry": self.opts.container_image_registry,
             "cluster_network_subnet": self.opts.cluster_network_subnet,
             "flannel_mode": self.opts.flannel_mode,
             "container_runtime": self.opts.container_runtime,
