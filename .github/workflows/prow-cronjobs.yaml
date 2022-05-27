@@ -1,0 +1,32 @@
+name: Prow Cronjobs
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  KUBECTL_VERSION: v1.20.4  # Corresponds to the Prow K8s environment
+
+jobs:
+  prow-cronjobs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download kubectl
+        run: |
+          set -e
+          sudo curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          sudo chmod +x /usr/local/bin/kubectl
+
+      - name: Apply Prow CronJobs
+        run: |
+          set -e
+          echo $KUBECONFIG_JSON > /tmp/kubeconfig.json
+          export KUBECONFIG=/tmp/kubeconfig.json
+          kubectl apply -f ./prow/cronjobs
+        env:
+          KUBECONFIG_JSON: ${{ secrets.KUBECONFIG_JSON }}
