@@ -83,6 +83,10 @@ class CapzFlannelCI(e2e_base.CI):
     def down(self):
         self.deployer.down()
 
+    def test(self):
+        self._prepare_tests()
+        return self._run_tests()
+
     def collect_logs(self):
         if self.deployer.bootstrap_vm:
             self.deployer.collect_bootstrap_vm_logs()
@@ -249,7 +253,7 @@ class CapzFlannelCI(e2e_base.CI):
         return " ".join(cmd)
 
     def _prepare_tests(self):
-        self._label_linux_nodes_no_schedule()
+        e2e_utils.label_linux_nodes_no_schedule()
         self._prepull_images()
         self.logging.info("Downloading repo-list")
         e2e_utils.download_file(self.opts.repo_list, "/tmp/repo-list")
@@ -313,7 +317,8 @@ class CapzFlannelCI(e2e_base.CI):
                 retry=tenacity.retry_if_exception_type(AssertionError),
                 reraise=True):
             with attempt:
-                output, _ = e2e_utils.run_shell_cmd(cmd, sensitive=True)
+                output, _ = e2e_utils.run_shell_cmd(
+                    cmd, capture_output=True, hide_cmd=True)
                 ds = yaml.safe_load(output.decode())
                 ready_nr = ds["status"]["numberReady"]
                 desired_ready_nr = ds["status"]["desiredNumberScheduled"]
@@ -327,8 +332,9 @@ class CapzFlannelCI(e2e_base.CI):
 
     def _validate_k8s_api_versions(self):
         self.logging.info("Validating K8s API versions")
-        output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
-            self.kubectl, "get", "nodes", "-o", "yaml"])
+        output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+            cmd=[self.kubectl, "get", "nodes", "-o", "yaml"],
+            capture_output=True)
         nodes = yaml.safe_load(output.decode())
         for node in nodes["items"]:
             node_name = node["metadata"]["name"]

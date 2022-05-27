@@ -73,11 +73,13 @@ class CAPZProvisioner(e2e_base.Deployer):
             return master_address
         if self.bootstrap_vm:
             column = "MASTER_ADDRESS:.spec.controlPlaneEndpoint.host"
-            output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
-                self.kubectl, "get", "cluster", "--kubeconfig",
-                self.mgmt_kubeconfig_path, self.opts.cluster_name,
-                "-o", f"custom-columns={column}",  "--no-headers"
-            ])
+            output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+                cmd=[
+                    self.kubectl, "get", "cluster", "--kubeconfig",
+                    self.mgmt_kubeconfig_path, self.opts.cluster_name,
+                    "-o", f"custom-columns={column}", "--no-headers"
+                ],
+                capture_output=True)
             return output.decode().strip()
         raise Exception("Could not find K8s master address")
 
@@ -87,12 +89,14 @@ class CAPZProvisioner(e2e_base.Deployer):
             _, master_port = self._parse_capz_kubeconfig()
             return master_port
         if self.bootstrap_vm:
-            output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
-                self.kubectl, "get", "cluster", "--kubeconfig",
-                self.mgmt_kubeconfig_path, self.opts.cluster_name, "-o",
-                "custom-columns=MASTER_PORT:.spec.controlPlaneEndpoint.port",
-                "--no-headers"
-            ])
+            column = "MASTER_PORT:.spec.controlPlaneEndpoint.port"
+            output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+                cmd=[
+                    self.kubectl, "get", "cluster", "--kubeconfig",
+                    self.mgmt_kubeconfig_path, self.opts.cluster_name,
+                    "-o", f"custom-columns={column}", "--no-headers"
+                ],
+                capture_output=True)
             return int(output.decode().strip())
         raise Exception("Could not find K8s master port")
 
@@ -126,11 +130,6 @@ class CAPZProvisioner(e2e_base.Deployer):
         return os.path.join(self.remote_go_path,
                             "src", "github.com",
                             "Microsoft", "windows-container-networking")
-
-    @property
-    def remote_test_infra_path(self):
-        return os.path.join(self.remote_go_path,
-                            "src", "github.com", "kubernetes", "test-infra")
 
     @property
     def remote_containerd_shim_path(self):
@@ -216,7 +215,7 @@ class CAPZProvisioner(e2e_base.Deployer):
     @e2e_utils.retry_on_error()
     def run_cmd_on_k8s_node(self, cmd, node_address):
         cmd = ["ssh", node_address, f"'{cmd}'"]
-        return e2e_utils.run_shell_cmd(cmd, timeout=600)
+        return e2e_utils.run_shell_cmd(cmd, timeout=600, capture_output=True)
 
     @e2e_utils.retry_on_error()
     def download_from_k8s_node(self, remote_path, local_path, node_address):
@@ -232,7 +231,7 @@ class CAPZProvisioner(e2e_base.Deployer):
         cmd = ["ssh", self.master_public_address,
                f"'nc -w 5 -z {node_address} 22'"]
         try:
-            e2e_utils.run_shell_cmd(cmd, sensitive=True, timeout=60)
+            e2e_utils.run_shell_cmd(cmd, hide_cmd=True, timeout=60)
         except e2e_exceptions.ShellCmdFailed:
             return False
         return True
@@ -240,20 +239,26 @@ class CAPZProvisioner(e2e_base.Deployer):
     def collect_bootstrap_vm_logs(self):
         self.logging.info("Collecting logs from bootstrap VM")
         os.makedirs(self.bootstrap_vm_logs_dir, exist_ok=True)
-        output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
-            self.kubectl, "get", "pods",
-            "--kubeconfig", self.mgmt_kubeconfig_path,
-            "-A", "-o", "yaml"], sensitive=True)
+        output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+            cmd=[
+                self.kubectl, "get", "pods",
+                "--kubeconfig", self.mgmt_kubeconfig_path,
+                "-A", "-o", "yaml"],
+            capture_output=True,
+            hide_cmd=True)
         pods = yaml.safe_load(output)
         for pod in pods['items']:
             name = pod['metadata']['name']
             ns = pod['metadata']['namespace']
             for container in pod['spec']['containers']:
                 container_name = container['name']
-                out, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
-                    self.kubectl, "logs",
-                    "--kubeconfig", self.mgmt_kubeconfig_path,
-                    "-n", ns, name, container_name], sensitive=True)
+                out, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+                    cmd=[
+                        self.kubectl, "logs",
+                        "--kubeconfig", self.mgmt_kubeconfig_path,
+                        "-n", ns, name, container_name],
+                    capture_output=True,
+                    hide_cmd=True)
                 log_file = os.path.join(
                     self.bootstrap_vm_logs_dir,
                     f"{ns}_{name}_{container_name}.log")
@@ -325,7 +330,7 @@ class CAPZProvisioner(e2e_base.Deployer):
             self.capz_kubeconfig_path, "-o", "yaml"
         ]
         output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
-            cmd, sensitive=True)
+            cmd, capture_output=True, hide_cmd=True)
         addresses = []
         nodes = yaml.safe_load(output)
         for node in nodes['items']:
@@ -693,11 +698,13 @@ class CAPZProvisioner(e2e_base.Deployer):
     @e2e_utils.retry_on_error()
     def _setup_capz_kubeconfig(self):
         self.logging.info("Setting up CAPZ kubeconfig")
-        output, _ = e2e_utils.run_shell_cmd([
-            "clusterctl", "get", "kubeconfig",
-            "--kubeconfig", self.mgmt_kubeconfig_path,
-            self.opts.cluster_name
-        ])
+        output, _ = e2e_utils.run_shell_cmd(
+            cmd=[
+                "clusterctl", "get", "kubeconfig",
+                "--kubeconfig", self.mgmt_kubeconfig_path,
+                self.opts.cluster_name
+            ],
+            capture_output=True)
         with open(self.capz_kubeconfig_path, 'w') as f:
             f.write(output.decode())
 
@@ -717,7 +724,7 @@ class CAPZProvisioner(e2e_base.Deployer):
                 reraise=True):
             with attempt:
                 out, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
-                    cmd, sensitive=True)
+                    cmd, capture_output=True, hide_cmd=True)
                 machine_pool = yaml.safe_load(out.decode())
                 status = machine_pool.get("status")
                 assert status is not None, "Machine pool status is None"
@@ -746,7 +753,7 @@ class CAPZProvisioner(e2e_base.Deployer):
                 reraise=True):
             with attempt:
                 out, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
-                    cmd, sensitive=True)
+                    cmd, capture_output=True, hide_cmd=True)
                 machines = yaml.safe_load(out.decode())
                 running_machines = []
                 for machine in machines["items"]:
@@ -769,8 +776,7 @@ class CAPZProvisioner(e2e_base.Deployer):
             "cluster-identity-secret",
             f"--from-literal=clientSecret='{client_secret}'"
         ]
-        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
-            cmd, sensitive=True)
+        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(cmd, hide_cmd=True)
         self.logging.info("Setup the Azure Cluster API components")
         e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
             cmd=[

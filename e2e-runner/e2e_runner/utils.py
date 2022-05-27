@@ -6,7 +6,6 @@ import time
 import socket
 import tarfile
 from urllib.request import urlretrieve
-from threading import Timer
 
 import jinja2
 import tenacity
@@ -26,14 +25,6 @@ def str2bool(v):
         raise configargparse.ArgumentTypeError("Boolean value expected")
 
 
-def get_go_path():
-    return os.environ.get("GOPATH") or "/go"
-
-
-def get_k8s_folder():
-    return os.path.join(get_go_path(), "src", "k8s.io", "kubernetes")
-
-
 def retry_on_error(max_attempts=5, max_sleep_seconds=60):
     return tenacity.retry(
         stop=tenacity.stop_after_attempt(max_attempts),
@@ -44,8 +35,8 @@ def retry_on_error(max_attempts=5, max_sleep_seconds=60):
 def get_kubectl_bin():
     if os.environ.get("KUBECTL_PATH"):
         return os.environ.get("KUBECTL_PATH")
-    else:
-        return os.path.join(get_k8s_folder(), "cluster/kubectl.sh")
+    # assume kubectl is in the PATH
+    return "kubectl"
 
 
 def render_template(template_file, output_file, context={}, searchpath="/"):
@@ -81,45 +72,15 @@ def wait_for_port_connectivity(address, port, max_wait=300):
         raise e2e_exceptions.ConnectionFailed(err_msg)
 
 
-def run_cmd(cmd, timeout=(3 * 3600), env=None, stdout=False, stderr=False,
-            cwd=None, shell=False, sensitive=False):
-
-    def kill_proc_timout(proc):
-        proc.kill()
-        raise e2e_exceptions.CmdTimeoutExceeded(
-            f"Timeout of {timeout} exceeded for cmd {cmd}")
-
-    FNULL = open(os.devnull, "w")
-    f_stderr = FNULL
-    f_stdout = FNULL
-    if stdout is True:
-        f_stdout = subprocess.PIPE
-    if stderr is True:
-        f_stderr = subprocess.PIPE
-    if not sensitive:
-        logging.info("Calling %s", " ".join(cmd))
-    if shell:
-        cmd = " ".join(cmd)
-    proc = subprocess.Popen(
-        cmd, env=env, stdout=f_stdout, stderr=f_stderr, cwd=cwd, shell=shell)
-    timer = Timer(timeout, kill_proc_timout, [proc])
-    try:
-        timer.start()
-        stdout, stderr = proc.communicate()
-        return stdout, stderr, proc.returncode
-    finally:
-        timer.cancel()
-
-
-def run_shell_cmd(cmd, cwd=None, env=None, sensitive=False,
-                  timeout=(3 * 3600)):
-    out, err, ret = run_cmd(
-        cmd, timeout=timeout, stdout=True, stderr=True, shell=True,
-        cwd=cwd, env=env, sensitive=sensitive)
-    if ret != 0:
-        raise e2e_exceptions.ShellCmdFailed(
-            f"Failed to execute: {' '.join(cmd)}. Error: {err}")
-    return (out, err)
+def run_shell_cmd(cmd, cwd=None, env=None, timeout=(3 * 3600),
+                  capture_output=False, hide_cmd=False):
+    cmd_string = " ".join(cmd)
+    if not hide_cmd:
+        logging.info(cmd_string)
+    p = subprocess.run(
+        args=cmd_string, cwd=cwd, env=env, timeout=timeout,
+        capture_output=capture_output, shell=True, check=True)
+    return (p.stdout, p.stderr)
 
 
 def clone_git_repo(repo_url, branch_name, local_dir):
@@ -132,10 +93,7 @@ def clone_git_repo(repo_url, branch_name, local_dir):
     if local_dir:
         cmd.append(local_dir)
     logging.info("Cloning git repo %s on branch %s", repo_url, branch_name)
-    _, err, ret = run_cmd(cmd, timeout=900, stderr=True)
-    if ret != 0:
-        raise e2e_exceptions.GitCloneFailed(
-            f"Git Clone Failed with error: {err}.")
+    run_shell_cmd(cmd, timeout=900)
     logging.info("Succesfully cloned git repo.")
 
 
@@ -161,7 +119,7 @@ def run_remote_ssh_cmd(cmd, ssh_user, ssh_address, ssh_key_path=None,
         f.flush()
         if return_result:
             ssh_cmd += ["<", f.name]
-            return run_shell_cmd(ssh_cmd, timeout=timeout)
+            return run_shell_cmd(ssh_cmd, timeout=timeout, capture_output=True)
         with open(f.name, "rb", 0) as g:
             subprocess.check_call(ssh_cmd, stdin=g)
 
@@ -173,7 +131,7 @@ def rsync_upload(local_path, remote_path,
                "-o UserKnownHostsFile=/dev/null")
     if ssh_key_path:
         ssh_cmd += f" -i {ssh_key_path}"
-    rsync_cmd = ["rsync", "-rlptD", "-e", f'"{ssh_cmd}"']
+    rsync_cmd = ["rsync", "-rlptD", f"-e='{ssh_cmd}'"]
     if delete:
         rsync_cmd.append("--delete")
     rsync_cmd.extend([local_path, f"{ssh_user}@{ssh_address}:{remote_path}"])
@@ -187,7 +145,7 @@ def rsync_download(remote_path, local_path,
                "-o UserKnownHostsFile=/dev/null")
     if ssh_key_path:
         ssh_cmd += f" -i {ssh_key_path}"
-    rsync_cmd = ["rsync", "-rlptD", "-e", f'"{ssh_cmd}"']
+    rsync_cmd = ["rsync", "-rlptD", f"-e='{ssh_cmd}'"]
     if delete:
         rsync_cmd.append("--delete")
     rsync_cmd.extend([f"{ssh_user}@{ssh_address}:{remote_path}", local_path])
@@ -202,3 +160,24 @@ def make_tgz_archive(source_dir, output_file):
 @retry_on_error()
 def download_file(url, dest):
     urlretrieve(url, dest)
+
+
+def label_linux_nodes_no_schedule():
+    kubectl = get_kubectl_bin()
+    out, _ = run_shell_cmd(
+        cmd=[
+            kubectl, "get", "nodes", "--selector",
+            "kubernetes.io/os=linux", "--no-headers", "-o",
+            "custom-columns=NAME:.metadata.name"
+        ],
+        capture_output=True)
+    linux_nodes = out.decode().strip().split("\n")
+    for node in linux_nodes:
+        run_shell_cmd([
+            kubectl, "taint", "nodes", "--overwrite", node,
+            "node-role.kubernetes.io/master=:NoSchedule"
+        ])
+        run_shell_cmd([
+            kubectl, "label", "nodes", "--overwrite", node,
+            "node-role.kubernetes.io/master=NoSchedule"
+        ])
