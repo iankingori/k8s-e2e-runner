@@ -33,6 +33,7 @@ class CapzFlannelCI(e2e_base.CI):
         tags = {
             'creationTimestamp': datetime.utcnow().isoformat(),
             'ciName': 'k8s-sig-win-networking-prow-flannel-e2e',
+            'DO-NOT-DELETE': 'RG spawned by the k8s-sig-win-networking CI',
         }
         build_id = os.environ.get('BUILD_ID')
         if build_id:
