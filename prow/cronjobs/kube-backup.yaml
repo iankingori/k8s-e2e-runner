@@ -54,7 +54,7 @@ spec:
             - name: BACKUP_CONFIGMAPS
               value: "default/config,default/plugins,default/job-config"
             - name: BACKUP_SECRETS
-              value: "default/hmac-token,default/oauth-token,test-pods/azcreds,test-pods/prod-azcreds,test-pods/service-account,test-pods/ssh-key-default,test-pods/aks-azure-cred,test-pods/aks-azure-cred-upstream,test-pods/aks-azure-ssh,test-pods/aks-azure-storage,test-pods/aks-docker-pass,test-pods/aks-service-account,test-pods/aks-ssh-key-secret,test-pods/kubeconfig"
+              value: "default/hmac-token,default/oauth-token,test-pods/prod-azcreds,test-pods/github-readonly-token,test-pods/service-account,test-pods/ssh-key-default,test-pods/kubeconfig,test-pods/windows-private-registry-docker-config"
             - name: ENCRYPTION_KEY
               value: /etc/ssh/id_rsa.pub
             - name: AZURE_STORAGE_CONTAINER_PROW_BKP

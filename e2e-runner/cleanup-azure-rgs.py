@@ -72,7 +72,7 @@ def is_rg_older(creation_timestamp_tag, max_age_minutes):
         return False
     creation_date = datetime.fromisoformat(creation_timestamp_tag)
     now_date = datetime.fromisoformat(datetime.utcnow().isoformat())
-    age_minutes = (now_date - creation_date).seconds / 60
+    age_minutes = (now_date - creation_date).total_seconds() / 60
     if age_minutes > max_age_minutes:
         logger.info("Resource group is older than the max allowed age.")
         return True
