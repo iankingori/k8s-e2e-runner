@@ -67,7 +67,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: kube-flannel
-        image: ghcr.io/e2e-win/flannel-{{ container_runtime }}-{{ win_os }}:{{ container_image_tag }}
+        image: {{ container_image_registry }}/flannel-{{ container_runtime }}-{{ win_os }}:{{ container_image_tag }}
         command:
         - pwsh
         args:

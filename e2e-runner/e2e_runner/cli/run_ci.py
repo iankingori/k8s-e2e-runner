@@ -123,6 +123,10 @@ class RunCI(Command):
                  "GitHub workflows used this tag, when building all the "
                  "images.")
         p.add_argument(
+            "--container-image-registry",
+            default="ghcr.io/e2e-win",
+            help="The registry used for all the container images.")
+        p.add_argument(
             "--enable-win-dsr",
             type=e2e_utils.str2bool,
             default=True,
