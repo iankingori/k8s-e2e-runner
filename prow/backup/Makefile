@@ -5,8 +5,8 @@ all: docker-build docker-push
 
 .PHONY: docker-push
 docker-push:
-	docker push $(REGISTRY)/kube-backup:latest
+	docker push $(REGISTRY)/prow-backup:latest
 
 .PHONY: docker-build
 docker-build:
-	docker build -t $(REGISTRY)/kube-backup:latest .
+	docker build -t $(REGISTRY)/prow-backup:latest .

@@ -23,5 +23,3 @@ This repository contains the following:
     ```
 
 * `prow`, contains all the necessary manifests, and configs for the `sig-windows-networking` Prow infrastructure.
-
-* `tools/kube-backup`, used to periodically backup the existing prow environment, and push it into an Azure storage account.
