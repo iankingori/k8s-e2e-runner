@@ -1,12 +1,11 @@
 Param(
     [Parameter(Mandatory=$true)]
     [String]$CIPackagesBaseURL,
-    [Parameter(Mandatory=$true)]
-    [String]$CIVersion,
     [Switch]$K8sBins,
-    [Switch]$SDNCNIBins,
     [Switch]$ContainerdBins,
-    [Switch]$ContainerdShimBins
+    [Switch]$ContainerdShimBins,
+    [Switch]$CRIToolsBins,
+    [Switch]$SDNCNIBins
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,10 +13,6 @@ $ErrorActionPreference = "Stop"
 $global:BUILD_DIR = Join-Path $env:SystemDrive "build"
 $global:KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
 $global:CONTAINERD_DIR = Join-Path $env:ProgramFiles "containerd"
-$global:CRICTL_YAML = @"
-runtime-endpoint: npipe:\\.\pipe\containerd-containerd
-image-endpoint: npipe:\\.\pipe\containerd-containerd
-"@
 # https://github.com/kubernetes-sigs/cri-tools/releases
 $global:CRICTL_VERSION = "v1.23.0"
 
@@ -104,9 +99,26 @@ function Install-Crictl {
         Throw "Failed to unzip crictl.zip"
     }
     Remove-Item -Force "$env:TEMP\crictl-windows-amd64.tar.gz"
+    $crictlYaml = @(
+        "runtime-endpoint: npipe:\\.\pipe\containerd-containerd",
+        "image-endpoint: npipe:\\.\pipe\containerd-containerd"
+    )
     New-Item -ItemType Directory -Force -Path "${env:HOME}\.crictl"
-    $global:CRICTL_YAML | Out-File -FilePath "${env:HOME}\.crictl\crictl.yaml" -Encoding ascii
+    $crictlYaml | Out-File -FilePath "${env:HOME}\.crictl\crictl.yaml" -Encoding ascii
     Copy-Item -Recurse -Path "${env:HOME}\.crictl" -Destination "${env:SystemDrive}\Users\capi\.crictl"
+}
+
+function Install-CIBinary {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$URL,
+        [Parameter(Mandatory=$true)]
+        [string]$Destination
+    )
+    if(Test-Path $Destination) {
+        Copy-Item -Force $Destination "${Destination}.bak"
+    }
+    Start-FileDownload $URL $Destination
 }
 
 function Set-ContainerdLogFile {
@@ -125,46 +137,65 @@ function Set-ContainerdLogFile {
 function Update-Kubernetes {
     $binaries = @("kubelet.exe", "kubeadm.exe", "kubectl.exe")
     foreach($bin in $binaries) {
-        Start-FileDownload "$CIPackagesBaseURL/$CIVersion/bin/windows/amd64/$bin" "$KUBERNETES_DIR\$bin"
+        Install-CIBinary "$CIPackagesBaseURL/kubernetes/bin/windows/amd64/$bin" "$KUBERNETES_DIR\$bin"
     }
     New-Item -ItemType Directory -Force -Path $BUILD_DIR
-    Start-FileDownload "$CIPackagesBaseURL/$CIVersion/bin/windows/amd64/kube-proxy.exe" "$BUILD_DIR\kube-proxy.exe"
+    Start-FileDownload "$CIPackagesBaseURL/kubernetes/bin/windows/amd64/kube-proxy.exe" "$BUILD_DIR\kube-proxy.exe"
+}
+
+function Update-Containerd {
+    Stop-Service -Name "containerd" -Force
+    $binaries = @(
+        "containerd-stress.exe", "containerd.exe", "ctr.exe",
+        "containerd-shim-runhcs-v1.exe",
+        "crictl.exe", "critest.exe")
+    foreach($bin in $binaries) {
+        Install-CIBinary "$CIPackagesBaseURL/containerd/bin/$bin" "$CONTAINERD_DIR\$bin"
+    }
+    Start-Service -Name "containerd"
+}
+
+function Update-ContainerdShim {
+    Install-CIBinary "$CIPackagesBaseURL/containerd-shim/bin/containerd-shim-runhcs-v1.exe" "$CONTAINERD_DIR\containerd-shim-runhcs-v1.exe"
+}
+
+function Update-CRITools {
+    $binaries = @("crictl.exe", "critest.exe")
+    foreach($bin in $binaries) {
+        Install-CIBinary "$CIPackagesBaseURL/cri-tools/bin/$bin" "$CONTAINERD_DIR\$bin"
+    }
 }
 
 function Update-SDNCNI {
     $binaries = @("nat.exe", "sdnbridge.exe", "sdnoverlay.exe")
     New-Item -ItemType Directory -Force -Path "${BUILD_DIR}\cni\bin"
     foreach($bin in $binaries) {
-        Start-FileDownload "$CIPackagesBaseURL/cni/$bin" "$BUILD_DIR\cni\bin\$bin"
+        Install-CIBinary "$CIPackagesBaseURL/cni/$bin" "$BUILD_DIR\cni\bin\$bin"
     }
-}
-
-function Update-Containerd {
-    Stop-Service -Name "containerd" -Force
-    $binaries = @("containerd-stress.exe", "containerd.exe", "ctr.exe", "crictl.exe")
-    foreach($bin in $binaries) {
-        Start-FileDownload "$CIPackagesBaseURL/containerd/bin/$bin" "$CONTAINERD_DIR\$bin"
-    }
-    Start-Service -Name "containerd"
-}
-
-function Update-ContainerdShim {
-    Start-FileDownload "$CIPackagesBaseURL/containerd/bin/containerd-shim-runhcs-v1.exe" "$CONTAINERD_DIR\containerd-shim-runhcs-v1.exe"
 }
 
 
 try {
+    $svc = Get-Service -Name "containerd" -ErrorAction SilentlyContinue
+    if($svc) {
+        Install-Crictl
+        Set-ContainerdLogFile
+    }
+
     if($K8sBins) {
         Update-Kubernetes
-    }
-    if($SDNCNIBins) {
-        Update-SDNCNI
     }
     if($ContainerdBins) {
         Update-Containerd
     }
     if($ContainerdShimBins) {
         Update-ContainerdShim
+    }
+    if($CRIToolsBins) {
+        Update-CRITools
+    }
+    if($SDNCNIBins) {
+        Update-SDNCNI
     }
 
     # Rename main adapter NIC
@@ -182,12 +213,6 @@ try {
 
     # Set 'Performance' power profile
     Set-PowerProfile -PowerProfile "Performance"
-
-    $svc = Get-Service -Name "containerd" -ErrorAction SilentlyContinue
-    if($svc) {
-        Install-Crictl
-        Set-ContainerdLogFile
-    }
 
     nssm set kubelet Start SERVICE_AUTO_START
     if($LASTEXITCODE) {

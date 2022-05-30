@@ -112,7 +112,7 @@ spec:
       - /var/lib/etcddisk
     preKubeadmCommands:
     - curl -Lo /run/kubeadm/kubeadm-bootstrap.sh http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.sh
-    - bash /run/kubeadm/kubeadm-bootstrap.sh --ci-packages-base-url http://{{ bootstrap_vm_address }} --ci-version {{ kubernetes_version }} --k8s-bins-built {{ k8s_bins }}
+    - bash /run/kubeadm/kubeadm-bootstrap.sh --ci-packages-base-url http://{{ bootstrap_vm_address }} --k8s-bins-built {{ k8s_bins }}
 {%- if flannel_mode == "overlay" %}
     postKubeadmCommands:
     - netplan apply

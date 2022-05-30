@@ -7,9 +7,6 @@ while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
         --ci-packages-base-url )
             shift; CI_PACKAGES_BASE_URL="$1"
             ;;
-        --ci-version )
-            shift; CI_VERSION="$1"
-            ;;
         --k8s-bins-built )
             shift; K8S_BINS_BUILT="$1"
             ;;
@@ -21,7 +18,6 @@ if [[ "$1" == '--' ]]; then
 fi
 
 if [[ -z $CI_PACKAGES_BASE_URL ]]; then echo "param --ci-packages-base-url is not set"; exit 1; fi
-if [[ -z $CI_VERSION ]]; then echo "param --ci-version is not set"; exit 1; fi
 if [[ -z $K8S_BINS_BUILT ]]; then echo "param --k8s-bins-built is not set"; exit 1; fi
 
 run_cmd_with_retry() {
@@ -48,13 +44,16 @@ update_k8s() {
     CI_PACKAGES=("kubectl" "kubelet" "kubeadm")
     CI_IMAGES=("kube-apiserver" "kube-controller-manager" "kube-proxy" "kube-scheduler" "conformance")
 
-    echo "Updating Kubernetes to version: $CI_VERSION"
+    echo "Updating Kubernetes"
 
     systemctl stop kubelet
 
     for CI_PACKAGE in "${CI_PACKAGES[@]}"; do
-        PACKAGE_URL="$CI_PACKAGES_BASE_URL/$CI_VERSION/bin/linux/amd64/$CI_PACKAGE"
+        PACKAGE_URL="$CI_PACKAGES_BASE_URL/kubernetes/bin/linux/amd64/$CI_PACKAGE"
         echo "* downloading binary: $PACKAGE_URL"
+        if [[ -e /usr/bin/$CI_PACKAGE ]]; then
+            cp /usr/bin/$CI_PACKAGE /usr/bin/$CI_PACKAGE.bak
+        fi
         run_cmd_with_retry 10 3 10m curl --fail -Lo /usr/bin/$CI_PACKAGE $PACKAGE_URL
         chmod +x /usr/bin/$CI_PACKAGE
     done
@@ -62,9 +61,10 @@ update_k8s() {
     systemctl start kubelet
 
     CI_DIR="/tmp/k8s-ci"
+    CI_VERSION="$(kubeadm version -o=short)"
     mkdir -p $CI_DIR
     for CI_IMAGE in "${CI_IMAGES[@]}"; do
-        CI_IMAGE_URL="$CI_PACKAGES_BASE_URL/$CI_VERSION/images/$CI_IMAGE.tar"
+        CI_IMAGE_URL="$CI_PACKAGES_BASE_URL/kubernetes/images/$CI_IMAGE.tar"
         echo "* downloading package: $CI_IMAGE_URL"
         run_cmd_with_retry 10 3 10m curl --fail -Lo "$CI_DIR/${CI_IMAGE}.tar" $CI_IMAGE_URL
         ctr -n k8s.io images import "$CI_DIR/$CI_IMAGE.tar"
@@ -76,7 +76,7 @@ update_k8s() {
     echo "Checking binary versions"
     echo "ctr version: $(ctr version)"
     echo "kubeadm version: $(kubeadm version -o=short)"
-    echo "kubectl version: $(kubectl version --client=true --short=true)"
+    echo "kubectl version: $(kubectl version --client=true)"
     echo "kubelet version: $(kubelet --version)"
 }
 

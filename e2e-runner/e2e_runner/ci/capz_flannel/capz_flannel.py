@@ -54,15 +54,12 @@ class CapzFlannelCI(e2e_base.CI):
             "k8sbins": self._build_k8s_artifacts,
             "containerdbins": self._build_containerd_binaries,
             "containerdshim": self._build_containerd_shim,
+            "critools": self._build_cri_tools,
             "sdncnibins": self._build_sdn_cni_binaries,
         }
-
-        def noop_func():
-            pass
-
         for bins in bins_to_build:
             self.logging.info("Building %s binaries", bins)
-            builder_mapping.get(bins, noop_func)()
+            builder_mapping.get(bins)()
             self.deployer.bins_built.append(bins)
 
     def up(self):
@@ -436,12 +433,12 @@ class CapzFlannelCI(e2e_base.CI):
         self.deployer.kubernetes_version = self.kubernetes_version
         # Copy artifacts to their own directory on the bootstrap VM
         self.logging.info("Copying K8s artifacts to their own directory")
-        linux_bin_dir = "{}/{}/bin/linux/amd64".format(
-            self.deployer.remote_artifacts_dir, self.kubernetes_version)
-        windows_bin_dir = "{}/{}/bin/windows/amd64".format(
-            self.deployer.remote_artifacts_dir, self.kubernetes_version)
-        images_dir = "{}/{}/images".format(
-            self.deployer.remote_artifacts_dir, self.kubernetes_version)
+        linux_bin_dir = "{}/kubernetes/bin/linux/amd64".format(
+            self.deployer.remote_artifacts_dir)
+        windows_bin_dir = "{}/kubernetes/bin/windows/amd64".format(
+            self.deployer.remote_artifacts_dir)
+        images_dir = "{}/kubernetes/images".format(
+            self.deployer.remote_artifacts_dir)
         script = [f"mkdir -p {linux_bin_dir} {windows_bin_dir} {images_dir}"]
         for bin_name in ["kubectl", "kubelet", "kubeadm"]:
             linux_bin_path = "{}/{}/{}".format(
@@ -478,29 +475,32 @@ class CapzFlannelCI(e2e_base.CI):
         self.deployer.remote_clone_git_repo(
             self.opts.containerd_repo, self.opts.containerd_branch,
             remote_containerd_path)
-        remote_cri_tools_path = os.path.join(
-            self.deployer.remote_go_path,
-            "src", "github.com", "kubernetes-sigs", "cri-tools")
-        self.deployer.remote_clone_git_repo(
-            self.opts.cri_tools_repo, self.opts.cri_tools_branch,
-            remote_cri_tools_path)
         # Build the binaries
         self.logging.info("Building containerd binaries")
         self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=["GOOS=windows make binaries"], cwd=remote_containerd_path)
-        self.logging.info("Building crictl")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=["GOOS=windows make crictl"], cwd=remote_cri_tools_path)
+            cmd=[
+                "GOOS=windows make binaries",
+                ("GOOS=windows make -f Makefile.windows "
+                 "bin/containerd-shim-runhcs-v1.exe"),
+                ("GOOS=windows DESTDIR=$(pwd)/bin/cri-tools "
+                 "./script/setup/install-critools"),
+            ],
+            cwd=remote_containerd_path)
         # Copy the binaries to the artifacts directory
         self.logging.info("Copying binaries to remote artifacts directory")
         artifacts_containerd_bin_dir = os.path.join(
             self.deployer.remote_artifacts_dir, "containerd/bin")
         script = [f"mkdir -p {artifacts_containerd_bin_dir}"]
         containerd_bins = os.path.join(remote_containerd_path, "bin")
-        script.append(f"cp {containerd_bins}/* {artifacts_containerd_bin_dir}")
-        crictl_bin = os.path.join(
-            remote_cri_tools_path, "build/bin/crictl.exe")
-        script.append(f"cp {crictl_bin} {artifacts_containerd_bin_dir}")
+        script.append(
+            "cp "
+            f"{containerd_bins}/containerd.exe "
+            f"{containerd_bins}/containerd-shim-runhcs-v1.exe "
+            f"{containerd_bins}/containerd-stress.exe "
+            f"{containerd_bins}/ctr.exe "
+            f"{containerd_bins}/cri-tools/usr/local/bin/crictl.exe "
+            f"{containerd_bins}/cri-tools/usr/local/bin/critest.exe "
+            f"{artifacts_containerd_bin_dir}")
         self.deployer.run_cmd_on_bootstrap_vm(script)
 
     def _build_containerd_shim(self):
@@ -516,12 +516,37 @@ class CapzFlannelCI(e2e_base.CI):
             cmd=[build_cmd], cwd=remote_containerd_shim_path)
         self.logging.info("Copying binaries to remote artifacts directory")
         artifacts_containerd_bin_dir = os.path.join(
-            self.deployer.remote_artifacts_dir, "containerd/bin")
+            self.deployer.remote_artifacts_dir, "containerd-shim/bin")
         script = [f"mkdir -p {artifacts_containerd_bin_dir}"]
         containerd_shim_bin = os.path.join(
             remote_containerd_shim_path, "containerd-shim-runhcs-v1.exe")
         script.append(
             f"cp {containerd_shim_bin} {artifacts_containerd_bin_dir}")
+        self.deployer.run_cmd_on_bootstrap_vm(script)
+
+    def _build_cri_tools(self):
+        # Clone the git repositories
+        remote_cri_tools_path = self.deployer.remote_cri_tools_path
+        self.deployer.remote_clone_git_repo(
+            self.opts.cri_tools_repo, self.opts.cri_tools_branch,
+            remote_cri_tools_path)
+        # Build the binaries
+        self.logging.info("Building cri-tools")
+        self.deployer.run_cmd_on_bootstrap_vm(
+            cmd=["GOOS=windows make binaries"],
+            cwd=remote_cri_tools_path)
+        # Copy the binaries to the artifacts directory
+        self.logging.info(
+            "Copying binaries to remote artifacts directory")
+        artifacts_cri_tools_bin_dir = os.path.join(
+            self.deployer.remote_artifacts_dir, "cri-tools/bin")
+        script = [f"mkdir -p {artifacts_cri_tools_bin_dir}"]
+        cri_tools_bins = os.path.join(remote_cri_tools_path, "build/bin")
+        script.append(
+            "cp "
+            f"{cri_tools_bins}/crictl.exe "
+            f"{cri_tools_bins}/critest.exe "
+            f"{artifacts_cri_tools_bin_dir}")
         self.deployer.run_cmd_on_bootstrap_vm(script)
 
     def _build_sdn_cni_binaries(self):
@@ -533,7 +558,7 @@ class CapzFlannelCI(e2e_base.CI):
             cmd=["GOOS=windows make all"], cwd=remote_sdn_cni_dir)
         self.logging.info("Copying binaries to remote artifacts directory")
         artifacts_cni_dir = os.path.join(
-            self.deployer.remote_artifacts_dir, "cni")
+            self.deployer.remote_artifacts_dir, "cni/bin")
         script = [f"mkdir -p {artifacts_cni_dir}"]
         sdn_binaries_names = ["nat.exe", "sdnbridge.exe", "sdnoverlay.exe"]
         for sdn_bin_name in sdn_binaries_names:

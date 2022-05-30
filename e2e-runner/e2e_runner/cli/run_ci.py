@@ -26,6 +26,7 @@ class RunCI(Command):
             default=[],
             choices=[
                 "k8sbins", "containerdbins", "containerdshim", "sdncnibins",
+                "critools",
             ],
             help="Binaries to build.")
 

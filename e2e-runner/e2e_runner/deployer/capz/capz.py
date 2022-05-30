@@ -114,27 +114,37 @@ class CAPZProvisioner(e2e_base.Deployer):
 
     @property
     def remote_k8s_path(self):
-        return os.path.join(self.remote_go_path, "src/k8s.io/kubernetes")
+        return os.path.join(
+            self.remote_go_path,
+            "src", "k8s.io", "kubernetes")
 
     @property
     def remote_containerd_path(self):
-        return os.path.join(self.remote_go_path,
-                            "src", "github.com", "containerd", "containerd")
+        return os.path.join(
+            self.remote_go_path,
+            "src", "github.com", "containerd", "containerd")
+
+    @property
+    def remote_containerd_shim_path(self):
+        return os.path.join(
+            self.remote_go_path,
+            "src", "github.com", "Microsoft", "hcsshim")
+
+    @property
+    def remote_cri_tools_path(self):
+        return os.path.join(
+            self.remote_go_path,
+            "src", "github.com", "kubernetes-sigs", "cri-tools")
+
+    @property
+    def remote_sdn_path(self):
+        return os.path.join(
+            self.remote_go_path,
+            "src", "github.com", "Microsoft", "windows-container-networking")
 
     @property
     def remote_artifacts_dir(self):
         return "~/www"
-
-    @property
-    def remote_sdn_path(self):
-        return os.path.join(self.remote_go_path,
-                            "src", "github.com",
-                            "Microsoft", "windows-container-networking")
-
-    @property
-    def remote_containerd_shim_path(self):
-        return os.path.join(self.remote_go_path,
-                            "src", "github.com", "Microsoft", "hcsshim")
 
     @property
     def bootstrap_vm_private_ip(self):
