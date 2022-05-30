@@ -1,4 +1,4 @@
-name: Prow-Backup
+name: Prow Backup
 
 on:
   push:
