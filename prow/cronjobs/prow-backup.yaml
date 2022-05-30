@@ -2,7 +2,7 @@
 apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
-  name: kube-backup
+  name: prow-backup
   namespace: test-pods
 spec:
   schedule: "@daily"
@@ -15,8 +15,8 @@ spec:
       template:
         spec:
           containers:
-          - name: kube-backup
-            image: ghcr.io/e2e-win/kube-backup:master
+          - name: prow-backup
+            image: ghcr.io/e2e-win/prow-backup:master
             imagePullPolicy: Always
             env:
             - name: AZURE_CLIENT_ID

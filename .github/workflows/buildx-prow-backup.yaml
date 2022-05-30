@@ -1,4 +1,4 @@
-name: Kube-Backup
+name: Prow-Backup
 
 on:
   push:
@@ -9,10 +9,10 @@ on:
       - master
 
 jobs:
-  buildx-kube-backup:
+  buildx-prow-backup:
     uses: ./.github/workflows/docker-buildx.yaml
     with:
-      image_name: kube-backup
-      context: ./tools/kube-backup
+      image_name: prow-backup
+      context: ./prow/backup
       platform: linux/amd64
     secrets: inherit
