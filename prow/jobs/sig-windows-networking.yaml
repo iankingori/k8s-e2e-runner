@@ -20,7 +20,6 @@ periodics:
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
-        - --k8s-branch=master
         - --build=k8sbins
         - --build=containerdbins
         - --build=containerdshim
@@ -53,7 +52,6 @@ periodics:
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
-        - --k8s-branch=master
         - --build=k8sbins
         - --build=containerdbins
         - --build=containerdshim
