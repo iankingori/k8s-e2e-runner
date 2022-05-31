@@ -170,7 +170,7 @@ function Update-SDNCNI {
     $binaries = @("nat.exe", "sdnbridge.exe", "sdnoverlay.exe")
     New-Item -ItemType Directory -Force -Path "${BUILD_DIR}\cni\bin"
     foreach($bin in $binaries) {
-        Install-CIBinary "$CIPackagesBaseURL/cni/$bin" "$BUILD_DIR\cni\bin\$bin"
+        Install-CIBinary "$CIPackagesBaseURL/cni/bin/$bin" "$BUILD_DIR\cni\bin\$bin"
     }
 }
 
