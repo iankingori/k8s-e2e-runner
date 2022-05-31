@@ -22,7 +22,6 @@ periodics:
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=k8sbins
         - --build=containerdbins
-        - --build=containerdshim
         - --build=sdncnibins
         - --retain-testing-env=True
         - capz_flannel
@@ -54,7 +53,6 @@ periodics:
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=k8sbins
         - --build=containerdbins
-        - --build=containerdshim
         - --build=sdncnibins
         - --retain-testing-env=True
         - capz_flannel
