@@ -68,9 +68,9 @@ update_k8s() {
         echo "* downloading package: $CI_IMAGE_URL"
         run_cmd_with_retry 10 3 10m curl --fail -Lo "$CI_DIR/${CI_IMAGE}.tar" $CI_IMAGE_URL
         ctr -n k8s.io images import "$CI_DIR/$CI_IMAGE.tar"
-        ctr -n k8s.io images tag "k8s.gcr.io/${CI_IMAGE}-amd64:${CI_VERSION//+/_}" "k8s.gcr.io/${CI_IMAGE}:${CI_VERSION//+/_}"
+        ctr -n k8s.io images tag "registry.k8s.io/${CI_IMAGE}-amd64:${CI_VERSION//+/_}" "registry.k8s.io/${CI_IMAGE}:${CI_VERSION//+/_}"
         # remove unused image tag
-        ctr -n k8s.io image remove "k8s.gcr.io/${CI_IMAGE}-amd64:${CI_VERSION//+/_}"
+        ctr -n k8s.io image remove "registry.k8s.io/${CI_IMAGE}-amd64:${CI_VERSION//+/_}"
     done
 
     echo "Checking binary versions"

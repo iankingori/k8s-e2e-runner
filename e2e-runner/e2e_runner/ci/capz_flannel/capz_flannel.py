@@ -155,10 +155,12 @@ class CapzFlannelCI(e2e_base.CI):
     def _setup_kubeconfig(self):
         os.environ["KUBECONFIG"] = self.deployer.capz_kubeconfig_path
 
-    def _conformance_image_tag(self):
+    def _conformance_image(self):
+        registry = "k8s.gcr.io"
         if "k8sbins" in self.deployer.bins_built:
-            return self.kubernetes_version.replace("+", "_")
-        return self.kubernetes_version
+            registry = "registry.k8s.io"
+        tag = self.kubernetes_version.replace("+", "_")
+        return f"{registry}/conformance:{tag}"
 
     def _conformance_image_pull_cmd(self):
         if "k8sbins" in self.deployer.bins_built:
@@ -166,8 +168,7 @@ class CapzFlannelCI(e2e_base.CI):
             return ""
         cmd = [
             "sudo", "ctr", "-n", "k8s.io",
-            "image", "pull",
-            f"k8s.gcr.io/conformance:{self._conformance_image_tag()}"
+            "image", "pull", self._conformance_image(),
         ]
         return " ".join(cmd)
 
@@ -239,7 +240,7 @@ class CapzFlannelCI(e2e_base.CI):
         ginkgoArgs = [f"--{k}={v}" for k, v in ginkgoFlags.items()]
         e2eArgs = [f"--{k}={v}" for k, v in e2eFlags.items()]
         cmd.extend([
-            f"k8s.gcr.io/conformance:{self._conformance_image_tag()}",
+            self._conformance_image(),
             "conformance_tests",
             "/usr/local/bin/ginkgo",
             *ginkgoArgs,
