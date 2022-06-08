@@ -141,7 +141,6 @@ periodics:
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
-        - --enable-win-dsr=False
         - --container-runtime=containerd
         - --win-os=ltsc2022
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
@@ -166,7 +165,7 @@ periodics:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.24
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.24.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|should.be.able.to.create.a.functioning.NodePort.service|should.be.able.to.change.the.type.from.ExternalName.to.NodePort
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
