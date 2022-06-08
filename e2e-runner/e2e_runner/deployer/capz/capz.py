@@ -109,6 +109,43 @@ class CAPZProvisioner(e2e_base.Deployer):
         return self._get_agents_private_addresses("windows")
 
     @property
+    def capz_images_publisher(self):
+        return "cncf-upstream"
+
+    @property
+    def capz_images_linux_offer(self):
+        return "capi"
+
+    @property
+    def capz_images_windows_offer(self):
+        return "capi-windows"
+
+    @property
+    def capz_images_ubuntu_sku(self):
+        return "ubuntu-2004-gen1"
+
+    @property
+    def capz_images_windows_sku(self):
+        if self.opts.win_os == "ltsc2019":
+            os_version = 2019
+        elif self.opts.win_os == "ltsc2022":
+            os_version = 2022
+        else:
+            raise Exception(f"Unknown win_os: {self.opts.win_os}")
+        sku = f"windows-{os_version}"
+        if self.opts.container_runtime == "containerd":
+            sku += "-containerd"
+        return f"{sku}-gen1"
+
+    @property
+    def capz_images_version_prefix(self):
+        ver = self.kubernetes_version
+        if "k8sbins" in self.bins_built:
+            ver = e2e_constants.DEFAULT_KUBERNETES_VERSION
+        v = ver.strip("v").split(".")
+        return f"{v[0]}{v[1]}.{v[2]}"
+
+    @property
     def remote_go_path(self):
         return "~/go"
 
@@ -153,12 +190,6 @@ class CAPZProvisioner(e2e_base.Deployer):
     @property
     def bootstrap_vm_public_ip(self):
         return self.bootstrap_vm['public_ip']
-
-    @property
-    def k8s_image_version(self):
-        if "k8sbins" in self.bins_built:
-            return e2e_constants.DEFAULT_KUBERNETES_VERSION
-        return self.kubernetes_version
 
     def up(self):
         self._setup_capz_components()
@@ -610,19 +641,17 @@ class CAPZProvisioner(e2e_base.Deployer):
                 self.bootstrap_vm_vnet_name,
                 self.bootstrap_vm_subnet_name)
 
-    def _get_image_sku_k8s_release(self):
-        release = self.k8s_image_version.strip("v")
-        return release.replace(".", "dot")
-
-    def _get_image_sku_windows(self):
-        release = self._get_image_sku_k8s_release()
-        os_version = 2019
-        if self.opts.win_os == "ltsc2022":
-            os_version = 2022
-        sku = f"k8s-{release}-windows-{os_version}"
-        if self.opts.container_runtime == "containerd":
-            sku += "-containerd"
-        return sku
+    def _capz_image_latest_version(self, offer, sku):
+        img_vers = e2e_utils.retry_on_error()(
+            self.compute_client.virtual_machine_images.list)(
+                self.opts.location,
+                self.capz_images_publisher,
+                offer,
+                sku)
+        prefix = self.capz_images_version_prefix
+        vers = [i.name for i in img_vers if i.name.startswith(prefix)]
+        vers.sort()
+        return vers[-1]
 
     def _get_capz_context(self):
         control_plane_subnet_cidr = self.opts.control_plane_subnet_cidr_block
@@ -648,8 +677,15 @@ class CAPZProvisioner(e2e_base.Deployer):
             "kubernetes_version": self.kubernetes_version,
             "flannel_mode": self.opts.flannel_mode,
             "container_runtime": self.opts.container_runtime,
-            "image_sku_k8s_release": self._get_image_sku_k8s_release(),
-            "image_sku_windows": self._get_image_sku_windows(),
+            "capz_image_publisher": self.capz_images_publisher,
+            "capz_image_ubuntu_offer": self.capz_images_linux_offer,
+            "capz_image_windows_offer": self.capz_images_windows_offer,
+            "capz_image_ubuntu_sku": self.capz_images_ubuntu_sku,
+            "capz_image_windows_sku": self.capz_images_windows_sku,
+            "capz_image_ubuntu_version": self._capz_image_latest_version(
+                self.capz_images_linux_offer, self.capz_images_ubuntu_sku),
+            "capz_image_windows_version": self._capz_image_latest_version(
+                self.capz_images_windows_offer, self.capz_images_windows_sku),
             "k8s_bins": "k8sbins" in self.bins_built,
             "sdn_cni_bins": "sdncnibins" in self.bins_built,
             "containerd_bins": "containerdbins" in self.bins_built,
