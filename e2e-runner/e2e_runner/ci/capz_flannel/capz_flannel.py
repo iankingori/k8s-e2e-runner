@@ -358,7 +358,6 @@ class CapzFlannelCI(e2e_base.CI):
 
     def _add_kube_proxy_windows(self):
         context = {
-            "kubernetes_version": self.deployer.k8s_image_version,
             "container_runtime": self.opts.container_runtime,
             "win_os": self.opts.win_os,
             "container_image_tag": self.opts.container_image_tag,

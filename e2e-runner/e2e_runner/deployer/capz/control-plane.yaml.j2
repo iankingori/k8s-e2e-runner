@@ -147,7 +147,7 @@ spec:
 {%- endif %}
       image:
         marketplace:
-          publisher: cncf-upstream
-          offer: capi
-          sku: k8s-{{ image_sku_k8s_release }}-ubuntu-2004
-          version: latest
+          publisher: {{ capz_image_publisher }}
+          offer: {{ capz_image_ubuntu_offer }}
+          sku: {{ capz_image_ubuntu_sku }}
+          version: {{ capz_image_ubuntu_version }}
