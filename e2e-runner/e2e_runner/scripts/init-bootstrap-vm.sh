@@ -25,8 +25,8 @@ function retrycmd_if_failure() {
 
 retrycmd_if_failure 5 10 5m sudo apt-get update
 retrycmd_if_failure 5 10 5m sudo apt-get install -y \
-  build-essential curl wget git libffi-dev libssl-dev \
-  rsync unzip net-tools openssh-client vim jq
+  build-essential curl git libffi-dev libssl-dev \
+  rsync net-tools openssh-client vim jq
 
 retrycmd_if_failure 10 5 5 curl -s -L https://golang.org/VERSION\?m\=text -o /tmp/golang-version.txt
 GO_VERSION=$(cat /tmp/golang-version.txt)
@@ -38,18 +38,17 @@ echo "PATH=\"$PATH:/usr/local/go/bin:$HOME/go/bin\"" | sudo tee /etc/environment
 echo "GOPATH=\"$HOME/go\"" | sudo tee -a /etc/environment
 /usr/local/go/bin/go version
 
-retrycmd_if_failure 5 10 5m sudo apt-get install -y \
-  apt-transport-https ca-certificates gnupg-agent software-properties-common
-retrycmd_if_failure 5 10 5m curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-retrycmd_if_failure 5 10 5m sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+retrycmd_if_failure 5 10 5m sudo apt-get install -y ca-certificates curl gnupg lsb-release
+sudo mkdir -p /etc/apt/keyrings
+retrycmd_if_failure 5 10 5m curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+retrycmd_if_failure 5 10 5m sudo apt-get update
 retrycmd_if_failure 5 10 5m sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 
 retrycmd_if_failure 5 10 5m docker pull nginx:stable
 mkdir -p $HOME/www
-docker run --name nginx \
-           --restart unless-stopped \
-           -v $HOME/www:/usr/share/nginx/html:ro \
-           -p 8081:80 \
+docker run --name nginx --restart unless-stopped \
+           -v $HOME/www:/usr/share/nginx/html:ro -p 8081:80 \
            -d nginx:stable
 
 retrycmd_if_failure 5 10 5m sudo curl -L -o /usr/local/bin/kind $KIND_BIN_URL
