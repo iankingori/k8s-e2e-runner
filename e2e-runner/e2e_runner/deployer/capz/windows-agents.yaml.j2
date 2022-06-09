@@ -1,20 +1,5 @@
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
-kind: MachineHealthCheck
-metadata:
-  name: {{ cluster_name }}-md-win-mhc
-spec:
-  clusterName: {{ cluster_name }}
-  nodeStartupTimeout: 20m
-  selector:
-    matchLabels:
-      cluster.x-k8s.io/deployment-name: {{ cluster_name }}-md-win
-  unhealthyConditions:
-    - type: Ready
-      status: Unknown
-      timeout: 5m
----
-apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
 metadata:
   name: {{ cluster_name }}-md-win

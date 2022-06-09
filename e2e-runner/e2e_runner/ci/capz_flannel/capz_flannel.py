@@ -63,19 +63,8 @@ class CapzFlannelCI(e2e_base.CI):
             self.deployer.bins_built.append(bins)
 
     def up(self):
-        start = time.time()
         self._create_metadata_artifact()
-        self.deployer.up()
-        self._setup_kubeconfig()
-        self._add_flannel_cni()
-        self.deployer.wait_windows_agents()
-        self.deployer.setup_ssh_config()
-        self._add_kube_proxy_windows()
-        self._wait_for_ready_pods()
-        elapsed = time.time() - start
-        self.logging.info(
-            "The cluster provisioned in %.2f minutes", elapsed / 60)
-        self._validate_k8s_api_versions()
+        self._create_capz_cluster()
 
     def down(self):
         self.deployer.down()
@@ -129,6 +118,27 @@ class CapzFlannelCI(e2e_base.CI):
                 self.logging.warning(
                     "Cannot collect logs from node %s. Exception details: "
                     "%s. Skipping", node_address, ex)
+
+    @e2e_utils.retry_on_error(max_attempts=6, max_sleep_seconds=0)
+    def _create_capz_cluster(self):
+        try:
+            start = time.time()
+            self.deployer.up()
+            self._setup_kubeconfig()
+            self._add_flannel_cni()
+            self.deployer.wait_windows_agents(timeout=600)
+            self.deployer.setup_ssh_config()
+            self._add_kube_proxy_windows()
+            self._wait_for_ready_pods()
+            self._validate_k8s_api_versions()
+            elapsed = time.time() - start
+            self.logging.info(
+                "The cluster provisioned in %.2f minutes", elapsed / 60)
+        except Exception as ex:
+            self.logging.error(
+                "Failed to create CAPZ cluster. Exception details: %s", ex)
+            self.deployer.cleanup_capz_cluster()
+            raise ex
 
     def _create_metadata_artifact(self):
         metadata_path = os.path.join(

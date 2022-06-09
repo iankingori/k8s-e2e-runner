@@ -73,4 +73,3 @@ nodes:
       certSANs:
       - ${PUBLIC_IP}
 EOF
-kind create cluster --config /tmp/kind-config.yaml --wait 15m

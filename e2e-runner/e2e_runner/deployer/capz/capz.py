@@ -6,6 +6,7 @@ import yaml
 
 import tenacity
 
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -192,9 +193,11 @@ class CAPZProvisioner(e2e_base.Deployer):
         return self.bootstrap_vm['public_ip']
 
     def up(self):
+        self._setup_mgmt_cluster()
+        self._setup_mgmt_kubeconfig()
         self._setup_capz_components()
         self._create_capz_cluster()
-        self._wait_capz_control_plane()
+        self._wait_capz_control_plane(timeout=600)
         self._setup_capz_kubeconfig()
 
     def down(self):
@@ -212,7 +215,6 @@ class CAPZProvisioner(e2e_base.Deployer):
             self._create_bootstrap_subnet()
             self.bootstrap_vm = self._create_bootstrap_azure_vm()
             self._init_bootstrap_vm()
-            self._setup_mgmt_kubeconfig()
         except Exception as ex:
             self._delete_resource_group(self.bootstrap_vm_rg_name, wait=True)
             raise ex
@@ -223,6 +225,14 @@ class CAPZProvisioner(e2e_base.Deployer):
         self.logging.info("Deleting bootstrap VM resource group")
         self._delete_resource_group(self.bootstrap_vm_rg_name, wait=False)
         self.bootstrap_vm = None
+
+    def cleanup_capz_cluster(self):
+        self.collect_bootstrap_vm_logs()
+        self.logging.info("Deleting the mgmt cluster")
+        self.run_cmd_on_bootstrap_vm(cmd=["kind delete cluster"])
+        self.logging.info("Deleting CAPZ cluster resource group")
+        self._delete_resource_group(self.opts.cluster_name, wait=True)
+        self._cleanup_bootstrap_vnet_peerings()
 
     @e2e_utils.retry_on_error()
     def upload_to_bootstrap_vm(self, local_path, remote_path):
@@ -279,36 +289,43 @@ class CAPZProvisioner(e2e_base.Deployer):
 
     def collect_bootstrap_vm_logs(self):
         self.logging.info("Collecting logs from bootstrap VM")
-        os.makedirs(self.bootstrap_vm_logs_dir, exist_ok=True)
-        output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
-            cmd=[
-                self.kubectl, "get", "pods",
-                "--kubeconfig", self.mgmt_kubeconfig_path,
-                "-A", "-o", "yaml"],
-            capture_output=True,
-            hide_cmd=True)
-        pods = yaml.safe_load(output)
-        for pod in pods['items']:
-            name = pod['metadata']['name']
-            ns = pod['metadata']['namespace']
-            for container in pod['spec']['containers']:
-                container_name = container['name']
-                out, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
-                    cmd=[
-                        self.kubectl, "logs",
-                        "--kubeconfig", self.mgmt_kubeconfig_path,
-                        "-n", ns, name, container_name],
-                    capture_output=True,
-                    hide_cmd=True)
-                log_file = os.path.join(
-                    self.bootstrap_vm_logs_dir,
-                    f"{ns}_{name}_{container_name}.log")
-                with open(log_file, 'wb') as f:
-                    f.write(out)
-        e2e_utils.make_tgz_archive(
-            self.bootstrap_vm_logs_dir,
-            f"{self.bootstrap_vm_logs_dir}.tgz")
-        shutil.rmtree(self.bootstrap_vm_logs_dir)
+        try:
+            os.makedirs(self.bootstrap_vm_logs_dir, exist_ok=True)
+            output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+                cmd=[
+                    self.kubectl, "get", "pods",
+                    "--kubeconfig", self.mgmt_kubeconfig_path,
+                    "-A", "-o", "yaml"],
+                capture_output=True,
+                hide_cmd=True)
+            pods = yaml.safe_load(output)
+            for pod in pods['items']:
+                name = pod['metadata']['name']
+                ns = pod['metadata']['namespace']
+                for container in pod['spec']['containers']:
+                    container_name = container['name']
+                    out, _ = e2e_utils.retry_on_error()(
+                        e2e_utils.run_shell_cmd)(
+                            cmd=[
+                                self.kubectl, "logs",
+                                "--kubeconfig", self.mgmt_kubeconfig_path,
+                                "-n", ns, name, container_name],
+                            capture_output=True,
+                            hide_cmd=True)
+                    log_file = os.path.join(
+                        self.bootstrap_vm_logs_dir,
+                        f"{ns}_{name}_{container_name}.log")
+                    with open(log_file, 'wb') as f:
+                        f.write(out)
+            suffix = datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
+            e2e_utils.make_tgz_archive(
+                self.bootstrap_vm_logs_dir,
+                f"{self.bootstrap_vm_logs_dir}_{suffix}.tgz")
+            shutil.rmtree(self.bootstrap_vm_logs_dir)
+        except Exception as e:
+            self.logging.warning("Cannot collect logs from bootstrap VM. "
+                                 "Exception details: \n%s", e)
+            self.logging.warning("Skipping bootstrap VM logs collection")
 
     def wait_windows_agents(self, timeout=5400):
         self.logging.info(
@@ -583,6 +600,20 @@ class CAPZProvisioner(e2e_base.Deployer):
             self.bootstrap_vm_vnet_name)
 
     @e2e_utils.retry_on_error()
+    def _cleanup_bootstrap_vnet_peerings(self):
+        peerings_client = self.network_client.virtual_network_peerings
+        peerings = peerings_client.list(
+            self.bootstrap_vm_rg_name,
+            self.bootstrap_vm_vnet_name)
+        for peering in peerings:
+            self.logging.info(
+                "Deleting bootstrap vNET peering: %s", peering.name)
+            peerings_client.begin_delete(
+                self.bootstrap_vm_rg_name,
+                self.bootstrap_vm_vnet_name,
+                peering.name).wait()
+
+    @e2e_utils.retry_on_error()
     def _create_bootstrap_secgroup(self):
         secgroup_rules = [
             net_models.SecurityRule(
@@ -713,6 +744,12 @@ class CAPZProvisioner(e2e_base.Deployer):
             selector="cluster.x-k8s.io/control-plane=",
             timeout=timeout)
         self.logging.info("Control-plane is ready")
+
+    def _setup_mgmt_cluster(self):
+        self.logging.info("Setting up the management cluster")
+        cmd = ("kind create cluster "
+               "--config /tmp/kind-config.yaml --wait 15m")
+        self.run_cmd_on_bootstrap_vm(cmd=[cmd])
 
     def _setup_mgmt_kubeconfig(self):
         self.logging.info("Setting up the management cluster kubeconfig")
