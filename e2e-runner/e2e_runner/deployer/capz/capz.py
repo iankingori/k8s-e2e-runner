@@ -523,8 +523,8 @@ class CAPZProvisioner(e2e_base.Deployer):
             storage_profile=compute_models.StorageProfile(
                 image_reference=compute_models.ImageReference(
                     publisher="Canonical",
-                    offer="0001-com-ubuntu-server-jammy",
-                    sku="22_04-lts-gen2",
+                    offer="0001-com-ubuntu-server-focal",
+                    sku="20_04-lts-gen2",
                     version="latest"
                 ),
                 os_disk=compute_models.OSDisk(
