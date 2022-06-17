@@ -16,7 +16,7 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
@@ -47,7 +47,7 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --repo-list=https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list-master
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-master
         - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
