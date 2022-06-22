@@ -1,4 +1,14 @@
-AZURE_LOCATIONS = ["eastus2", "westeurope", "westus2", "southcentralus"]
+AZURE_LOCATIONS = [
+    "canadacentral",
+    "centralus",
+    "eastus",
+    "eastus2",
+    "northeurope",
+    "uksouth",
+    "westeurope",
+    "westus2",
+    "westus3"
+]
 
 DEFAULT_KUBERNETES_VERSION = "v1.24.1"
 
