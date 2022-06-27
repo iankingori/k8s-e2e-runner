@@ -4,10 +4,26 @@ AZURE_LOCATIONS = [
     "eastus",
     "eastus2",
     "northeurope",
+    "southcentralus",
     "uksouth",
     "westeurope",
     "westus2",
     "westus3"
+]
+
+COMPUTE_QUOTAS = [
+    "virtualMachines",
+    "cores",
+    "standardDSv3Family",
+    "PremiumDiskCount",
+]
+NETWORK_QUOTAS = [
+    "VirtualNetworks",
+    "NetworkInterfaces"
+    "NetworkSecurityGroups",
+    "LoadBalancers",
+    "PublicIPAddresses",
+    "RouteTables",
 ]
 
 DEFAULT_KUBERNETES_VERSION = "v1.24.1"
