@@ -1,6 +1,5 @@
 import base64
 import os
-import random
 import shutil
 import yaml
 
@@ -66,6 +65,10 @@ class CAPZProvisioner(e2e_base.Deployer):
             credentials, subscription_id)
         self.compute_client = ComputeManagementClient(
             credentials, subscription_id)
+
+        if not self.opts.location:
+            self.opts.location = self._get_least_used_location()
+        self.logging.info("Using Azure location %s", self.opts.location)
 
     @property
     def master_public_address(self):
@@ -366,6 +369,35 @@ class CAPZProvisioner(e2e_base.Deployer):
         ssh_config_file = os.path.join(ssh_dir, "config")
         with open(ssh_config_file, "w") as f:
             f.write("\n".join(ssh_config))
+
+    def _get_subscription_usages(self, usages_list_func, usage_names):
+        usages = {}
+        for location in e2e_constants.AZURE_LOCATIONS:
+            max_usage = 0
+            for i in usages_list_func(location=location):
+                if i.name.value in usage_names:
+                    usage = i.current_value / i.limit
+                    if usage > max_usage:
+                        max_usage = usage
+            usages[location] = max_usage
+        return e2e_utils.sort_dict_by_value(usages)
+
+    def _get_least_used_location(self):
+        self.logging.info("Determining the least used Azure location")
+        compute_usages = self._get_subscription_usages(
+            usages_list_func=self.compute_client.usage.list,
+            usage_names=e2e_constants.COMPUTE_QUOTAS)
+        network_usages = self._get_subscription_usages(
+            usages_list_func=self.network_client.usages.list,
+            usage_names=e2e_constants.NETWORK_QUOTAS)
+        usages = {}
+        for loc in e2e_constants.AZURE_LOCATIONS:
+            if compute_usages[loc] > network_usages[loc]:
+                usages[loc] = compute_usages[loc]
+            else:
+                usages[loc] = network_usages[loc]
+        usages = e2e_utils.sort_dict_by_value(usages)
+        return next(iter(usages))
 
     def _delete_resource_group(self, resource_group_name, wait=True):
         self.logging.info("Deleting resource group %s", resource_group_name)
@@ -897,8 +929,3 @@ class CAPZProvisioner(e2e_base.Deployer):
             b64_env_var = f"{env_var}_B64"
             os.environ[b64_env_var] = base64.b64encode(
                 os.environ.get(env_var).encode()).decode()
-        # Set Azure location if it's not set already
-        if not self.opts.location:
-            self.opts.location = random.choice(
-                e2e_constants.AZURE_LOCATIONS)
-        self.logging.info("Using Azure location %s", self.opts.location)

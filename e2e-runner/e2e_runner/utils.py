@@ -181,3 +181,8 @@ def label_linux_nodes_no_schedule():
             kubectl, "label", "nodes", "--overwrite", node,
             "node-role.kubernetes.io/master=NoSchedule"
         ])
+
+
+def sort_dict_by_value(d):
+    return {k: v for k, v in
+            sorted(d.items(), key=lambda item: item[1])}
