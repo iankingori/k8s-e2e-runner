@@ -374,7 +374,9 @@ class CAPZProvisioner(e2e_base.Deployer):
         usages = {}
         for location in e2e_constants.AZURE_LOCATIONS:
             max_usage = 0
-            for i in usages_list_func(location=location):
+            usages_list = e2e_utils.retry_on_error()(
+                usages_list_func)(location=location)
+            for i in usages_list:
                 if i.name.value in usage_names:
                     usage = i.current_value / i.limit
                     if usage > max_usage:
