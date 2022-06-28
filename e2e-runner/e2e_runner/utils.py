@@ -5,6 +5,7 @@ import tempfile
 import time
 import socket
 import tarfile
+from collections import OrderedDict
 from urllib.request import urlretrieve
 
 import jinja2
@@ -184,5 +185,4 @@ def label_linux_nodes_no_schedule():
 
 
 def sort_dict_by_value(d):
-    return {k: v for k, v in
-            sorted(d.items(), key=lambda item: item[1])}
+    return OrderedDict(sorted(d.items(), key=lambda item: item[1]))
