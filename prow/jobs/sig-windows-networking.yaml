@@ -195,7 +195,7 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
-        - --kubernetes-version=v1.23.7
+        - --kubernetes-version=v1.23.8
         - --flannel-mode=host-gw
         - --container-runtime=docker
         - --win-os=ltsc2019
@@ -223,7 +223,7 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
-        - --kubernetes-version=v1.23.7
+        - --kubernetes-version=v1.23.8
         - --flannel-mode=host-gw
         - --enable-win-dsr=False
         - --container-runtime=docker
@@ -252,7 +252,7 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
-        - --kubernetes-version=v1.23.7
+        - --kubernetes-version=v1.23.8
         - --flannel-mode=overlay
         - --container-runtime=docker
         - --win-os=ltsc2019
@@ -280,7 +280,7 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
-        - --kubernetes-version=v1.23.7
+        - --kubernetes-version=v1.23.8
         - --flannel-mode=overlay
         - --enable-win-dsr=False
         - --container-runtime=docker
