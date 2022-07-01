@@ -1,7 +1,7 @@
 ARG BASE_IMAGE="mcr.microsoft.com/powershell:lts-nanoserver-1809"
 ARG WINS_VERSION="v0.1.1"
 ARG YQ_VERSION="v4.20.2"
-ARG K8S_VERSION="v1.24.1"
+ARG K8S_VERSION="v1.24.2"
 
 # Linux stage
 FROM --platform=linux/amd64 alpine:latest as prep

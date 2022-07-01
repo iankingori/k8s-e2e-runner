@@ -14,7 +14,7 @@ $global:BUILD_DIR = Join-Path $env:SystemDrive "build"
 $global:KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
 $global:CONTAINERD_DIR = Join-Path $env:ProgramFiles "containerd"
 # https://github.com/kubernetes-sigs/cri-tools/releases
-$global:CRICTL_VERSION = "v1.24.1"
+$global:CRICTL_VERSION = "v1.24.2"
 
 
 function Start-ExecuteWithRetry {

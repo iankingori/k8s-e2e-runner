@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-ENV KUBECTL_VERSION=v1.24.1
+ENV KUBECTL_VERSION=v1.24.2
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install APT packages
