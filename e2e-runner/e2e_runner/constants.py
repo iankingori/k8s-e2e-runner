@@ -8,7 +8,6 @@ AZURE_LOCATIONS = [
     "uksouth",
     "westeurope",
     "westus2",
-    "westus3"
 ]
 
 COMPUTE_QUOTAS = [
