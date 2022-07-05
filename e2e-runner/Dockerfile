@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-ARG CAPI_VERSION=v1.1.4
+ARG CAPI_VERSION=v1.1.5
 ARG KUBECTL_VERSION=v1.24.2
 
 # Install system APT packages & dependencies
