@@ -8,6 +8,7 @@ import tenacity
 from datetime import datetime
 
 from e2e_runner import base as e2e_base
+from e2e_runner import constants as e2e_constants
 from e2e_runner import logger as e2e_logger
 from e2e_runner import utils as e2e_utils
 
@@ -367,6 +368,19 @@ class CapzFlannelCI(e2e_base.CI):
         ])
 
     def _add_kube_proxy_windows(self):
+        if (("k8sbins" not in self.deployer.bins_built) and
+            (self.kubernetes_version !=
+                e2e_constants.DEFAULT_KUBERNETES_VERSION)):
+            self._run_node_cmd(
+                cmd="mkdir -force /build",
+                node_addresses=self.deployer.windows_private_addresses)
+            kube_proxy_url = (
+                f"https://dl.k8s.io/{self.kubernetes_version}/"
+                "bin/windows/amd64/kube-proxy.exe")
+            e2e_utils.retry_on_error()(self._run_node_cmd)(
+                cmd=("curl.exe --fail -L "
+                     f"{kube_proxy_url} -o /build/kube-proxy.exe"),
+                node_addresses=self.deployer.windows_private_addresses)
         context = {
             "container_runtime": self.opts.container_runtime,
             "win_os": self.opts.win_os,
