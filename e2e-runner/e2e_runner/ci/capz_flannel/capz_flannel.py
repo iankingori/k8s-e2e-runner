@@ -218,7 +218,7 @@ class CapzFlannelCI(e2e_base.CI):
             ginkgoFlags["slow-spec-threshold"] = "5m"
         else:
             ginkgoFlags["noColor"] = "true"
-            ginkgoFlags["slowSpecThreshold"] = "120.0"
+            ginkgoFlags["slowSpecThreshold"] = "300.0"
         e2eFlags = {
             "kubeconfig": "/tmp/kubeconfig",
             "provider": "skeleton",
