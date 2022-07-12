@@ -206,15 +206,19 @@ class CapzFlannelCI(e2e_base.CI):
             "KUBE_TEST_REPO_LIST": "/tmp/repo-list",
         }
         ginkgoFlags = {
-            "noColor": "true",
             "progress": "true",
             "trace": "true",
             "v": "true",
-            "slowSpecThreshold": "120.0",
             "nodes": self.opts.parallel_test_nodes,
             "focus": f"'{self.opts.test_focus_regex}'",
             "skip": f"'{self.opts.test_skip_regex}'",
         }
+        if self.kubernetes_version > "v1.25":
+            ginkgoFlags["no-color"] = "true"
+            ginkgoFlags["slow-spec-threshold"] = "5m"
+        else:
+            ginkgoFlags["noColor"] = "true"
+            ginkgoFlags["slowSpecThreshold"] = "120.0"
         e2eFlags = {
             "kubeconfig": "/tmp/kubeconfig",
             "provider": "skeleton",
