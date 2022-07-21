@@ -288,9 +288,13 @@ class CapzFlannelCI(e2e_base.CI):
             "ssh_address": self.deployer.master_public_address,
             "ssh_key_path": os.environ["SSH_KEY"],
         }
+        img_pull_cmd = self._conformance_image_pull_cmd()
+        img_pull_timeout = 10 * 60  # 10 minutes
+        if img_pull_cmd:
+            e2e_utils.retry_on_error()(e2e_utils.run_remote_ssh_cmd)(
+                cmd=[img_pull_cmd], timeout=img_pull_timeout, **ssh_kwargs)
         tests_cmd = [
-            self._conformance_image_pull_cmd(),
-            self._conformance_tests_cmd(),
+            self._conformance_tests_cmd()
         ]
         tests_timeout = 150 * 60  # 150 minutes
         try:
