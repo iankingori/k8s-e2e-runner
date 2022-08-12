@@ -33,10 +33,8 @@ GO_VERSION=$(cat /tmp/golang-version.txt)
 retrycmd_if_failure 5 10 5m curl -O https://dl.google.com/go/${GO_VERSION}.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf ${GO_VERSION}.linux-amd64.tar.gz
 rm ${GO_VERSION}.linux-amd64.tar.gz
-eval `cat /etc/environment`
-echo "PATH=\"$PATH:/usr/local/go/bin:$HOME/go/bin\"" | sudo tee /etc/environment
-echo "GOPATH=\"$HOME/go\"" | sudo tee -a /etc/environment
-/usr/local/go/bin/go version
+sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+go version
 
 retrycmd_if_failure 5 10 5m sudo apt-get install -y ca-certificates curl gnupg lsb-release
 sudo mkdir -p /etc/apt/keyrings
