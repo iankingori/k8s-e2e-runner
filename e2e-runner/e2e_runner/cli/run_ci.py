@@ -74,7 +74,7 @@ class RunCI(Command):
             default="https://github.com/microsoft/hcsshim")
         p.add_argument(
             "--containerd-shim-branch",
-            default="master")
+            default="main")
 
         p.add_argument(
             "--sdn-repo",

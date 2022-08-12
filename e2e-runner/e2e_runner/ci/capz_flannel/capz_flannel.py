@@ -512,9 +512,12 @@ class CapzFlannelCI(e2e_base.CI):
         self.deployer.run_cmd_on_bootstrap_vm(
             cmd=[
                 "GOOS=windows make binaries",
-                ("GOOS=windows make -f Makefile.windows "
-                 "bin/containerd-shim-runhcs-v1.exe"),
-                ("GOOS=windows DESTDIR=$(pwd)/bin/cri-tools "
+                ("GOOS=windows "
+                 "make -f Makefile.windows bin/containerd-shim-runhcs-v1.exe"),
+                ("sudo "
+                 "GOOS=windows "
+                 "GOPATH=$HOME/go "
+                 "DESTDIR=$(pwd)/bin/cri-tools "
                  "./script/setup/install-critools"),
             ],
             cwd=remote_containerd_path)
