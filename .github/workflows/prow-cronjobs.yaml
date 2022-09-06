@@ -25,8 +25,8 @@ jobs:
       - name: Apply Prow CronJobs
         run: |
           set -e
-          echo $KUBECONFIG_YAML > /tmp/kubeconfig.yaml
-          export KUBECONFIG=/tmp/kubeconfig.yaml
+          echo $KUBECONFIG_JSON > /tmp/kubeconfig.json
+          export KUBECONFIG=/tmp/kubeconfig.json
           kubectl apply -f ./prow/cronjobs
         env:
-          KUBECONFIG_YAML: ${{ secrets.KUBECONFIG_YAML }}
+          KUBECONFIG_JSON: ${{ secrets.KUBECONFIG_JSON }}
