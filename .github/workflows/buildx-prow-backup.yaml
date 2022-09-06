@@ -3,10 +3,10 @@ name: Prow Backup
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   buildx-prow-backup:

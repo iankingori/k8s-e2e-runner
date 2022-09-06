@@ -119,7 +119,7 @@ class RunCI(Command):
                  "the newly built K8s binaries.")
         p.add_argument(
             "--container-image-tag",
-            default="master",
+            default="main",
             help="The tag used for all the container images. The existing "
                  "GitHub workflows used this tag, when building all the "
                  "images.")

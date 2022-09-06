@@ -3,10 +3,10 @@ name: Kube-Proxy Containerd LTSC 2022
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   buildx-kube-proxy-containerd-ltsc2022:

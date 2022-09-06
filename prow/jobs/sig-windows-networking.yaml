@@ -10,7 +10,7 @@ periodics:
     preset-windows-private-registry-cred: "true"
   spec:
     containers:
-    - image: ghcr.io/e2e-win/k8s-e2e-runner:master
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
       command:
          - /workspace/entrypoint.sh
@@ -40,7 +40,7 @@ periodics:
     preset-windows-private-registry-cred: "true"
   spec:
     containers:
-    - image: ghcr.io/e2e-win/k8s-e2e-runner:master
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
       command:
          - /workspace/entrypoint.sh
@@ -70,7 +70,7 @@ periodics:
     preset-windows-private-registry-cred: "true"
   spec:
     containers:
-    - image: ghcr.io/e2e-win/k8s-e2e-runner:master
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
       command:
          - /workspace/entrypoint.sh
@@ -97,7 +97,7 @@ periodics:
     preset-windows-private-registry-cred: "true"
   spec:
     containers:
-    - image: ghcr.io/e2e-win/k8s-e2e-runner:master
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
       command:
          - /workspace/entrypoint.sh
@@ -124,7 +124,7 @@ periodics:
     preset-windows-private-registry-cred: "true"
   spec:
     containers:
-    - image: ghcr.io/e2e-win/k8s-e2e-runner:master
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
       command:
          - /workspace/entrypoint.sh
@@ -151,7 +151,7 @@ periodics:
     preset-windows-private-registry-cred: "true"
   spec:
     containers:
-    - image: ghcr.io/e2e-win/k8s-e2e-runner:master
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
       command:
          - /workspace/entrypoint.sh
@@ -178,7 +178,7 @@ periodics:
     preset-windows-private-registry-cred: "true"
   spec:
     containers:
-    - image: ghcr.io/e2e-win/k8s-e2e-runner:master
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
       command:
          - /workspace/entrypoint.sh
@@ -205,7 +205,7 @@ periodics:
     preset-windows-private-registry-cred: "true"
   spec:
     containers:
-    - image: ghcr.io/e2e-win/k8s-e2e-runner:master
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
       command:
          - /workspace/entrypoint.sh
@@ -233,7 +233,7 @@ periodics:
     preset-windows-private-registry-cred: "true"
   spec:
     containers:
-    - image: ghcr.io/e2e-win/k8s-e2e-runner:master
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
       command:
          - /workspace/entrypoint.sh
@@ -260,7 +260,7 @@ periodics:
     preset-windows-private-registry-cred: "true"
   spec:
     containers:
-    - image: ghcr.io/e2e-win/k8s-e2e-runner:master
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
       command:
          - /workspace/entrypoint.sh

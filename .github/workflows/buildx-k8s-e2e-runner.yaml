@@ -3,10 +3,10 @@ name: Kubernetes E2E Runner
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   buildx-k8s-e2e-runner:

@@ -3,7 +3,7 @@ name: Prow Cronjobs
 on:
   push:
     branches:
-      - master
+      - main
 
 env:
   KUBECTL_VERSION: v1.20.4  # Corresponds to the Prow K8s environment
