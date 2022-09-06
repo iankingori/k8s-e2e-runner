@@ -2,7 +2,6 @@ periodics:
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master
   cron: "0 0/12 * * *"
   always_run: true
-  decorate: true
   labels:
     preset-test-regex: "true"
     preset-github-readonly-token: "true"
@@ -33,7 +32,6 @@ periodics:
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
   cron: "0 6/12 * * *"
   always_run: true
-  decorate: true
   labels:
     preset-test-regex: "true"
     preset-github-readonly-token: "true"
@@ -64,7 +62,6 @@ periodics:
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
   cron: "0 1 * * *"
   always_run: true
-  decorate: true
   labels:
     preset-test-regex: "true"
     preset-github-readonly-token: "true"
@@ -92,7 +89,6 @@ periodics:
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
   cron: "0 3 * * *"
   always_run: true
-  decorate: true
   labels:
     preset-test-regex: "true"
     preset-github-readonly-token: "true"
@@ -120,7 +116,6 @@ periodics:
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable
   cron: "0 5 * * *"
   always_run: true
-  decorate: true
   labels:
     preset-test-regex: "true"
     preset-github-readonly-token: "true"
@@ -148,7 +143,6 @@ periodics:
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable
   cron: "0 7 * * *"
   always_run: true
-  decorate: true
   labels:
     preset-test-regex: "true"
     preset-github-readonly-token: "true"
@@ -176,7 +170,6 @@ periodics:
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable
   cron: "0 9 * * *"
   always_run: true
-  decorate: true
   labels:
     preset-test-regex: "true"
     preset-github-readonly-token: "true"
@@ -204,7 +197,6 @@ periodics:
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled
   cron: "0 11 * * *"
   always_run: true
-  decorate: true
   labels:
     preset-test-regex: "true"
     preset-github-readonly-token: "true"
@@ -233,7 +225,6 @@ periodics:
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable
   cron: "0 13 * * *"
   always_run: true
-  decorate: true
   labels:
     preset-test-regex: "true"
     preset-github-readonly-token: "true"
@@ -261,7 +252,6 @@ periodics:
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled
   cron: "0 15 * * *"
   always_run: true
-  decorate: true
   labels:
     preset-test-regex: "true"
     preset-github-readonly-token: "true"

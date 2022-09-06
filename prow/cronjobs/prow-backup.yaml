@@ -14,68 +14,82 @@ spec:
       backoffLimit: 0
       template:
         spec:
+          serviceAccountName: k8s-admin
+          restartPolicy: Never
           containers:
           - name: prow-backup
             image: ghcr.io/e2e-win/prow-backup:master
             imagePullPolicy: Always
             env:
-            - name: AZURE_CLIENT_ID
+            - name: AZURE_SUBSCRIPTION_ID
               valueFrom:
                 secretKeyRef:
-                  key: AZURE_CLIENT_ID
-                  name: prod-azcreds
-            - name: AZURE_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  key: AZURE_CLIENT_SECRET
-                  name: prod-azcreds
-            - name: AZURE_SUB_ID
-              valueFrom:
-                secretKeyRef:
-                  key: AZURE_SUB_ID
-                  name: prod-azcreds
+                  key: AZURE_SUBSCRIPTION_ID
+                  name: az-credentials
             - name: AZURE_TENANT_ID
               valueFrom:
                 secretKeyRef:
                   key: AZURE_TENANT_ID
-                  name: prod-azcreds
+                  name: az-credentials
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  key: AZURE_CLIENT_ID
+                  name: az-credentials
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: AZURE_CLIENT_SECRET
+                  name: az-credentials
             - name: AZURE_STORAGE_ACCOUNT
               valueFrom:
                 secretKeyRef:
                   key: AZURE_STORAGE_ACCOUNT
-                  name: prod-azcreds
+                  name: az-credentials
             - name: AZURE_STORAGE_ACCOUNT_KEY
               valueFrom:
                 secretKeyRef:
                   key: AZURE_STORAGE_ACCOUNT_KEY
-                  name: prod-azcreds
+                  name: az-credentials
             - name: BACKUP_KEEP_DAYS
               value: "90"
             - name: BACKUP_CONFIGMAPS
-              value: "default/config,default/plugins,default/job-config"
+              value: "prow/config,prow/plugins,prow/job-config"
             - name: BACKUP_SECRETS
-              value: "default/hmac-token,default/oauth-token,test-pods/prod-azcreds,test-pods/github-readonly-token,test-pods/service-account,test-pods/ssh-key-default,test-pods/kubeconfig,test-pods/windows-private-registry-docker-config"
+              value: "prow/hmac-token,prow/github-token,test-pods/github-readonly-token,test-pods/az-credentials,test-pods/gcs-credentials,test-pods/ssh-key,test-pods/windows-private-registry-docker-config"
             - name: ENCRYPTION_KEY
               value: /etc/ssh/id_rsa.pub
             - name: AZURE_STORAGE_CONTAINER_PROW_BKP
               valueFrom:
                 secretKeyRef:
                   key: AZURE_STORAGE_CONTAINER_PROW_BKP
-                  name: prod-azcreds
+                  name: az-credentials
             volumeMounts:
-            - name: kubeconfig
-              mountPath: /root/.kube
-              readOnly: true
             - name: ssh
               mountPath: /etc/ssh
               readOnly: true
-          restartPolicy: Never
           volumes:
-          - name: kubeconfig
-            secret:
-              defaultMode: 0400
-              secretName: kubeconfig
           - name: ssh
             secret:
               defaultMode: 0400
-              secretName: ssh-key-default
+              secretName: ssh-key
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: k8s-admin-role-binding
+  namespace: test-pods
+subjects:
+- kind: ServiceAccount
+  name: k8s-admin
+  namespace: test-pods
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-admin
+  namespace: test-pods

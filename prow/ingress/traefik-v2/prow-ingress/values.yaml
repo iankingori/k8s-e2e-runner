@@ -1,3 +1,0 @@
-ingressRoute:
-  enabled: true
-  hostname: k8s-sig-win-networking-prow.westus2.cloudapp.azure.com

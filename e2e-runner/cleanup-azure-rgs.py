@@ -50,8 +50,10 @@ def parse_args():
 
 def get_azure_credentials():
     required_env_vars = [
-        "AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID",
-        "AZURE_SUB_ID"
+        "AZURE_SUBSCRIPTION_ID",
+        "AZURE_TENANT_ID",
+        "AZURE_CLIENT_ID",
+        "AZURE_CLIENT_SECRET",
     ]
     for env_var in required_env_vars:
         if not os.environ.get(env_var):
@@ -61,7 +63,7 @@ def get_azure_credentials():
         client_id=os.environ["AZURE_CLIENT_ID"],
         client_secret=os.environ["AZURE_CLIENT_SECRET"],
         tenant_id=os.environ["AZURE_TENANT_ID"])
-    subscription_id = os.environ["AZURE_SUB_ID"]
+    subscription_id = os.environ["AZURE_SUBSCRIPTION_ID"]
     return credentials, subscription_id
 
 

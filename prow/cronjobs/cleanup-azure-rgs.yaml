@@ -14,6 +14,8 @@ spec:
       backoffLimit: 0
       template:
         spec:
+          serviceAccountName: k8s-admin
+          restartPolicy: Never
           containers:
           - name: cleanup-azure-rgs
             image: ghcr.io/e2e-win/k8s-e2e-runner:master
@@ -24,33 +26,43 @@ spec:
             # Cleanup resource groups older than 6h.
             - --max-age-minutes=360
             env:
-            - name: AZURE_CLIENT_ID
+            - name: AZURE_SUBSCRIPTION_ID
               valueFrom:
                 secretKeyRef:
-                  key: AZURE_CLIENT_ID
-                  name: prod-azcreds
-            - name: AZURE_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  key: AZURE_CLIENT_SECRET
-                  name: prod-azcreds
-            - name: AZURE_SUB_ID
-              valueFrom:
-                secretKeyRef:
-                  key: AZURE_SUB_ID
-                  name: prod-azcreds
+                  key: AZURE_SUBSCRIPTION_ID
+                  name: az-credentials
             - name: AZURE_TENANT_ID
               valueFrom:
                 secretKeyRef:
                   key: AZURE_TENANT_ID
-                  name: prod-azcreds
-            volumeMounts:
-            - name: kubeconfig
-              mountPath: /root/.kube
-              readOnly: true
-          restartPolicy: Never
-          volumes:
-          - name: kubeconfig
-            secret:
-              defaultMode: 0400
-              secretName: kubeconfig
+                  name: az-credentials
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  key: AZURE_CLIENT_ID
+                  name: az-credentials
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: AZURE_CLIENT_SECRET
+                  name: az-credentials
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: k8s-admin-role-binding
+  namespace: test-pods
+subjects:
+- kind: ServiceAccount
+  name: k8s-admin
+  namespace: test-pods
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-admin
+  namespace: test-pods
