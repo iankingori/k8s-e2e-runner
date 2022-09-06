@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  KUBECTL_VERSION: v1.20.4  # Corresponds to the Prow K8s environment
+  KUBECTL_VERSION: v1.24.3  # Corresponds to the Prow K8s environment
 
 jobs:
   prow-cronjobs:
