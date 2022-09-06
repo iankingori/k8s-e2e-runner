@@ -3,10 +3,10 @@ name: Flannel Containerd LTSC 2022
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   buildx-flannel-containerd-ltsc2022:

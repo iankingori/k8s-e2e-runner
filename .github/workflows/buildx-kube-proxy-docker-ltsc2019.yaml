@@ -3,10 +3,10 @@ name: Kube-Proxy Docker LTSC 2019
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   buildx-kube-proxy-docker-ltsc2019:

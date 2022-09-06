@@ -18,7 +18,7 @@ spec:
           restartPolicy: Never
           containers:
           - name: cleanup-azure-rgs
-            image: ghcr.io/e2e-win/k8s-e2e-runner:master
+            image: ghcr.io/e2e-win/k8s-e2e-runner:main
             imagePullPolicy: Always
             command:
             - /workspace/cleanup-azure-rgs.py

@@ -18,7 +18,7 @@ spec:
           restartPolicy: Never
           containers:
           - name: prow-backup
-            image: ghcr.io/e2e-win/prow-backup:master
+            image: ghcr.io/e2e-win/prow-backup:main
             imagePullPolicy: Always
             env:
             - name: AZURE_SUBSCRIPTION_ID
