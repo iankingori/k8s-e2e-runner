@@ -909,15 +909,13 @@ class CAPZProvisioner(e2e_base.Deployer):
     def _set_azure_variables(self):
         # Define the required env variables list
         required_env_vars = [
-            "AZURE_SUBSCRIPTION_ID", "AZURE_TENANT_ID", "AZURE_CLIENT_ID",
-            "AZURE_CLIENT_SECRET", "AZURE_SSH_PUBLIC_KEY"
+            "AZURE_SUBSCRIPTION_ID",
+            "AZURE_TENANT_ID",
+            "AZURE_CLIENT_ID",
+            "AZURE_CLIENT_SECRET",
+            "AZURE_SSH_PUBLIC_KEY"
         ]
-        # Check for alternate env variables names set in the CI if
-        # the expected ones are empty
-        if (not os.environ.get("AZURE_SUBSCRIPTION_ID")
-                and os.environ.get("AZURE_SUB_ID")):
-            os.environ["AZURE_SUBSCRIPTION_ID"] = os.environ.get(
-                "AZURE_SUB_ID")
+        # Check 'SSH_KEY_PUB' file path if 'AZURE_SSH_PUBLIC_KEY' is not set
         if (not os.environ.get("AZURE_SSH_PUBLIC_KEY")
                 and os.environ.get("SSH_KEY_PUB")):
             with open(os.environ.get("SSH_KEY_PUB").strip()) as f:

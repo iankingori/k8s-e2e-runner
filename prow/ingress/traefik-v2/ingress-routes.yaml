@@ -1,10 +1,9 @@
-{{- if .Values.ingressRoute.enabled -}}
 ---
 apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
   name: https-redirect
-  namespace: default
+  namespace: prow
 spec:
   redirectScheme:
     scheme: https
@@ -14,13 +13,13 @@ apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
   name: deck
-  namespace: default
+  namespace: prow
 spec:
   entryPoints:
   - web
   routes:
   - kind: Rule
-    match: Host(`{{ .Values.ingressRoute.hostname }}`)
+    match: Host(`k8s-sig-win-networking-prow.westus2.cloudapp.azure.com`)
     services:
     - name: deck
       port: 80
@@ -31,13 +30,13 @@ apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
   name: deck-secure
-  namespace: default
+  namespace: prow
 spec:
   entryPoints:
   - websecure
   routes:
   - kind: Rule
-    match: Host(`{{ .Values.ingressRoute.hostname }}`)
+    match: Host(`k8s-sig-win-networking-prow.westus2.cloudapp.azure.com`)
     services:
     - name: deck
       port: 80
@@ -48,13 +47,13 @@ apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
   name: hook
-  namespace: default
+  namespace: prow
 spec:
   entryPoints:
   - web
   routes:
   - kind: Rule
-    match: Host(`{{ .Values.ingressRoute.hostname }}`) && PathPrefix(`/hook`)
+    match: Host(`k8s-sig-win-networking-prow.westus2.cloudapp.azure.com`) && PathPrefix(`/hook`)
     services:
     - name: hook
       port: 8888
@@ -65,16 +64,15 @@ apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
   name: hook-secure
-  namespace: default
+  namespace: prow
 spec:
   entryPoints:
   - websecure
   routes:
   - kind: Rule
-    match: Host(`{{ .Values.ingressRoute.hostname }}`) && PathPrefix(`/hook`)
+    match: Host(`k8s-sig-win-networking-prow.westus2.cloudapp.azure.com`) && PathPrefix(`/hook`)
     services:
     - name: hook
       port: 8888
   tls:
     certResolver: le
-{{- end }}

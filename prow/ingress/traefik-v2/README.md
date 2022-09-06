@@ -5,7 +5,8 @@ Deployment steps:
 * Install Helm v3. See https://v3.helm.sh/docs/intro/install for instructions.
 
 * Install the Traefik Ingress chart:
-    ```
+
+    ```bash
     helm repo add traefik https://helm.traefik.io/traefik
     helm repo update
 
@@ -13,6 +14,7 @@ Deployment steps:
     ```
 
 * Create the Prow Traefik ingress route via:
-    ```
-    helm install --wait prow-ingress ./prow-ingress
+
+    ```bash
+    kubectl apply -f ingress-routes.yaml
     ```
