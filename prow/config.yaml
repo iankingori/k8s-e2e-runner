@@ -48,16 +48,6 @@ presets:
       secretKeyRef:
         key: AZURE_CLIENT_SECRET
         name: az-credentials
-  - name: AZURE_STORAGE_ACCOUNT
-    valueFrom:
-      secretKeyRef:
-        key: AZURE_STORAGE_ACCOUNT
-        name: az-credentials
-  - name: AZURE_STORAGE_ACCOUNT_KEY
-    valueFrom:
-      secretKeyRef:
-        key: AZURE_STORAGE_ACCOUNT_KEY
-        name: az-credentials
 
 - labels:
     preset-ssh-key: "true"

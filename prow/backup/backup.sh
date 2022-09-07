@@ -39,9 +39,12 @@ fi
 
 # Create backup archive
 ARCHIVE_NAME="backup-$(date +%Y-%m-%d_%H-%M)"
+pushd /tmp
+mv "${BACKUP_DIR}" "${ARCHIVE_NAME}"
 log_msg "Creating archive '${ARCHIVE_NAME}.tar.gz'..."
-tar -Pzcf "/tmp/${ARCHIVE_NAME}.tar.gz" "${BACKUP_DIR}"
-rm -rf "${BACKUP_DIR}"
+tar -zcf "${ARCHIVE_NAME}.tar.gz" "${ARCHIVE_NAME}"
+rm -rf "${ARCHIVE_NAME}"
+popd
 
 # Encrypt backup archive
 if [[ -z "${ENCRYPTION_KEY}" ]]; then
@@ -49,13 +52,15 @@ if [[ -z "${ENCRYPTION_KEY}" ]]; then
 	exit
 else
 	log_msg "Encrypting archive /tmp/${ARCHIVE_NAME}.tar.gz..."
-	# Create key
-	openssl rand -out "/tmp/${ARCHIVE_NAME}.key" 32
-	# Encrypt archive
-	openssl enc -in "/tmp/${ARCHIVE_NAME}.tar.gz" -out "/tmp/${ARCHIVE_NAME}.tar.gz.enc" -pass file:"/tmp/${ARCHIVE_NAME}.key"
 
-	# Encrypt key using public ssh key
-	openssl rsautl -encrypt -pubin -inkey <(ssh-keygen -e -f "${ENCRYPTION_KEY}" -m PKCS8) \
+	# Create symmetric key
+	openssl rand -out "/tmp/${ARCHIVE_NAME}.key" 32
+	# Encrypt backup archive, using the generated symmetric key
+	openssl enc -aes-256-cbc -md sha512 -pbkdf2 \
+		-in "/tmp/${ARCHIVE_NAME}.tar.gz" -out "/tmp/${ARCHIVE_NAME}.tar.gz.enc" \
+		-pass file:"/tmp/${ARCHIVE_NAME}.key"
+	# Encrypt symmetric key using public ssh key
+	openssl rsautl -encrypt -oaep -pubin -inkey <(ssh-keygen -e -f "${ENCRYPTION_KEY}" -m PKCS8) \
 		-in "/tmp/${ARCHIVE_NAME}.key" -out "/tmp/${ARCHIVE_NAME}.key.enc"
 
 	rm "/tmp/${ARCHIVE_NAME}.tar.gz"
