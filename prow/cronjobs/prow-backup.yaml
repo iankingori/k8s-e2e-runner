@@ -51,6 +51,11 @@ spec:
                 secretKeyRef:
                   key: AZURE_STORAGE_ACCOUNT_KEY
                   name: az-credentials
+            - name: AZURE_STORAGE_CONTAINER_PROW_BKP
+              valueFrom:
+                secretKeyRef:
+                  key: AZURE_STORAGE_CONTAINER_PROW_BKP
+                  name: az-credentials
             - name: BACKUP_KEEP_DAYS
               value: "90"
             - name: BACKUP_CONFIGMAPS
@@ -59,11 +64,6 @@ spec:
               value: "prow/hmac-token,prow/github-token,test-pods/github-readonly-token,test-pods/az-credentials,test-pods/gcs-credentials,test-pods/ssh-key,test-pods/windows-private-registry-docker-config"
             - name: ENCRYPTION_KEY
               value: /etc/ssh/id_rsa.pub
-            - name: AZURE_STORAGE_CONTAINER_PROW_BKP
-              valueFrom:
-                secretKeyRef:
-                  key: AZURE_STORAGE_CONTAINER_PROW_BKP
-                  name: az-credentials
             volumeMounts:
             - name: ssh
               mountPath: /etc/ssh
