@@ -1,4 +1,5 @@
 import os
+import tempfile
 import time
 import yaml
 import json
@@ -406,6 +407,23 @@ class CapzFlannelCI(e2e_base.CI):
         e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
             [self.kubectl, "apply", "-f", output_file])
 
+    def _setup_flannel_configmaps(self):
+        for cfgmap_name in ["kubeadm-config", "kube-proxy"]:
+            output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+                cmd=[
+                    self.kubectl, "get", "configmap", "-o", "yaml",
+                    "-n", "kube-system", cfgmap_name
+                ],
+                capture_output=True)
+            cfgmap = yaml.safe_load(output.decode())
+            cfgmap["metadata"]["namespace"] = "kube-flannel"
+            with tempfile.NamedTemporaryFile(suffix=".yaml") as f:
+                f.write(yaml.dump(cfgmap).encode())
+                f.flush()
+                e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
+                    self.kubectl, "apply", "-f", f.name
+                ])
+
     def _add_flannel_cni(self):
         context = {
             "win_os": self.opts.win_os,
@@ -430,6 +448,7 @@ class CapzFlannelCI(e2e_base.CI):
             context, windows_searchpath)
         e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
             self.kubectl, "apply", "-f", kube_flannel])
+        self._setup_flannel_configmaps()
         e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
             [self.kubectl, "apply", "-f", kube_flannel_windows])
 

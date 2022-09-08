@@ -1,4 +1,11 @@
 ---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: kube-flannel
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -35,19 +42,19 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: flannel
-  namespace: kube-system
+  namespace: kube-flannel
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: flannel
-  namespace: kube-system
+  namespace: kube-flannel
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: kube-flannel-cfg
-  namespace: kube-system
+  namespace: kube-flannel
   labels:
     tier: node
     app: flannel
@@ -98,7 +105,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: kube-flannel-ds
-  namespace: kube-system
+  namespace: kube-flannel
   labels:
     tier: node
     app: flannel
@@ -129,7 +136,7 @@ spec:
       serviceAccountName: flannel
       initContainers:
       - name: install-cni-plugin
-        image: rancher/mirrored-flannelcni-flannel-cni-plugin:v1.0.1
+        image: docker.io/rancher/mirrored-flannelcni-flannel-cni-plugin:v1.1.0
         command:
         - cp
         args:
@@ -140,7 +147,7 @@ spec:
         - name: cni-plugin
           mountPath: /opt/cni/bin
       - name: install-cni
-        image: rancher/mirrored-flannelcni-flannel:v0.17.0
+        image: docker.io/rancher/mirrored-flannelcni-flannel:v0.19.2
         command:
         - cp
         args:
@@ -152,11 +159,9 @@ spec:
           mountPath: /etc/cni/net.d
         - name: flannel-cfg
           mountPath: /etc/kube-flannel/
-        - name: xtables-lock
-          mountPath: /run/xtables.lock
       containers:
       - name: kube-flannel
-        image: rancher/mirrored-flannelcni-flannel:v0.17.0
+        image: docker.io/rancher/mirrored-flannelcni-flannel:v0.19.2
         command:
         - /opt/bin/flanneld
         args:
@@ -170,7 +175,7 @@ spec:
             cpu: "100m"
             memory: "50Mi"
         securityContext:
-          privileged: true
+          privileged: false
           capabilities:
             add: ["NET_ADMIN", "NET_RAW"]
         env:
@@ -189,6 +194,8 @@ spec:
           mountPath: /run/flannel
         - name: flannel-cfg
           mountPath: /etc/kube-flannel/
+        - name: xtables-lock
+          mountPath: /run/xtables.lock
       volumes:
       - name: run
         hostPath:

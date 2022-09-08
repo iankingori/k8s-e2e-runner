@@ -57,7 +57,7 @@ func getDefaultIPNet() (*net.IPNet, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("No IPv4 address found for default interface")
+	return nil, fmt.Errorf("no IPv4 address found for default interface")
 }
 
 func getOutboundNATPolicyKVP() (*cni.KVP, error) {

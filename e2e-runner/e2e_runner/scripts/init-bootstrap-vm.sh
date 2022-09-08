@@ -3,7 +3,7 @@ set -o nounset
 set -o pipefail
 set -o errexit
 
-KIND_BIN_URL="https://github.com/kubernetes-sigs/kind/releases/download/v0.13.0/kind-linux-amd64"
+KIND_BIN_URL="https://github.com/kubernetes-sigs/kind/releases/download/v0.15.0/kind-linux-amd64"
 
 function retrycmd_if_failure() {
   set +o errexit
