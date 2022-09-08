@@ -1,9 +1,10 @@
 FROM ubuntu:22.04
 
+# Corresponds to the Prow K8s environment
 ENV KUBECTL_VERSION=v1.24.3
-ENV DEBIAN_FRONTEND=noninteractive
 
 # Install APT packages
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
 	apt-get install -y curl dateutils jq openssh-client
 
