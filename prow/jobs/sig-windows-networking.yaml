@@ -22,7 +22,6 @@ periodics:
         - --build=k8sbins
         - --build=containerdbins
         - --build=sdncnibins
-        - --retain-testing-env=True
         - capz_flannel
         - --flannel-mode=host-gw
         - --container-runtime=containerd
@@ -52,7 +51,6 @@ periodics:
         - --build=k8sbins
         - --build=containerdbins
         - --build=sdncnibins
-        - --retain-testing-env=True
         - capz_flannel
         - --flannel-mode=overlay
         - --container-runtime=containerd
