@@ -3,7 +3,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: kube-flannel-windows-cfg
-  namespace: kube-system
+  namespace: kube-flannel
   labels:
     tier: node
     app: flannel
@@ -107,7 +107,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: kube-flannel-ds-windows-amd64
-  namespace: kube-system
+  namespace: kube-flannel
   labels:
     tier: node
     app: flannel
@@ -171,6 +171,8 @@ spec:
         image: {{ container_image_registry }}/flannel-{{ container_runtime }}-{{ win_os }}:{{ container_image_tag }}
         imagePullPolicy: Always
         volumeMounts:
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
         - name: kube-proxy
           mountPath: /flannel-config-file
         env:

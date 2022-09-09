@@ -22,6 +22,9 @@ func fixKubeconfig() error {
 	}
 	newPath := filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "var")
 	kubeconfig := strings.Replace(string(bytes), "/var", newPath, -1)
+	if err := os.MkdirAll("/var/lib/kube-proxy", os.ModeDir); err != nil {
+		return fmt.Errorf("error creating /var/lib/kube-proxy dir: %v", err)
+	}
 	if err := os.WriteFile("/var/lib/kube-proxy/kubeconfig.conf", []byte(kubeconfig), 0644); err != nil {
 		return err
 	}
@@ -45,7 +48,7 @@ func main() {
 		filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "kube-proxy/kube-proxy.exe"),
 		fmt.Sprintf("--hostname-override=%s", os.Getenv("NODE_NAME")),
 		fmt.Sprintf("--enable-dsr=%s", os.Getenv("ENABLE_WIN_DSR")),
-		"--config=/var/lib/kube-proxy/config.conf",
+		fmt.Sprintf("--config=%s", utils.KubeProxyConfFile),
 		"--v=4",
 	)
 	cmd.Stdout = os.Stdout

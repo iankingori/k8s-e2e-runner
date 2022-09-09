@@ -1,4 +1,4 @@
-REGISTRY := k8swin.azurecr.io
+REGISTRY := docker.io/e2eteam
 
 .PHONY: all
 all: buildx-flannel buildx-kube-proxy

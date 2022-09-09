@@ -6,6 +6,14 @@ import (
 	"path/filepath"
 )
 
+var (
+	CNIBinDir         string = "/opt/cni/bin"
+	CNIConfFile       string = "/etc/cni/net.d/10-flannel.conf"
+	KubeProxyDir      string = "/k/kube-proxy"
+	KubeProxyConfFile string = filepath.Join(KubeProxyDir, "config.conf")
+	SourceVipFile     string = filepath.Join(KubeProxyDir, "sourceVip.json")
+)
+
 func CopyFile(src, dest string) error {
 	srcStat, err := os.Stat(src)
 	if err != nil {

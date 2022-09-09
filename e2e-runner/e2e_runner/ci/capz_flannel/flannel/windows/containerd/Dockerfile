@@ -1,8 +1,8 @@
 ARG BASE_IMAGE="mcr.microsoft.com/windows/nanoserver:1809"
-ARG FLANNEL_VERSION="v0.17.0"
+ARG FLANNEL_VERSION="v0.19.2"
 ARG CNI_PLUGINS_VERSION="v1.1.1"
 ARG WINDOWS_CNI_PLUGINS_VERSION="v0.3.0"
-ARG FLANNEL_CNI_PLUGIN_VERSION="v1.0.1"
+ARG FLANNEL_CNI_PLUGIN_VERSION="v1.1.0"
 
 # Linux stage
 FROM --platform=linux/amd64 alpine:latest as prep
