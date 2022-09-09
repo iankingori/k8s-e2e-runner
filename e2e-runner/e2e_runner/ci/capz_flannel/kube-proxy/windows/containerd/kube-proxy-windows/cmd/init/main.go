@@ -10,22 +10,14 @@ import (
 	"strings"
 
 	"kube-proxy-windows/types"
+	"kube-proxy-windows/utils"
 
 	"github.com/Microsoft/hcsshim/hcn"
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	cniBinDir         string = "/opt/cni/bin"
-	cniConfFile       string = "/etc/cni/net.d/10-flannel.conf"
-	kubeProxyDir      string = "/var/lib/kube-proxy"
-	kubeProxyConfFile string = filepath.Join(kubeProxyDir, "config.conf")
-	sourceVipDir      string = "/sourceVip"
-	sourceVipFile     string = filepath.Join(sourceVipDir, "sourceVip.json")
-)
-
 func parseSourceVipFile() (*types.SourceVip, error) {
-	bytes, err := os.ReadFile(sourceVipFile)
+	bytes, err := os.ReadFile(utils.SourceVipFile)
 	if err != nil {
 		return nil, err
 	}
@@ -37,10 +29,10 @@ func parseSourceVipFile() (*types.SourceVip, error) {
 }
 
 func getHnsNetwork() (*hcn.HostComputeNetwork, error) {
-	if _, err := os.Stat(cniConfFile); os.IsNotExist(err) {
-		return nil, fmt.Errorf("cni conf file (%s) does not exist", cniConfFile)
+	if _, err := os.Stat(utils.CNIConfFile); os.IsNotExist(err) {
+		return nil, fmt.Errorf("cni conf file (%s) does not exist", utils.CNIConfFile)
 	}
-	bytes, err := os.ReadFile(cniConfFile)
+	bytes, err := os.ReadFile(utils.CNIConfFile)
 	if err != nil {
 		return nil, err
 	}
@@ -56,17 +48,14 @@ func getHnsNetwork() (*hcn.HostComputeNetwork, error) {
 }
 
 func getSourceVip() (string, error) {
-	if err := os.MkdirAll(sourceVipDir, os.ModeDir); err != nil {
-		return "", err
-	}
-	if _, err := os.Stat(sourceVipFile); err == nil {
+	if _, err := os.Stat(utils.SourceVipFile); err == nil {
 		sourceVip, err := parseSourceVipFile()
 		if err != nil {
 			return "", err
 		}
 		return strings.Split(sourceVip.IP4.IP, "/")[0], nil
 	}
-	ipamPluginBin := filepath.Join(cniBinDir, "host-local.exe")
+	ipamPluginBin := filepath.Join(utils.CNIBinDir, "host-local.exe")
 	if _, err := os.Stat(ipamPluginBin); os.IsNotExist(err) {
 		return "", fmt.Errorf("ipam plugin binary (%s) does not exist", ipamPluginBin)
 	}
@@ -91,7 +80,7 @@ func getSourceVip() (string, error) {
 	os.Setenv("CNI_CONTAINERID", "SourceVip")
 	os.Setenv("CNI_NETNS", "SourceVip")
 	os.Setenv("CNI_IFNAME", "SourceVip")
-	os.Setenv("CNI_PATH", cniBinDir)
+	os.Setenv("CNI_PATH", utils.CNIBinDir)
 	cmd := exec.Command(ipamPluginBin)
 	cmd.Stdin = strings.NewReader(ipamConfig)
 	out, err := cmd.Output()
@@ -99,7 +88,7 @@ func getSourceVip() (string, error) {
 		fmt.Printf("Command output: %s\n", out)
 		panic(fmt.Errorf("error running host-local.exe ipam plugin: %v", err))
 	}
-	if err := os.WriteFile(sourceVipFile, out, 0644); err != nil {
+	if err := os.WriteFile(utils.SourceVipFile, out, 0644); err != nil {
 		return "", err
 	}
 	sourceVip, err := parseSourceVipFile()
@@ -110,7 +99,7 @@ func getSourceVip() (string, error) {
 }
 
 func createKubeProxyConfig() error {
-	fmt.Printf("create %s file\n", kubeProxyConfFile)
+	fmt.Printf("create %s file\n", utils.KubeProxyConfFile)
 	bytes, err := os.ReadFile(filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "var/lib/kube-proxy/config.conf"))
 	if err != nil {
 		return err
@@ -147,15 +136,15 @@ func createKubeProxyConfig() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(kubeProxyConfFile, yamlBytes, 0644); err != nil {
+	if err := os.WriteFile(utils.KubeProxyConfFile, yamlBytes, 0644); err != nil {
 		return err
 	}
 	return nil
 }
 
 func main() {
-	fmt.Printf("create %s dir\n", kubeProxyDir)
-	if err := os.MkdirAll(kubeProxyDir, os.ModeDir); err != nil {
+	fmt.Printf("create %s dir\n", utils.KubeProxyDir)
+	if err := os.MkdirAll(utils.KubeProxyDir, os.ModeDir); err != nil {
 		panic(fmt.Errorf("error creating kube-proxy dir: %v", err))
 	}
 	if err := createKubeProxyConfig(); err != nil {
