@@ -530,7 +530,11 @@ class CapzFlannelCI(e2e_base.CI):
         self.logging.info("Building containerd binaries")
         self.deployer.run_cmd_on_bootstrap_vm(
             cmd=[
-                "GOOS=windows make binaries",
+                # TODO(ibalutoiu): This hard-coded version needs to be removed
+                # once containerd v1.7.0 gets released.
+                ("VERSION=1.7.0+unknown "
+                 "GOOS=windows "
+                 "make binaries"),
                 ("GOOS=windows "
                  "make -f Makefile.windows bin/containerd-shim-runhcs-v1.exe"),
                 ("sudo "
