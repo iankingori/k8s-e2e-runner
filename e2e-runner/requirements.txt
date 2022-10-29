@@ -1,5 +1,6 @@
 azure-identity
 azure-mgmt-compute
+azure-mgmt-containerservice
 azure-mgmt-network
 azure-mgmt-resource
 cliff

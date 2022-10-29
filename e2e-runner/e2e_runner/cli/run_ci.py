@@ -1,6 +1,7 @@
 import os
 import traceback
 
+import azure.mgmt.containerservice.models as aks_models
 from cliff.command import Command
 from e2e_runner import constants as e2e_constants
 from e2e_runner import exceptions as e2e_exceptions
@@ -95,6 +96,7 @@ class RunCI(Command):
 
         subparsers = p.add_subparsers(dest="ci", help="The CI type.")
         self.add_capz_flannel_subparser(subparsers)
+        self.add_aks_subparser(subparsers)
 
         return p
 
@@ -179,6 +181,44 @@ class RunCI(Command):
             "--win-agent-size",
             default="Standard_D2s_v3",
             help="Size of K8s Windows agents.")
+
+    def add_aks_subparser(self, subparsers):
+        p = subparsers.add_parser("aks")
+        p.add_argument(
+            "--cluster-name",
+            required=True,
+            help="The AKS cluster name.")
+        p.add_argument(
+            "--aks-version",
+            default=e2e_constants.DEFAULT_AKS_VERSION,
+            help="The AKS Kubernetes version to deploy.")
+        p.add_argument(
+            "--location",
+            help="The Azure location for the spawned resource.")
+        p.add_argument(
+            "--linux-agents-count",
+            type=int,
+            default=1,
+            help="Number of AKS Linux agents.")
+        p.add_argument(
+            "--linux-agents-size",
+            default="Standard_D2s_v3",
+            help="Size of the AKS Linux agents.")
+        p.add_argument(
+            "--win-agents-count",
+            type=int,
+            default=2,
+            help="Number of AKS Windows agents.")
+        p.add_argument(
+            "--win-agents-size",
+            default="Standard_D2s_v3",
+            help="Size of K8s Windows agents.")
+        p.add_argument(
+            "--win-agents-sku",
+            default=aks_models.OSSKU.WINDOWS2019,
+            choices=[aks_models.OSSKU.WINDOWS2019,
+                     aks_models.OSSKU.WINDOWS2022],
+            help="The OS SKU of the K8s Windows agents.")
 
     def take_action(self, args):
         self.logging.info("Starting with CI: %s.", args.ci)
