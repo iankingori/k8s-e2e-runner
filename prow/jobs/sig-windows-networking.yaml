@@ -169,6 +169,52 @@ periodics:
         - --win-os=ltsc2022
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
+- name: aks-e2e-ltsc2019-azurecni
+  cron: "0 2 * * *"
+  always_run: true
+  labels:
+    preset-test-regex: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
+      imagePullPolicy: Always
+      command:
+         - /workspace/entrypoint.sh
+      args:
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.24
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.24.yaml
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - aks
+        - --win-agents-sku=Windows2019
+        - --cluster-name=aks-e2e-ltsc2019-$(BUILD_ID)
+
+- name: aks-e2e-ltsc2022-azurecni
+  cron: "0 8 * * *"
+  always_run: true
+  labels:
+    preset-test-regex: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
+      imagePullPolicy: Always
+      command:
+         - /workspace/entrypoint.sh
+      args:
+        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.24
+        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.24.yaml
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - aks
+        - --win-agents-sku=Windows2022
+        - --cluster-name=aks-e2e-ltsc2022-$(BUILD_ID)
+
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable
   cron: "0 9 * * *"
   always_run: true
