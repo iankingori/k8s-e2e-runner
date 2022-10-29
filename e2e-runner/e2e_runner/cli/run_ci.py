@@ -1,12 +1,12 @@
 import os
 import traceback
 
-from e2e_runner import logger as e2e_logger
-from e2e_runner import factory as e2e_factory
-from e2e_runner import constants as e2e_constants
-from e2e_runner import utils as e2e_utils
-
 from cliff.command import Command
+from e2e_runner import constants as e2e_constants
+from e2e_runner import exceptions as e2e_exceptions
+from e2e_runner import factory as e2e_factory
+from e2e_runner import logger as e2e_logger
+from e2e_runner.utils import utils as e2e_utils
 
 
 class RunCI(Command):
@@ -186,20 +186,21 @@ class RunCI(Command):
             "Creating artifacts dir: %s.", args.artifacts_directory)
         os.makedirs(args.artifacts_directory, exist_ok=True)
         ci = e2e_factory.get_ci(args.ci)(args)
-        tests_exit_code = 0
+        conformance_tests_failed = False
         try:
             ci.setup_bootstrap_vm()
             ci.build(args.build)
             ci.up()
             ci.cleanup_bootstrap_vm()
-            tests_exit_code = ci.test()
-            assert tests_exit_code == 0, "Conformance tests failed"
-        except Exception:
+            ci.test()
+        except Exception as ex:
             self.logging.error("{}".format(traceback.format_exc()))
+            if isinstance(ex, e2e_exceptions.ConformanceTestsFailed):
+                conformance_tests_failed = True
             raise
         finally:
             ci.collect_logs()
-            if tests_exit_code != 0 and args.retain_testing_env:
+            if conformance_tests_failed and args.retain_testing_env:
                 self.logging.warning(
                     "Conformance tests failed. Retain the testing env "
                     "for debugging purposes.")

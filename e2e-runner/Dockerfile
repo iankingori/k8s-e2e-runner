@@ -4,9 +4,10 @@ ARG CAPI_VERSION=v1.2.4
 ARG KUBECTL_VERSION=v1.25.3
 
 # Install system APT packages & dependencies
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y \
-        curl git python3 python3-pip openssh-client rsync net-tools vim
+        curl git python3 python3-pip openssh-client rsync net-tools vim tzdata
 
 # APT cleanup
 RUN apt-get autoclean && \
@@ -24,7 +25,8 @@ RUN curl -Lo /usr/local/bin/clusterctl "https://github.com/kubernetes-sigs/clust
 
 # Install kubectl
 RUN curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
-    chmod +x /usr/local/bin/kubectl
+    chmod +x /usr/local/bin/kubectl && \
+    mkdir ~/.kube
 ENV KUBECTL_PATH "/usr/local/bin/kubectl"
 
 WORKDIR /workspace
