@@ -111,6 +111,7 @@ class AksCI(e2e_base.CI):
         return aks_models.ManagedCluster(
             location=self.location,
             kubernetes_version=self.aks_version,
+            node_resource_group=f"{self.aks_name}-node-rg",
             dns_prefix=self.aks_name,
             enable_rbac=True,
             agent_pool_profiles=[
