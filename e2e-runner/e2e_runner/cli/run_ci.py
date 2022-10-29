@@ -1,12 +1,13 @@
 import os
 import traceback
 
-from e2e_runner import logger as e2e_logger
-from e2e_runner import factory as e2e_factory
-from e2e_runner import constants as e2e_constants
-from e2e_runner import utils as e2e_utils
-
+import azure.mgmt.containerservice.models as aks_models
 from cliff.command import Command
+from e2e_runner import constants as e2e_constants
+from e2e_runner import exceptions as e2e_exceptions
+from e2e_runner import factory as e2e_factory
+from e2e_runner import logger as e2e_logger
+from e2e_runner.utils import utils as e2e_utils
 
 
 class RunCI(Command):
@@ -95,6 +96,7 @@ class RunCI(Command):
 
         subparsers = p.add_subparsers(dest="ci", help="The CI type.")
         self.add_capz_flannel_subparser(subparsers)
+        self.add_aks_subparser(subparsers)
 
         return p
 
@@ -180,26 +182,65 @@ class RunCI(Command):
             default="Standard_D2s_v3",
             help="Size of K8s Windows agents.")
 
+    def add_aks_subparser(self, subparsers):
+        p = subparsers.add_parser("aks")
+        p.add_argument(
+            "--cluster-name",
+            required=True,
+            help="The AKS cluster name.")
+        p.add_argument(
+            "--aks-version",
+            default=e2e_constants.DEFAULT_AKS_VERSION,
+            help="The AKS Kubernetes version to deploy.")
+        p.add_argument(
+            "--location",
+            help="The Azure location for the spawned resource.")
+        p.add_argument(
+            "--linux-agents-count",
+            type=int,
+            default=1,
+            help="Number of AKS Linux agents.")
+        p.add_argument(
+            "--linux-agents-size",
+            default="Standard_D2s_v3",
+            help="Size of the AKS Linux agents.")
+        p.add_argument(
+            "--win-agents-count",
+            type=int,
+            default=2,
+            help="Number of AKS Windows agents.")
+        p.add_argument(
+            "--win-agents-size",
+            default="Standard_D2s_v3",
+            help="Size of K8s Windows agents.")
+        p.add_argument(
+            "--win-agents-sku",
+            default=aks_models.OSSKU.WINDOWS2019,
+            choices=[aks_models.OSSKU.WINDOWS2019,
+                     aks_models.OSSKU.WINDOWS2022],
+            help="The OS SKU of the K8s Windows agents.")
+
     def take_action(self, args):
         self.logging.info("Starting with CI: %s.", args.ci)
         self.logging.info(
             "Creating artifacts dir: %s.", args.artifacts_directory)
         os.makedirs(args.artifacts_directory, exist_ok=True)
         ci = e2e_factory.get_ci(args.ci)(args)
-        tests_exit_code = 0
+        conformance_tests_failed = False
         try:
             ci.setup_bootstrap_vm()
             ci.build(args.build)
             ci.up()
             ci.cleanup_bootstrap_vm()
-            tests_exit_code = ci.test()
-            assert tests_exit_code == 0, "Conformance tests failed"
-        except Exception:
+            ci.test()
+        except Exception as ex:
             self.logging.error("{}".format(traceback.format_exc()))
+            if isinstance(ex, e2e_exceptions.ConformanceTestsFailed):
+                conformance_tests_failed = True
             raise
         finally:
             ci.collect_logs()
-            if tests_exit_code != 0 and args.retain_testing_env:
+            if conformance_tests_failed and args.retain_testing_env:
                 self.logging.warning(
                     "Conformance tests failed. Retain the testing env "
                     "for debugging purposes.")

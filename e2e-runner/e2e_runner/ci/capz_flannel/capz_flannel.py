@@ -1,19 +1,24 @@
+import base64
 import os
+import shutil
 import tempfile
 import time
-import yaml
-import json
+from datetime import datetime
+from urllib.parse import urlparse
 
 import tenacity
-
-from datetime import datetime
-
+import yaml
+from azure.mgmt.compute import ComputeManagementClient
+from azure.mgmt.network import NetworkManagementClient
+from azure.mgmt.resource import ResourceManagementClient
 from e2e_runner import base as e2e_base
 from e2e_runner import constants as e2e_constants
+from e2e_runner import exceptions as e2e_exceptions
 from e2e_runner import logger as e2e_logger
-from e2e_runner import utils as e2e_utils
-
-from e2e_runner.deployer.capz import capz
+from e2e_runner.ci.capz_flannel import bootstrap_vm
+from e2e_runner.utils import azure as e2e_azure_utils
+from e2e_runner.utils import kubernetes as e2e_k8s_utils
+from e2e_runner.utils import utils as e2e_utils
 
 
 class CapzFlannelCI(e2e_base.CI):
@@ -24,32 +29,131 @@ class CapzFlannelCI(e2e_base.CI):
         self.capz_flannel_dir = os.path.dirname(__file__)
         self.logging = e2e_logger.get_logger(__name__)
 
-        self.kubectl = e2e_utils.get_kubectl_bin()
+        self.resource_group_tags = e2e_azure_utils.get_resource_group_tags()
         self.kubernetes_version = self.opts.kubernetes_version
+        self.bins_built = []
+        self.mgmt_kubeconfig_path = os.path.join(
+            self.kubeconfig_dir, "mgmt-kubeconfig.yaml")
 
-        self.deployer = capz.CAPZProvisioner(
-            opts, resource_group_tags=self.resource_group_tags)
+        self.ssh_private_key_path = os.environ["SSH_PRIVATE_KEY_PATH"]
+        self.ssh_public_key = e2e_utils.get_file_content(
+            os.environ["SSH_PUBLIC_KEY_PATH"])
+
+        creds, sub_id = e2e_azure_utils.get_credentials()
+        self.mgmt_client = ResourceManagementClient(creds, sub_id)
+        self.network_client = NetworkManagementClient(creds, sub_id)
+        self.compute_client = ComputeManagementClient(creds, sub_id)
+        self.location = self._get_location(opts.location)
+
+        self.bootstrap_vm = bootstrap_vm.BootstrapVM(opts, self.location)
 
     @property
-    def resource_group_tags(self):
-        tags = {
-            'creationTimestamp': datetime.utcnow().isoformat(),
-            'ciName': 'k8s-sig-win-networking-prow-flannel-e2e',
-            'DO-NOT-DELETE': 'RG spawned by the k8s-sig-win-networking CI',
-        }
-        build_id = os.environ.get('BUILD_ID')
-        if build_id:
-            tags['buildID'] = build_id
-        job_name = os.environ.get('JOB_NAME')
-        if job_name:
-            tags['jobName'] = job_name
-        return tags
+    def mgmt_k8s_client(self):
+        return e2e_k8s_utils.KubernetesClient(
+            config_file=self.mgmt_kubeconfig_path)
+
+    @property
+    def control_plane_public_address(self):
+        if os.path.exists(self.kubeconfig_path):
+            control_plane_address, _ = self._parse_capz_kubeconfig()
+            return control_plane_address
+
+        if self.bootstrap_vm.is_deployed:
+            return self._get_capz_control_plane_address()
+
+        raise e2e_exceptions.KubernetesEndpointNotFound(
+            "Could not find Kubernetes control-plane address")
+
+    @property
+    def control_plane_public_port(self):
+        if os.path.exists(self.kubeconfig_path):
+            _, control_plane_port = self._parse_capz_kubeconfig()
+            return control_plane_port
+
+        if self.bootstrap_vm.is_deployed:
+            return self._get_capz_control_plane_port()
+
+        raise e2e_exceptions.KubernetesEndpointNotFound(
+            "Could not find Kubernetes control-plane port")
+
+    @property
+    def linux_private_addresses(self):
+        return self._get_agents_private_addresses("linux")
+
+    @property
+    def windows_private_addresses(self):
+        return self._get_agents_private_addresses("windows")
+
+    @property
+    def capz_images_publisher(self):
+        return "cncf-upstream"
+
+    @property
+    def capz_images_linux_offer(self):
+        return "capi"
+
+    @property
+    def capz_images_windows_offer(self):
+        return "capi-windows"
+
+    @property
+    def capz_images_ubuntu_sku(self):
+        return "ubuntu-2004-gen1"
+
+    @property
+    def capz_images_windows_sku(self):
+        if self.opts.win_os == "ltsc2019":
+            os_version = 2019
+        elif self.opts.win_os == "ltsc2022":
+            os_version = 2022
+        else:
+            raise e2e_exceptions.InvalidOperatingSystem(
+                f"Unknown win_os: {self.opts.win_os}"
+            )
+        sku = f"windows-{os_version}"
+        if self.opts.container_runtime == "containerd":
+            sku += "-containerd"
+        return f"{sku}-gen1"
+
+    @property
+    def k8s_path(self):
+        return os.path.join(
+            self.bootstrap_vm.go_path,
+            "src", "k8s.io", "kubernetes")
+
+    @property
+    def containerd_path(self):
+        return os.path.join(
+            self.bootstrap_vm.go_path,
+            "src", "github.com", "containerd", "containerd")
+
+    @property
+    def containerd_shim_path(self):
+        return os.path.join(
+            self.bootstrap_vm.go_path,
+            "src", "github.com", "Microsoft", "hcsshim")
+
+    @property
+    def cri_tools_path(self):
+        return os.path.join(
+            self.bootstrap_vm.go_path,
+            "src", "github.com", "kubernetes-sigs", "cri-tools")
+
+    @property
+    def sdn_path(self):
+        return os.path.join(
+            self.bootstrap_vm.go_path,
+            "src", "github.com", "Microsoft", "windows-container-networking")
 
     def setup_bootstrap_vm(self):
-        return self.deployer.setup_bootstrap_vm()
+        self.bootstrap_vm.setup()
+        self.bootstrap_vm.upload(
+            local_path=os.path.join(self.e2e_runner_dir, "scripts"),
+            remote_path="www/",
+        )
 
     def cleanup_bootstrap_vm(self):
-        return self.deployer.cleanup_bootstrap_vm()
+        self.bootstrap_vm.remove()
 
     def build(self, bins_to_build):
         builder_mapping = {
@@ -60,97 +164,140 @@ class CapzFlannelCI(e2e_base.CI):
             "sdncnibins": self._build_sdn_cni_binaries,
         }
         for bins in bins_to_build:
-            self.logging.info("Building %s binaries", bins)
-            builder_mapping.get(bins)()
-            self.deployer.bins_built.append(bins)
+            self.logging.info("Building %s", bins)
+            build_func = builder_mapping.get(bins)
+            if not build_func:
+                raise e2e_exceptions.BuildFailed(f"Cannot build {bins}")
+            build_func()
+            self.bins_built.append(bins)
 
     def up(self):
         self._create_metadata_artifact()
-        self._create_capz_cluster()
+        self._setup_capz_cluster()
 
     def down(self):
-        self.deployer.down()
-
-    def test(self):
-        self._prepare_tests()
-        return self._run_tests()
+        self.bootstrap_vm.remove()
+        self._delete_capz_rg()
 
     def collect_logs(self):
-        if self.deployer.bootstrap_vm:
-            self.deployer.collect_bootstrap_vm_logs()
-        self.collect_linux_logs()
-        self.collect_windows_logs()
+        if self.bootstrap_vm.is_deployed:
+            self._collect_bootstrap_vm_logs()
+        self._collect_linux_logs()
+        self._collect_windows_logs()
 
-    def collect_windows_logs(self):
-        if not self._can_collect_logs():
-            self.logging.info("Skipping logs collection.")
-            return
-        local_script_path = os.path.join(
-            self.e2e_runner_dir, "scripts/collect-logs.ps1")
-        remote_script_path = os.path.join(
-            "/tmp", os.path.basename(local_script_path))
-        remote_cmd = remote_script_path
-        remote_logs_archive = "/tmp/logs.tgz"
-        for node_address in self.deployer.windows_private_addresses:
-            try:
-                self._collect_logs(
-                    node_address, local_script_path, remote_script_path,
-                    remote_cmd, remote_logs_archive)
-            except Exception as ex:
-                self.logging.warning(
-                    "Cannot collect logs from node %s. Exception details: "
-                    "%s. Skipping", node_address, ex)
+    def _get_location(self, location=None):
+        if not location:
+            location = e2e_azure_utils.get_least_used_location(
+                self.compute_client, self.network_client)
+        self.logging.info("Using Azure location %s", location)
+        return location
 
-    def collect_linux_logs(self):
-        if not self._can_collect_logs():
-            self.logging.info("Skipping logs collection.")
-            return
-        local_script_path = os.path.join(
-            self.e2e_runner_dir, "scripts/collect-logs.sh")
-        remote_script_path = os.path.join(
-            "/tmp", os.path.basename(local_script_path))
-        remote_cmd = f"sudo bash {remote_script_path}"
-        remote_logs_archive = "/tmp/logs.tgz"
-        for node_address in self.deployer.linux_private_addresses:
-            try:
-                self._collect_logs(
-                    node_address, local_script_path, remote_script_path,
-                    remote_cmd, remote_logs_archive)
-            except Exception as ex:
-                self.logging.warning(
-                    "Cannot collect logs from node %s. Exception details: "
-                    "%s. Skipping", node_address, ex)
+    def _delete_capz_rg(self, wait=False):
+        self.logging.info("Deleting CAPZ cluster resource group")
+        e2e_azure_utils.delete_resource_group(
+            self.mgmt_client, self.opts.cluster_name, wait=wait)
 
-    @e2e_utils.retry_on_error(max_attempts=6, max_sleep_seconds=0)
-    def _create_capz_cluster(self):
+    def _collect_bootstrap_vm_logs(self):
+        self.logging.info("Collecting logs from bootstrap VM")
         try:
-            start = time.time()
-            self.deployer.up()
-            self._setup_kubeconfig()
-            self._add_flannel_cni()
-            self.deployer.wait_windows_agents(timeout=600)
-            self.deployer.setup_ssh_config()
-            self._add_kube_proxy_windows()
-            self._wait_for_ready_pods()
-            self._validate_k8s_api_versions()
-            elapsed = time.time() - start
-            self.logging.info(
-                "The cluster provisioned in %.2f minutes", elapsed / 60)
-        except Exception as ex:
-            self.logging.error(
-                "Failed to create CAPZ cluster. Exception details: %s", ex)
-            self.deployer.cleanup_capz_cluster()
-            raise ex
+            self._get_mgmt_cluster_pods_logs()
 
-    def _create_metadata_artifact(self):
-        metadata_path = os.path.join(
-            self.opts.artifacts_directory, "metadata.json")
-        metadata = {
-            "job-version": self.kubernetes_version,
-            "revision": self.kubernetes_version,
-        }
-        with open(metadata_path, "w") as f:
-            json.dump(metadata, f)
+            suffix = datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
+            e2e_utils.make_tgz_archive(
+                self.bootstrap_vm.logs_dir,
+                f"{self.bootstrap_vm.logs_dir}_{suffix}.tgz")
+
+            shutil.rmtree(self.bootstrap_vm.logs_dir)
+
+        except Exception as e:
+            self.logging.warning("Cannot collect logs from bootstrap VM. "
+                                 "Exception details: \n%s", e)
+            self.logging.warning("Skipping bootstrap VM logs collection")
+
+    def _get_mgmt_cluster_pods_logs(self):
+        os.makedirs(self.bootstrap_vm.logs_dir, exist_ok=True)
+        pods_yaml, _ = e2e_utils.exec_kubectl(  # pyright: ignore
+            args=[
+                "get", "pods", "--kubeconfig", self.mgmt_kubeconfig_path,
+                "-A", "-o", "yaml"
+            ],
+            capture_output=True,
+            hide_cmd=True,
+        )
+        pods = yaml.safe_load(pods_yaml)  # pyright: ignore
+        for pod in pods['items']:
+            pod_name = pod['metadata']['name']
+            ns_name = pod['metadata']['namespace']
+            for container in pod['spec']['containers']:
+                container_name = container['name']
+                pod_logs, _ = e2e_utils.exec_kubectl(  # pyright: ignore
+                    args=[
+                        "logs", "--kubeconfig", self.mgmt_kubeconfig_path,
+                        "-n", ns_name, pod_name, container_name,
+                    ],
+                    capture_output=True,
+                    hide_cmd=True,
+                )
+                log_file = os.path.join(
+                    self.bootstrap_vm.logs_dir,
+                    f"{ns_name}_{pod_name}_{container_name}.log",
+                )
+                with open(log_file, 'wb') as f:
+                    f.write(pod_logs.encode())  # pyright: ignore
+
+    def _collect_windows_logs(self):
+        if not self._can_collect_logs():
+            self.logging.info("Skipping logs collection.")
+            return
+
+        local_script_path = os.path.join(
+            self.e2e_runner_dir,
+            "scripts/collect-logs.ps1"
+        )
+        remote_script_path = os.path.join(
+            "/tmp",
+            os.path.basename(local_script_path)
+        )
+        for node_address in self.windows_private_addresses:
+            try:
+                self._collect_logs(
+                    node_address,
+                    local_script_path=local_script_path,
+                    remote_script_path=remote_script_path,
+                    remote_cmd=remote_script_path,
+                    remote_logs_archive="/tmp/logs.tgz"
+                )
+            except Exception as ex:
+                self.logging.warning(
+                    "Cannot collect logs from node %s. Exception details: "
+                    "%s. Skipping", node_address, ex)
+
+    def _collect_linux_logs(self):
+        if not self._can_collect_logs():
+            self.logging.info("Skipping logs collection.")
+            return
+
+        local_script_path = os.path.join(
+            self.e2e_runner_dir,
+            "scripts/collect-logs.sh"
+        )
+        remote_script_path = os.path.join(
+            "/tmp",
+            os.path.basename(local_script_path)
+        )
+        for node_address in self.linux_private_addresses:
+            try:
+                self._collect_logs(
+                    node_address=node_address,
+                    local_script_path=local_script_path,
+                    remote_script_path=remote_script_path,
+                    remote_cmd=f"sudo bash {remote_script_path}",
+                    remote_logs_archive="/tmp/logs.tgz"
+                )
+            except Exception as ex:
+                self.logging.warning(
+                    "Cannot collect logs from node %s. Exception details: "
+                    "%s. Skipping", node_address, ex)
 
     def _can_collect_logs(self):
         if "KUBECONFIG" not in os.environ:
@@ -164,265 +311,349 @@ class CapzFlannelCI(e2e_base.CI):
             return False
         return True
 
-    def _setup_kubeconfig(self):
-        os.environ["KUBECONFIG"] = self.deployer.capz_kubeconfig_path
+    def _collect_logs(self, node_address, local_script_path,
+                      remote_script_path, remote_cmd, remote_logs_archive):
+        self.logging.info("Collecting logs from node %s", node_address)
 
-    def _conformance_image(self):
-        registry = "k8s.gcr.io"
-        if "k8sbins" in self.deployer.bins_built:
-            registry = "registry.k8s.io"
-        tag = self.kubernetes_version.replace("+", "_")
-        return f"{registry}/conformance:{tag}"
+        if not self._has_node_ssh_connection(node_address):
+            self.logging.warning(
+                "No SSH connectivity to node %s. Skipping logs collection",
+                node_address)
+            return
 
-    def _conformance_image_pull_cmd(self):
-        if "k8sbins" in self.deployer.bins_built:
-            # Image is already imported as part of the userdata script.
-            return ""
-        cmd = [
-            "sudo", "ctr", "-n", "k8s.io",
-            "image", "pull", self._conformance_image(),
-        ]
-        return " ".join(cmd)
-
-    def _conformance_tests_cmd(self):
-        cmd = ["sudo", "ctr", "-n", "k8s.io", "run", "--rm", "--net-host"]
-        mounts = [
-            {
-                "src": "/tmp/output",
-                "dst": "/output",
-                "mode": "rw",
-            },
-            {
-                "src": "/tmp/repo-list",
-                "dst": "/tmp/repo-list",
-                "mode": "ro",
-            },
-            {
-                "src": "/etc/kubernetes/admin.conf",
-                "dst": "/tmp/kubeconfig",
-                "mode": "ro",
-            },
-        ]
-        env = {
-            "KUBE_TEST_REPO_LIST": "/tmp/repo-list",
-        }
-        ginkgoFlags = {
-            "progress": "true",
-            "trace": "true",
-            "v": "true",
-            "nodes": self.opts.parallel_test_nodes,
-            "focus": f"'{self.opts.test_focus_regex}'",
-            "skip": f"'{self.opts.test_skip_regex}'",
-        }
-        if self.kubernetes_version > "v1.25":
-            ginkgoFlags["no-color"] = "true"
-            ginkgoFlags["slow-spec-threshold"] = "5m"
-        else:
-            ginkgoFlags["noColor"] = "true"
-            ginkgoFlags["slowSpecThreshold"] = "300.0"
-        e2eFlags = {
-            "kubeconfig": "/tmp/kubeconfig",
-            "provider": "skeleton",
-            "report-dir": "/output",
-            "e2e-output-dir": "/output/e2e-output",
-            "test.timeout": "2h",
-            "num-nodes": "2",
-            "node-os-distro": "windows",
-            "prepull-images": "true",
-            "disable-log-dump": "true",
-        }
-        docker_config_file = os.environ.get("DOCKER_CONFIG_FILE")
-        if docker_config_file:
-            mounts.append({
-                "src": "/tmp/docker-creds-config.json",
-                "dst": "/tmp/docker-creds-config.json",
-                "mode": "ro",
-            })
-            e2eFlags["docker-config-file"] = "/tmp/docker-creds-config.json"
-        for m in mounts:
-            src = m["src"]
-            dst = m["dst"]
-            mode = m.get("mode", "rw")
-            opts = f"rbind:{mode}"
-            cmd.extend([
-                "--mount",
-                f"type=bind,src={src},dst={dst},options={opts}"
-            ])
-        for key in env:
-            cmd.extend([
-                "--env",
-                f"{key}={env[key]}"
-            ])
-        ginkgoArgs = [f"--{k}={v}" for k, v in ginkgoFlags.items()]
-        e2eArgs = [f"--{k}={v}" for k, v in e2eFlags.items()]
-        cmd.extend([
-            self._conformance_image(),
-            "conformance_tests",
-            "/usr/local/bin/ginkgo",
-            *ginkgoArgs,
-            "/usr/local/bin/e2e.test",
-            "--",
-            *e2eArgs,
-        ])
-        return " ".join(cmd)
-
-    def _prepare_tests(self):
-        e2e_utils.label_linux_nodes_no_schedule()
-        self._prepull_images()
-        self.logging.info("Downloading repo-list")
-        e2e_utils.download_file(self.opts.repo_list, "/tmp/repo-list")
         self._upload_to_node(
-            "/tmp/repo-list", "/tmp/repo-list",
-            [self.deployer.master_public_address])
+            node_address,
+            local_script_path,
+            remote_script_path
+        )
         self._run_node_cmd(
-            "mkdir -p /tmp/output",
-            [self.deployer.master_public_address])
-        docker_config_file = os.environ.get("DOCKER_CONFIG_FILE")
-        if docker_config_file:
-            self._upload_to_node(
-                docker_config_file, "/tmp/docker-creds-config.json",
-                [self.deployer.master_public_address])
+            node_address,
+            remote_cmd
+        )
+        node_name, _ = self._run_node_cmd(node_address, "hostname")
+        local_logs_archive = os.path.join(
+            self.opts.artifacts_directory,
+            f"{node_name}-{os.path.basename(remote_logs_archive)}",
+        )
+        self._download_from_node(
+            node_address,
+            remote_logs_archive,
+            local_logs_archive,
+        )
 
-    def _run_tests(self):
-        ssh_kwargs = {
-            "ssh_user": "capi",
-            "ssh_address": self.deployer.master_public_address,
-            "ssh_key_path": os.environ["SSH_KEY"],
-        }
-        img_pull_cmd = self._conformance_image_pull_cmd()
-        img_pull_timeout = 10 * 60  # 10 minutes
-        if img_pull_cmd:
-            e2e_utils.retry_on_error()(e2e_utils.run_remote_ssh_cmd)(
-                cmd=[img_pull_cmd], timeout=img_pull_timeout, **ssh_kwargs)
-        tests_cmd = [
-            self._conformance_tests_cmd()
-        ]
-        tests_timeout = 150 * 60  # 150 minutes
+        self.logging.info("Finished collecting logs from node %s", node_name)
+
+    def _get_agents_private_addresses(self, operating_system):
+        private_addresses, _ = e2e_utils.exec_kubectl(  # pyright: ignore
+            args=[
+                "get", "nodes", "--kubeconfig", self.kubeconfig_path,
+                "-o", "jsonpath=\"{{.items[?(@.status.nodeInfo.operatingSystem == '{}')].status.addresses[?(@.type == 'InternalIP')].address}}\"".format(operating_system),  # noqa:
+            ],
+            capture_output=True,
+            hide_cmd=True,
+        )
+        return private_addresses.strip().split()  # pyright: ignore
+
+    def _has_node_ssh_connection(self, node_address):
         try:
-            self.logging.info("Tests cmd\n%s", "\n".join(tests_cmd))
-            e2e_utils.run_remote_ssh_cmd(
-                cmd=tests_cmd, timeout=tests_timeout, **ssh_kwargs)
-        except Exception:
-            return 1
-        finally:
-            e2e_utils.rsync_download(
-                "/tmp/output/", self.opts.artifacts_directory,
-                delete=False, **ssh_kwargs)
-        return 0
+            e2e_utils.run_shell_cmd(
+                cmd=[
+                    "ssh", self.control_plane_public_address,
+                    f"'nc -w 5 -z {node_address} 22'"
+                ],
+                hide_cmd=True,
+                timeout=60,
+            )
+        except e2e_exceptions.ShellCmdFailed:
+            return False
+        return True
 
-    def _upload_to_node(self, local_path, remote_path, node_addresses):
-        for node_address in node_addresses:
-            self.deployer.upload_to_k8s_node(
-                local_path, remote_path, node_address)
+    @e2e_utils.retry_on_error()
+    def _run_node_cmd(self, node_address, cmd):
+        stdout, stderr = e2e_utils.run_shell_cmd(
+            cmd=["ssh", node_address, f"'{cmd}'"],
+            timeout=600,
+            capture_output=True,
+        )
+        if stdout:
+            stdout = stdout.decode().strip()
+        if stderr:
+            stderr = stderr.decode().strip()
+        return stdout, stderr
 
-    def _run_node_cmd(self, cmd, node_addresses):
-        for node_address in node_addresses:
-            self.deployer.run_cmd_on_k8s_node(cmd, node_address)
+    @e2e_utils.retry_on_error()
+    def _download_from_node(self, node_address, remote_path, local_path):
+        e2e_utils.run_shell_cmd(
+            cmd=["scp", "-r", f"{node_address}:{remote_path}", local_path],
+            timeout=600,
+        )
 
-    def _prepull_images(self, timeout=3600):
-        prepull_yaml_path = "/tmp/prepull-windows-images.yaml"
-        e2e_utils.download_file(self.opts.prepull_yaml, prepull_yaml_path)
-        self.logging.info("Starting Windows images pre-pull")
-        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
-            self.kubectl, "apply", "-f", prepull_yaml_path])
+    @e2e_utils.retry_on_error()
+    def _upload_to_node(self, node_address, local_path, remote_path):
+        e2e_utils.run_shell_cmd(
+            cmd=["scp", "-r", local_path, f"{node_address}:{remote_path}"],
+            timeout=600,
+        )
+
+    def _parse_capz_kubeconfig(self):
+        with open(self.kubeconfig_path, 'r') as f:
+            cfg = yaml.safe_load(f.read())
+
+        endpoint = urlparse(cfg["clusters"][0]["cluster"]["server"])
+        k8s_address = endpoint.hostname
+        k8s_port = endpoint.port
+
+        if k8s_port is None:
+            if endpoint.scheme == "http":
+                k8s_port = 80
+            elif endpoint.scheme == "https":
+                k8s_port = 443
+            else:
+                raise e2e_exceptions.InvalidKubernetesEndpoint(
+                    f"Found endpoint scheme: {endpoint.scheme}, but only "
+                    "http or https are valid")
+
+        return k8s_address, k8s_port
+
+    def _get_capz_control_plane_address(self):
+        control_plane_address, _ = e2e_utils.exec_kubectl(  # pyright: ignore # noqa:
+            args=[
+                "get", "cluster", self.opts.cluster_name,
+                "--kubeconfig", self.mgmt_kubeconfig_path,
+                "--no-headers",
+                "-o", "custom-columns=ADDRESS:.spec.controlPlaneEndpoint.host",  # noqa:
+            ],
+            capture_output=True,
+        )
+        return control_plane_address.strip()  # pyright: ignore
+
+    def _get_capz_control_plane_port(self):
+        control_plane_port, _ = e2e_utils.exec_kubectl(  # pyright: ignore # noqa:
+            args=[
+                "get", "cluster", self.opts.cluster_name,
+                "--kubeconfig", self.mgmt_kubeconfig_path,
+                "--no-headers",
+                "-o", "custom-columns=PORT:.spec.controlPlaneEndpoint.port",  # noqa:
+            ],
+            capture_output=True,
+        )
+        return control_plane_port.strip()  # pyright: ignore
+
+    @e2e_utils.retry_on_error(max_attempts=6, max_sleep_seconds=0)
+    def _setup_capz_cluster(self):
+        try:
+            start = time.time()
+            self._setup_mgmt_cluster()
+            self._setup_mgmt_kubeconfig()
+            self._setup_capz_components()
+            self._create_capz_cluster()
+            self._wait_capz_control_plane(timeout=600)
+            self._setup_capz_kubeconfig()
+            self._add_flannel_cni()
+            self._wait_windows_agents(timeout=600)
+            self._setup_ssh_config()
+            self._add_kube_proxy_windows()
+            self.k8s_client.wait_running_pods()
+            self._validate_k8s_api_versions()
+            elapsed = time.time() - start
+            self.logging.info(
+                "The cluster provisioned in %.2f minutes", elapsed / 60)
+        except Exception as ex:
+            self.logging.error(
+                "Failed to create CAPZ cluster. Exception details: %s", ex)
+            self._cleanup_capz_cluster()
+            raise ex
+
+    def _setup_mgmt_cluster(self):
+        self.logging.info("Setting up the management cluster")
+        self.bootstrap_vm.exec(
+            script=[
+                "kind create cluster --config ~/kind-config.yaml --wait 15m"
+            ],
+        )
+
+    def _setup_mgmt_kubeconfig(self):
+        self.logging.info("Setting up the management cluster kubeconfig")
+        self.bootstrap_vm.download(
+            ".kube/config",
+            self.mgmt_kubeconfig_path
+        )
+        with open(self.mgmt_kubeconfig_path, 'r') as f:
+            cfg = yaml.safe_load(f.read())
+
+        public_endpoint = f"https://{self.bootstrap_vm.public_ip}:6443"
+        cfg["clusters"][0]["cluster"]["server"] = public_endpoint
+
+        with open(self.mgmt_kubeconfig_path, 'w') as f:
+            f.write(yaml.safe_dump(cfg))
+
+    def _setup_capz_components(self):
+        self.logging.info("Creating CAPI cluster identity")
+        self.mgmt_k8s_client.create_secret(
+            name="cluster-identity-secret",
+            secret_name="clientSecret",
+            secret_value=os.environ["AZURE_CLIENT_SECRET"],
+        )
+        self.logging.info("Setup the Azure Cluster API components")
+        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
+            cmd=[
+                "clusterctl", "init",
+                "--kubeconfig", self.mgmt_kubeconfig_path,
+                "--infrastructure", "azure",
+                "--wait-providers",
+            ],
+            env={
+                "GITHUB_TOKEN": os.environ["GITHUB_TOKEN"],
+            },
+        )
+
+    def _create_capz_cluster(self):
+        self.logging.info("Create CAPZ cluster")
+        output_file = "/tmp/capz-cluster.yaml"
+        e2e_utils.render_template(
+            template_file="cluster.yaml.j2",
+            output_file=output_file,
+            context=self._get_capz_context(),
+            searchpath=f"{self.e2e_runner_dir}/templates/capz",
+        )
+        e2e_utils.exec_kubectl([
+            "apply", "--kubeconfig", self.mgmt_kubeconfig_path,
+            "-f", output_file
+        ])
+
+    def _get_capz_context(self):
+        control_plane_subnet_cidr = self.opts.control_plane_subnet_cidr_block
+        ssh_public_key_b64 = base64.b64encode(
+            self.ssh_public_key.encode()).decode()  # pyright: ignore
+        capz_image_ubuntu_version = self._capz_image_latest_version(
+            self.capz_images_linux_offer, self.capz_images_ubuntu_sku
+        )
+        capz_image_windows_version = self._capz_image_latest_version(
+            self.capz_images_windows_offer, self.capz_images_windows_sku
+        )
+        context = {
+            "cluster_name": self.opts.cluster_name,
+            "resource_group_tags": self.resource_group_tags,
+
+            "bootstrap_vm_vnet_name": self.bootstrap_vm.vnet_name,
+            "bootstrap_vm_endpoint": f"{self.bootstrap_vm.private_ip}:8081",
+
+            "vnet_cidr": self.opts.vnet_cidr_block,
+            "control_plane_subnet_cidr": control_plane_subnet_cidr,
+            "node_subnet_cidr": self.opts.node_subnet_cidr_block,
+            "cluster_network_subnet": self.opts.cluster_network_subnet,
+
+            "azure_location": self.location,
+            "azure_subscription_id": os.environ["AZURE_SUBSCRIPTION_ID"],
+            "azure_tenant_id": os.environ["AZURE_TENANT_ID"],
+            "azure_client_id": os.environ["AZURE_CLIENT_ID"],
+            "azure_client_secret": os.environ["AZURE_CLIENT_SECRET"],
+            "azure_ssh_public_key": self.ssh_public_key,
+            "azure_ssh_public_key_b64": ssh_public_key_b64,
+
+            "master_vm_size": self.opts.master_vm_size,
+            "win_agents_count": self.opts.win_agents_count,
+            "win_agent_size": self.opts.win_agent_size,
+
+            "kubernetes_version": self.kubernetes_version,
+            "flannel_mode": self.opts.flannel_mode,
+            "container_runtime": self.opts.container_runtime,
+            "k8s_bins": "k8sbins" in self.bins_built,
+            "sdn_cni_bins": "sdncnibins" in self.bins_built,
+            "containerd_bins": "containerdbins" in self.bins_built,
+            "containerd_shim_bins": "containerdshim" in self.bins_built,
+
+            "capz_image_publisher": self.capz_images_publisher,
+            "capz_image_ubuntu_offer": self.capz_images_linux_offer,
+            "capz_image_windows_offer": self.capz_images_windows_offer,
+            "capz_image_ubuntu_sku": self.capz_images_ubuntu_sku,
+            "capz_image_windows_sku": self.capz_images_windows_sku,
+            "capz_image_ubuntu_version": capz_image_ubuntu_version,
+            "capz_image_windows_version": capz_image_windows_version,
+        }
+        return context
+
+    def _capz_images_version_prefix(self):
+        ver = self.kubernetes_version
+        if "k8sbins" in self.bins_built:
+            ver = e2e_constants.DEFAULT_KUBERNETES_VERSION
+        v = ver.strip("v").split(".")
+        return f"{v[0]}{v[1]}.{v[2]}"
+
+    def _capz_image_latest_version(self, offer, sku):
+        img_vers = e2e_utils.retry_on_error()(
+            self.compute_client.virtual_machine_images.list)(
+                self.location,
+                self.capz_images_publisher,
+                offer,  # pyright: ignore
+                sku,  # pyright: ignore
+        )
+        prefix = self._capz_images_version_prefix()
+        vers = [i.name for i in img_vers if i.name.startswith(prefix)]
+        vers.sort()
+        return vers[-1]
+
+    def _wait_capz_control_plane(self, timeout=1800):
         self.logging.info(
-            "Waiting up to %.2f minutes to pre-pull Windows container images",
+            "Waiting up to %.2f minutes for the CAPZ control-plane",
             timeout / 60.0)
-        cmd = [self.kubectl, "get", "-o", "yaml", "-f", prepull_yaml_path]
+        self._wait_running_capz_machines(
+            wanted_count=1,
+            selector="cluster.x-k8s.io/control-plane=",
+            timeout=timeout)
+        self.logging.info("Control-plane is ready")
+
+    def _wait_windows_agents(self, timeout=5400):
+        self.logging.info(
+            "Waiting up to %.2f minutes for the Windows agents",
+            timeout / 60.0)
+        self._wait_running_capz_machines(
+            wanted_count=2,
+            selector="cluster.x-k8s.io/deployment-name={}-md-win".format(
+                self.opts.cluster_name),
+            timeout=timeout,
+        )
+        self.logging.info("Windows agents are ready")
+
+    def _wait_running_capz_machines(self, wanted_count, selector="",
+                                    timeout=3600):
         for attempt in tenacity.Retrying(
-                stop=tenacity.stop_after_delay(timeout),
-                wait=tenacity.wait_exponential(max=30),
-                retry=tenacity.retry_if_exception_type(AssertionError),
+                stop=tenacity.stop_after_delay(timeout),  # pyright: ignore
+                wait=tenacity.wait_exponential(max=30),  # pyright: ignore
+                retry=tenacity.retry_if_exception_type(AssertionError),  # pyright: ignore # noqa:
                 reraise=True):
             with attempt:
-                output, _ = e2e_utils.run_shell_cmd(
-                    cmd, capture_output=True, hide_cmd=True)
-                ds = yaml.safe_load(output.decode())
-                ready_nr = ds["status"]["numberReady"]
-                desired_ready_nr = ds["status"]["desiredNumberScheduled"]
-                assert ready_nr == desired_ready_nr, (
-                    f"Windows images pre-pull failed: "
-                    f"{ready_nr}/{desired_ready_nr} pods ready.")
-        self.logging.info("Windows images successfully pre-pulled")
-        self.logging.info("Cleaning up")
-        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
-            self.kubectl, "delete", "--wait", "-f", prepull_yaml_path])
+                machines, _ = e2e_utils.exec_kubectl(  # pyright: ignore
+                    args=[
+                        "get", "machine", "-l", f"'{selector}'",
+                        "--kubeconfig", self.mgmt_kubeconfig_path,
+                        "-o", "jsonpath=\"{.items[?(@.status.phase == 'Running')].metadata.name}\"",  # noqa:
+                    ],
+                    capture_output=True,
+                    hide_cmd=True,
+                )
+                running_machines = machines.strip().split()  # pyright: ignore
+                assert len(running_machines) == wanted_count, (
+                    f"Expected {wanted_count} running CAPZ machines, "
+                    f"but found {len(running_machines)}"
+                )
 
-    def _validate_k8s_api_versions(self):
-        self.logging.info("Validating K8s API versions")
-        output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
-            cmd=[self.kubectl, "get", "nodes", "-o", "yaml"],
-            capture_output=True)
-        nodes = yaml.safe_load(output.decode())
-        for node in nodes["items"]:
-            node_name = node["metadata"]["name"]
-            expected_ver = self.kubernetes_version
-            kubelet_ver = node["status"]["nodeInfo"]["kubeletVersion"]
-            if kubelet_ver != expected_ver:
-                raise Exception(
-                    f"Wrong kubelet version on node {node_name}. "
-                    f"Expected {expected_ver}, but found {kubelet_ver}")
-            kube_proxy_ver = node["status"]["nodeInfo"]["kubeProxyVersion"]
-            if kube_proxy_ver != expected_ver:
-                raise Exception(
-                    f"Wrong kube-proxy version on node {node_name}. "
-                    f"Expected {expected_ver}, but found {kube_proxy_ver}")
+    @e2e_utils.retry_on_error()
+    def _setup_capz_kubeconfig(self):
+        self.logging.info("Setting up CAPZ kubeconfig")
 
-    @e2e_utils.retry_on_error(max_attempts=3)
-    def _wait_for_ready_pods(self):
-        self.logging.info("Waiting for all the pods to be ready")
-        e2e_utils.run_shell_cmd([
-            self.kubectl, "wait", "--for=condition=Ready",
-            "--timeout", "10m", "pods", "--all", "--all-namespaces"
-        ])
+        output, _ = e2e_utils.run_shell_cmd(
+            cmd=[
+                "clusterctl", "get", "kubeconfig",
+                "--kubeconfig", self.mgmt_kubeconfig_path,
+                self.opts.cluster_name,
+            ],
+            capture_output=True,
+        )
+        with open(self.kubeconfig_path, 'w') as f:
+            f.write(output.decode())
 
-    def _add_kube_proxy_windows(self):
-        if (("k8sbins" not in self.deployer.bins_built) and
-            (self.kubernetes_version !=
-                e2e_constants.DEFAULT_KUBERNETES_VERSION)):
-            self._run_node_cmd(
-                cmd="mkdir -force /build",
-                node_addresses=self.deployer.windows_private_addresses)
-            kube_proxy_url = (
-                f"https://dl.k8s.io/{self.kubernetes_version}/"
-                "bin/windows/amd64/kube-proxy.exe")
-            e2e_utils.retry_on_error()(self._run_node_cmd)(
-                cmd=("curl.exe --fail -L "
-                     f"{kube_proxy_url} -o /build/kube-proxy.exe"),
-                node_addresses=self.deployer.windows_private_addresses)
-        context = {
-            "container_runtime": self.opts.container_runtime,
-            "win_os": self.opts.win_os,
-            "container_image_tag": self.opts.container_image_tag,
-            "container_image_registry": self.opts.container_image_registry,
-            "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),
-            "flannel_mode": self.opts.flannel_mode
-        }
-        searchpath = os.path.join(
-            self.capz_flannel_dir,
-            f"kube-proxy/windows/{self.opts.container_runtime}")
-        output_file = "/tmp/kube-proxy-windows.yaml"
-        e2e_utils.render_template(
-            "kube-proxy.yaml.j2", output_file, context, searchpath)
-        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
-            [self.kubectl, "apply", "-f", output_file])
-
-    def _setup_flannel_configmaps(self):
-        for cfgmap_name in ["kubeadm-config", "kube-proxy"]:
-            output, _ = e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
-                cmd=[
-                    self.kubectl, "get", "configmap", "-o", "yaml",
-                    "-n", "kube-system", cfgmap_name
-                ],
-                capture_output=True)
-            cfgmap = yaml.safe_load(output.decode())
-            cfgmap["metadata"]["namespace"] = "kube-flannel"
-            with tempfile.NamedTemporaryFile(suffix=".yaml") as f:
-                f.write(yaml.dump(cfgmap).encode())
-                f.flush()
-                e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
-                    self.kubectl, "apply", "-f", f.name
-                ])
+        os.environ["KUBECONFIG"] = self.kubeconfig_path
 
     def _add_flannel_cni(self):
         context = {
@@ -435,121 +666,227 @@ class CapzFlannelCI(e2e_base.CI):
             "control_plane_cidr": self.opts.control_plane_subnet_cidr_block,
             "node_cidr": self.opts.node_subnet_cidr_block,
         }
-        searchpath = os.path.join(self.capz_flannel_dir, "flannel")
+        flannel_dir = os.path.join(self.capz_flannel_dir, "flannel")
         kube_flannel = "/tmp/kube-flannel.yaml"
-        e2e_utils.render_template(
-            "kube-flannel.yaml.j2", kube_flannel, context, searchpath)
-        windows_searchpath = os.path.join(
-            self.capz_flannel_dir,
-            f"flannel/windows/{self.opts.container_runtime}")
         kube_flannel_windows = "/tmp/kube-flannel-windows.yaml"
-        e2e_utils.render_template(
-            "kube-flannel.yaml.j2", kube_flannel_windows,
-            context, windows_searchpath)
-        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)([
-            self.kubectl, "apply", "-f", kube_flannel])
-        self._setup_flannel_configmaps()
-        e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
-            [self.kubectl, "apply", "-f", kube_flannel_windows])
 
-    def _build_k8s_artifacts(self):
-        # Clone Kubernetes git repository
-        remote_k8s_path = self.deployer.remote_k8s_path
-        self.deployer.remote_clone_git_repo(
-            self.opts.k8s_repo, self.opts.k8s_branch, remote_k8s_path)
-        # Build Linux binaries
+        e2e_utils.render_template(
+            template_file="kube-flannel.yaml.j2",
+            output_file=kube_flannel,
+            context=context,
+            searchpath=flannel_dir,
+        )
+        e2e_utils.exec_kubectl(["apply", "-f", kube_flannel])
+
+        e2e_utils.render_template(
+            template_file="kube-flannel.yaml.j2",
+            output_file=kube_flannel_windows,
+            context=context,
+            searchpath=f"{flannel_dir}/windows/{self.opts.container_runtime}",
+        )
+        self._setup_flannel_configmaps()
+        e2e_utils.exec_kubectl(["apply", "-f", kube_flannel_windows])
+
+    def _setup_flannel_configmaps(self):
+        for cfgmap_name in ["kubeadm-config", "kube-proxy"]:
+            configmap_yaml, _ = e2e_utils.exec_kubectl(  # pyright: ignore
+                args=[
+                    "get", "configmap", cfgmap_name, "-n", "kube-system",
+                    "-o", "yaml",
+                ],
+                capture_output=True,
+            )
+            configmap = yaml.safe_load(configmap_yaml)  # pyright: ignore
+            configmap["metadata"]["namespace"] = "kube-flannel"
+            with tempfile.NamedTemporaryFile(suffix=".yaml") as f:
+                f.write(yaml.dump(configmap).encode())
+                f.flush()
+                e2e_utils.exec_kubectl(["apply", "-f", f.name])
+
+    def _setup_ssh_config(self):
+        ssh_dir = os.path.join(os.environ["HOME"], ".ssh")
+        ssh_config_file = os.path.join(ssh_dir, "config")
+
+        os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
+
+        ssh_config = [
+            f"Host {self.control_plane_public_address}",
+            f"HostName {self.control_plane_public_address}",
+            "User capi",
+            "StrictHostKeyChecking no",
+            "UserKnownHostsFile /dev/null",
+            f"IdentityFile {self.ssh_private_key_path}",
+            ""
+        ]
+        for address in (self.windows_private_addresses + self.linux_private_addresses):  # noqa:
+            ssh_config += [
+                f"Host {address}",
+                f"HostName {address}",
+                "User capi",
+                f"ProxyCommand ssh -q {self.control_plane_public_address} -W %h:%p",  # noqa:
+                "StrictHostKeyChecking no",
+                "UserKnownHostsFile /dev/null",
+                f"IdentityFile {self.ssh_private_key_path}",
+                ""
+            ]
+
+        with open(ssh_config_file, "w") as f:
+            f.write("\n".join(ssh_config))
+
+    def _add_kube_proxy_windows(self):
+        if ("k8sbins" not in self.bins_built) and (self.kubernetes_version != e2e_constants.DEFAULT_KUBERNETES_VERSION):  # noqa:
+            # The kube-proxy bundled with the container image is different
+            # than the one needed for this job run. So, we update it.
+            for node_address in self.windows_private_addresses:
+                self._run_node_cmd(
+                    node_address=node_address,
+                    cmd="mkdir -force /build",
+                )
+                self._run_node_cmd(
+                    node_address=node_address,
+                    cmd=f"curl.exe --fail -L -o /build/kube-proxy.exe https://dl.k8s.io/{self.kubernetes_version}/bin/windows/amd64/kube-proxy.exe",  # noqa:
+                )
+        context = {
+            "container_runtime": self.opts.container_runtime,
+            "win_os": self.opts.win_os,
+            "container_image_tag": self.opts.container_image_tag,
+            "container_image_registry": self.opts.container_image_registry,
+            "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),
+            "flannel_mode": self.opts.flannel_mode
+        }
+        output_file = "/tmp/kube-proxy-windows.yaml"
+        e2e_utils.render_template(
+            template_file="kube-proxy.yaml.j2",
+            output_file=output_file,
+            context=context,
+            searchpath=f"{self.capz_flannel_dir}/kube-proxy/windows/{self.opts.container_runtime}",  # noqa:
+        )
+        e2e_utils.exec_kubectl(["apply", "-f", output_file])
+
+    def _validate_k8s_api_versions(self):
+        self.logging.info("Validating K8s API versions")
+
+        nodes_yaml, _ = e2e_utils.exec_kubectl(  # pyright: ignore
+            args=["get", "nodes", "-o", "yaml"],
+            capture_output=True,
+        )
+        nodes = yaml.safe_load(nodes_yaml)  # pyright: ignore
+
+        expected_ver = self.kubernetes_version
+        for node in nodes["items"]:
+            node_name = node["metadata"]["name"]
+
+            kubelet_ver = node["status"]["nodeInfo"]["kubeletVersion"]
+            if kubelet_ver != expected_ver:
+                raise e2e_exceptions.VersionMismatch(
+                    f"Wrong kubelet version on node {node_name}. "
+                    f"Expected {expected_ver}, but found {kubelet_ver}")
+
+            kube_proxy_ver = node["status"]["nodeInfo"]["kubeProxyVersion"]
+            if kube_proxy_ver != expected_ver:
+                raise e2e_exceptions.VersionMismatch(
+                    f"Wrong kube-proxy version on node {node_name}. "
+                    f"Expected {expected_ver}, but found {kube_proxy_ver}")
+
+    def _cleanup_capz_cluster(self):
+        self._collect_bootstrap_vm_logs()
+
+        self.logging.info("Deleting the mgmt cluster")
+        self.bootstrap_vm.exec(["kind delete cluster"])
+
+        self._delete_capz_rg(wait=True)
+        self.bootstrap_vm.cleanup_vnet_peerings()
+
+    def _build_k8s_linux_bins(self):
         self.logging.info("Building K8s Linux binaries")
-        cmd = ('make '
-               'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm" '
-               'KUBE_BUILD_PLATFORMS="linux/amd64"')
-        self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
-        # Build Windows binaries
+        self.bootstrap_vm.exec(
+            script=[
+                'make WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm" KUBE_BUILD_PLATFORMS="linux/amd64"',  # noqa:
+            ],
+            cwd=self.k8s_path)
+
+    def _build_k8s_windows_bins(self):
         self.logging.info("Building K8s Windows binaries")
-        cmd = ('make '
-               'WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm cmd/kube-proxy" '
-               'KUBE_BUILD_PLATFORMS="windows/amd64"')
-        self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
-        # Build Linux DaemonSet container images
+        self.bootstrap_vm.exec(
+            script=[
+                'make WHAT="cmd/kubectl cmd/kubelet cmd/kubeadm cmd/kube-proxy" KUBE_BUILD_PLATFORMS="windows/amd64"',  # noqa:
+            ],
+            cwd=self.k8s_path)
+
+    def _build_k8s_linux_daemonset_images(self):
         self.logging.info("Building K8s Linux DaemonSet container images")
-        cmd = ("KUBE_FASTBUILD=true KUBE_BUILD_CONFORMANCE=y "
-               "make quick-release-images")
-        self.deployer.run_cmd_on_bootstrap_vm([cmd], cwd=remote_k8s_path)
-        # Discover the K8s version built
-        kubeadm_bin = os.path.join(
-            remote_k8s_path, "_output/local/bin/linux/amd64/kubeadm")
-        out, _ = self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=[f"{kubeadm_bin} version -o=short"],
-            timeout=30, return_result=True)
-        self.kubernetes_version = out.decode().strip()
-        self.deployer.kubernetes_version = self.kubernetes_version
-        # Copy artifacts to their own directory on the bootstrap VM
+        self.bootstrap_vm.exec(
+            script=[
+                "KUBE_FASTBUILD=true KUBE_BUILD_CONFORMANCE=y make quick-release-images",  # noqa:
+            ],
+            cwd=self.k8s_path)
+
+    def _copy_k8s_build_artifacts(self):
         self.logging.info("Copying K8s artifacts to their own directory")
-        linux_bin_dir = "{}/kubernetes/bin/linux/amd64".format(
-            self.deployer.remote_artifacts_dir)
-        windows_bin_dir = "{}/kubernetes/bin/windows/amd64".format(
-            self.deployer.remote_artifacts_dir)
-        images_dir = "{}/kubernetes/images".format(
-            self.deployer.remote_artifacts_dir)
+        linux_bin_dir = f"{self.bootstrap_vm.artifacts_dir}/kubernetes/bin/linux/amd64"  # noqa:
+        windows_bin_dir = f"{self.bootstrap_vm.artifacts_dir}/kubernetes/bin/windows/amd64"  # noqa:
+        images_dir = f"{self.bootstrap_vm.artifacts_dir}/kubernetes/images"
+
         script = [f"mkdir -p {linux_bin_dir} {windows_bin_dir} {images_dir}"]
+
         for bin_name in ["kubectl", "kubelet", "kubeadm"]:
             linux_bin_path = "{}/{}/{}".format(
-                remote_k8s_path,
-                "_output/local/bin/linux/amd64",
-                bin_name)
+                self.k8s_path, "_output/local/bin/linux/amd64", bin_name
+            )
             script.append(f"cp {linux_bin_path} {linux_bin_dir}")
+
         for bin_name in ["kubectl", "kubelet", "kubeadm", "kube-proxy"]:
             win_bin_path = "{}/{}/{}.exe".format(
-                remote_k8s_path,
-                "_output/local/bin/windows/amd64",
-                bin_name)
+                self.k8s_path, "_output/local/bin/windows/amd64", bin_name
+            )
             script.append(f"cp {win_bin_path} {windows_bin_dir}")
+
         images_names = [
             "kube-apiserver.tar", "kube-controller-manager.tar",
             "kube-proxy.tar", "kube-scheduler.tar", "conformance-amd64.tar"
         ]
         for image_name in images_names:
             image_path = "{}/{}/{}".format(
-                remote_k8s_path,
-                "_output/release-images/amd64",
-                image_name)
+                self.k8s_path, "_output/release-images/amd64", image_name
+            )
             script.append(f"cp {image_path} {images_dir}")
-        script.append(
-            "mv "
-            f"{images_dir}/conformance-amd64.tar "
-            f"{images_dir}/conformance.tar")
+        script.append(f"mv {images_dir}/conformance-amd64.tar {images_dir}/conformance.tar")  # noqa:
         script.append(f"chmod 644 {images_dir}/*")
-        self.deployer.run_cmd_on_bootstrap_vm(script)
 
-    def _build_containerd_binaries(self):
-        # Clone the git repositories
-        remote_containerd_path = self.deployer.remote_containerd_path
-        self.deployer.remote_clone_git_repo(
-            self.opts.containerd_repo, self.opts.containerd_branch,
-            remote_containerd_path)
-        # Build the binaries
-        self.logging.info("Building containerd binaries")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=[
-                # TODO(ibalutoiu): This hard-coded version needs to be removed
-                # once containerd v1.7.0 gets released.
-                ("VERSION=1.7.0+unknown "
-                 "GOOS=windows "
-                 "make binaries"),
-                ("GOOS=windows "
-                 "make -f Makefile.windows bin/containerd-shim-runhcs-v1.exe"),
-                ("sudo "
-                 "GOOS=windows "
-                 "GOPATH=$HOME/go "
-                 "DESTDIR=$(pwd)/bin/cri-tools "
-                 "./script/setup/install-critools"),
+        self.bootstrap_vm.exec(script)
+
+    def _set_k8s_build_version(self):
+        # Discover the K8s version built
+        kubeadm_bin = os.path.join(
+            self.k8s_path, "_output/local/bin/linux/amd64/kubeadm")
+        stdout, _ = self.bootstrap_vm.exec(  # pyright: ignore
+            script=[
+                f"{kubeadm_bin} version -o=short",
             ],
-            cwd=remote_containerd_path)
-        # Copy the binaries to the artifacts directory
-        self.logging.info("Copying binaries to remote artifacts directory")
+            timeout=30,
+            return_result=True)
+        self.kubernetes_version = stdout.decode().strip()
+
+    def _build_k8s_artifacts(self):
+        self.bootstrap_vm.clone_git_repo(
+            self.opts.k8s_repo,
+            self.opts.k8s_branch,
+            self.k8s_path,
+        )
+        self._build_k8s_linux_bins()
+        self._build_k8s_windows_bins()
+        self._build_k8s_linux_daemonset_images()
+        self._set_k8s_build_version()
+        self._copy_k8s_build_artifacts()
+
+    def _copy_containerd_build_artifacts(self):
+        self.logging.info(
+            "Copying containerd binaries to artifacts directory")
         artifacts_containerd_bin_dir = os.path.join(
-            self.deployer.remote_artifacts_dir, "containerd/bin")
+            self.bootstrap_vm.artifacts_dir, "containerd/bin"
+        )
         script = [f"mkdir -p {artifacts_containerd_bin_dir}"]
-        containerd_bins = os.path.join(remote_containerd_path, "bin")
+        containerd_bins = os.path.join(self.containerd_path, "bin")
         script.append(
             "cp "
             f"{containerd_bins}/containerd.exe "
@@ -559,88 +896,114 @@ class CapzFlannelCI(e2e_base.CI):
             f"{containerd_bins}/cri-tools/usr/local/bin/crictl.exe "
             f"{containerd_bins}/cri-tools/usr/local/bin/critest.exe "
             f"{artifacts_containerd_bin_dir}")
-        self.deployer.run_cmd_on_bootstrap_vm(script)
+        self.bootstrap_vm.exec(script)
 
-    def _build_containerd_shim(self):
-        remote_containerd_shim_path = self.deployer.remote_containerd_shim_path
-        self.deployer.remote_clone_git_repo(
-            self.opts.containerd_shim_repo,
-            self.opts.containerd_shim_branch, remote_containerd_shim_path)
+    def _build_containerd_windows_bins(self):
+        self.logging.info("Building containerd binaries")
+        self.bootstrap_vm.exec(
+            script=[
+                "GOOS=windows make binaries",
+                "GOOS=windows make -f Makefile.windows bin/containerd-shim-runhcs-v1.exe",  # noqa:
+                "sudo GOOS=windows GOPATH=$HOME/go DESTDIR=$(pwd)/bin/cri-tools ./script/setup/install-critools",  # noqa:
+            ],
+            cwd=self.containerd_path)
+
+    def _build_containerd_binaries(self):
+        self.bootstrap_vm.clone_git_repo(
+            self.opts.containerd_repo,
+            self.opts.containerd_branch,
+            self.containerd_path,
+        )
+        self._build_containerd_windows_bins()
+        self._copy_containerd_build_artifacts()
+
+    def _build_containerd_shim_windows_bins(self):
         self.logging.info("Building containerd shim")
-        build_cmd = (
-            "GOOS=windows GO111MODULE=on go build -mod=vendor "
-            "-o containerd-shim-runhcs-v1.exe ./cmd/containerd-shim-runhcs-v1")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=[build_cmd], cwd=remote_containerd_shim_path)
-        self.logging.info("Copying binaries to remote artifacts directory")
+        self.bootstrap_vm.exec(
+            script=[
+                "GOOS=windows GO111MODULE=on go build -mod=vendor -o containerd-shim-runhcs-v1.exe ./cmd/containerd-shim-runhcs-v1",  # noqa:
+            ],
+            cwd=self.containerd_shim_path,
+        )
+
+    def _copy_containerd_shim_build_artifacts(self):
+        self.logging.info(
+            "Copying containerd-shim build to artifacts directory")
         artifacts_containerd_bin_dir = os.path.join(
-            self.deployer.remote_artifacts_dir, "containerd-shim/bin")
+            self.bootstrap_vm.artifacts_dir, "containerd-shim/bin"
+        )
         script = [f"mkdir -p {artifacts_containerd_bin_dir}"]
         containerd_shim_bin = os.path.join(
-            remote_containerd_shim_path, "containerd-shim-runhcs-v1.exe")
+            self.containerd_shim_path, "containerd-shim-runhcs-v1.exe")
         script.append(
             f"cp {containerd_shim_bin} {artifacts_containerd_bin_dir}")
-        self.deployer.run_cmd_on_bootstrap_vm(script)
+        self.bootstrap_vm.exec(script)
 
-    def _build_cri_tools(self):
-        # Clone the git repositories
-        remote_cri_tools_path = self.deployer.remote_cri_tools_path
-        self.deployer.remote_clone_git_repo(
-            self.opts.cri_tools_repo, self.opts.cri_tools_branch,
-            remote_cri_tools_path)
-        # Build the binaries
+    def _build_containerd_shim(self):
+        self.bootstrap_vm.clone_git_repo(
+            self.opts.containerd_shim_repo,
+            self.opts.containerd_shim_branch,
+            self.containerd_shim_path,
+        )
+        self._build_containerd_shim_windows_bins()
+        self._copy_containerd_shim_build_artifacts()
+
+    def _build_cri_tools_windows_bins(self):
         self.logging.info("Building cri-tools")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=["GOOS=windows make binaries"],
-            cwd=remote_cri_tools_path)
-        # Copy the binaries to the artifacts directory
-        self.logging.info(
-            "Copying binaries to remote artifacts directory")
+        self.bootstrap_vm.exec(
+            script=[
+                "GOOS=windows make binaries",
+            ],
+            cwd=self.cri_tools_path)
+
+    def _copy_cri_tools_build_artifacts(self):
+        self.logging.info("Copying cri-tools build to artifacts directory")
         artifacts_cri_tools_bin_dir = os.path.join(
-            self.deployer.remote_artifacts_dir, "cri-tools/bin")
+            self.bootstrap_vm.artifacts_dir, "cri-tools/bin"
+        )
         script = [f"mkdir -p {artifacts_cri_tools_bin_dir}"]
-        cri_tools_bins = os.path.join(remote_cri_tools_path, "build/bin")
+        cri_tools_bins = os.path.join(self.cri_tools_path, "build/bin")
         script.append(
             "cp "
             f"{cri_tools_bins}/crictl.exe "
             f"{cri_tools_bins}/critest.exe "
-            f"{artifacts_cri_tools_bin_dir}")
-        self.deployer.run_cmd_on_bootstrap_vm(script)
+            f"{artifacts_cri_tools_bin_dir}"
+        )
+        self.bootstrap_vm.exec(script)
+
+    def _build_cri_tools(self):
+        self.bootstrap_vm.clone_git_repo(
+            self.opts.cri_tools_repo,
+            self.opts.cri_tools_branch,
+            self.cri_tools_path,
+        )
+        self._build_cri_tools_windows_bins()
+        self._copy_cri_tools_build_artifacts()
+
+    def _build_sdn_cni_windows_bins(self):
+        self.logging.info("Building the SDN CNI binaries")
+        self.bootstrap_vm.exec(
+            script=[
+                "GOOS=windows make all",
+            ],
+            cwd=self.sdn_path)
+
+    def _copy_sdn_cni_build_artifacts(self):
+        self.logging.info("Copying SDN CNI binaries to artifacts directory")
+        artifacts_cni_dir = os.path.join(
+            self.bootstrap_vm.artifacts_dir, "cni/bin"
+        )
+        script = [f"mkdir -p {artifacts_cni_dir}"]
+        for sdn_bin_name in ["nat.exe", "sdnbridge.exe", "sdnoverlay.exe"]:
+            sdn_bin = os.path.join(self.sdn_path, "out", sdn_bin_name)
+            script.append(f"cp {sdn_bin} {artifacts_cni_dir}")
+        self.bootstrap_vm.exec(script)
 
     def _build_sdn_cni_binaries(self):
-        remote_sdn_cni_dir = self.deployer.remote_sdn_path
-        self.deployer.remote_clone_git_repo(
-            self.opts.sdn_repo, self.opts.sdn_branch, remote_sdn_cni_dir)
-        self.logging.info("Building the SDN CNI binaries")
-        self.deployer.run_cmd_on_bootstrap_vm(
-            cmd=["GOOS=windows make all"], cwd=remote_sdn_cni_dir)
-        self.logging.info("Copying binaries to remote artifacts directory")
-        artifacts_cni_dir = os.path.join(
-            self.deployer.remote_artifacts_dir, "cni/bin")
-        script = [f"mkdir -p {artifacts_cni_dir}"]
-        sdn_binaries_names = ["nat.exe", "sdnbridge.exe", "sdnoverlay.exe"]
-        for sdn_bin_name in sdn_binaries_names:
-            sdn_bin = os.path.join(remote_sdn_cni_dir, "out", sdn_bin_name)
-            script.append(f"cp {sdn_bin} {artifacts_cni_dir}")
-        self.deployer.run_cmd_on_bootstrap_vm(script)
-
-    def _collect_logs(self, node_address, local_script_path,
-                      remote_script_path, remote_cmd, remote_logs_archive):
-        self.logging.info("Collecting logs from node %s", node_address)
-        if not self.deployer.check_k8s_node_connection(node_address):
-            self.logging.warning(
-                "No SSH connectivity to node %s. Skipping logs collection",
-                node_address)
-            return
-        self.deployer.upload_to_k8s_node(
-            local_script_path, remote_script_path, node_address)
-        self.deployer.run_cmd_on_k8s_node(remote_cmd, node_address)
-        node_name, _ = self.deployer.run_cmd_on_k8s_node(
-            "hostname", node_address)
-        node_name = node_name.decode().strip()
-        logs_archive_name = os.path.basename(remote_logs_archive)
-        local_logs_archive = os.path.join(
-            self.opts.artifacts_directory, f"{node_name}-{logs_archive_name}")
-        self.deployer.download_from_k8s_node(
-            remote_logs_archive, local_logs_archive, node_address)
-        self.logging.info("Finished collecting logs from node %s", node_name)
+        self.bootstrap_vm.clone_git_repo(
+            self.opts.sdn_repo,
+            self.opts.sdn_branch,
+            self.sdn_path
+        )
+        self._build_sdn_cni_windows_bins()
+        self._copy_sdn_cni_build_artifacts()

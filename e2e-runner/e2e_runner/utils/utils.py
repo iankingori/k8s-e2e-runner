@@ -1,16 +1,15 @@
-import configargparse
 import os
+import socket
 import subprocess
+import tarfile
 import tempfile
 import time
-import socket
-import tarfile
 from collections import OrderedDict
 from urllib.request import urlretrieve
 
+import configargparse
 import jinja2
 import tenacity
-
 from e2e_runner import exceptions as e2e_exceptions
 from e2e_runner import logger as e2e_logger
 
@@ -28,16 +27,9 @@ def str2bool(v):
 
 def retry_on_error(max_attempts=5, max_sleep_seconds=60):
     return tenacity.retry(
-        stop=tenacity.stop_after_attempt(max_attempts),
-        wait=tenacity.wait_exponential(max=max_sleep_seconds),
+        stop=tenacity.stop_after_attempt(max_attempts),  # pyright: ignore
+        wait=tenacity.wait_exponential(max=max_sleep_seconds),  # pyright: ignore # noqa:
         reraise=True)
-
-
-def get_kubectl_bin():
-    if os.environ.get("KUBECTL_PATH"):
-        return os.environ.get("KUBECTL_PATH")
-    # assume kubectl is in the PATH
-    return "kubectl"
 
 
 def render_template(template_file, output_file, context={}, searchpath="/"):
@@ -120,7 +112,12 @@ def run_remote_ssh_cmd(cmd, ssh_user, ssh_address, ssh_key_path=None,
         f.flush()
         if return_result:
             ssh_cmd += ["<", f.name]
-            return run_shell_cmd(ssh_cmd, timeout=timeout, capture_output=True)
+            return run_shell_cmd(
+                cmd=ssh_cmd,
+                timeout=timeout,
+                capture_output=True,
+                hide_cmd=True,
+            )
         with open(f.name, "rb", 0) as g:
             subprocess.check_call(ssh_cmd, stdin=g)
 
@@ -163,26 +160,79 @@ def download_file(url, dest):
     urlretrieve(url, dest)
 
 
+def sort_dict_by_value(d):
+    return OrderedDict(sorted(d.items(), key=lambda item: item[1]))
+
+
+def get_kubectl_bin():
+    if os.environ.get("KUBECTL_PATH"):
+        return os.environ.get("KUBECTL_PATH")
+    # assume kubectl is in the PATH
+    return "kubectl"
+
+
 def label_linux_nodes_no_schedule():
-    kubectl = get_kubectl_bin()
-    out, _ = run_shell_cmd(
-        cmd=[
-            kubectl, "get", "nodes", "--selector",
-            "kubernetes.io/os=linux", "--no-headers", "-o",
-            "custom-columns=NAME:.metadata.name"
+    linux_nodes, _ = exec_kubectl(  # pyright: ignore
+        args=[
+            "get", "nodes", "--selector", "kubernetes.io/os=linux",
+            "--no-headers", "-o", "custom-columns=NAME:.metadata.name"
         ],
         capture_output=True)
-    linux_nodes = out.decode().strip().split("\n")
-    for node in linux_nodes:
-        run_shell_cmd([
-            kubectl, "taint", "nodes", "--overwrite", node,
+    for node in linux_nodes.split("\n"):  # pyright: ignore
+        exec_kubectl([
+            "taint", "nodes", "--overwrite", node,
             "node-role.kubernetes.io/master=:NoSchedule"
         ])
-        run_shell_cmd([
-            kubectl, "label", "nodes", "--overwrite", node,
+        exec_kubectl([
+            "label", "nodes", "--overwrite", node,
             "node-role.kubernetes.io/master=NoSchedule"
         ])
 
 
-def sort_dict_by_value(d):
-    return OrderedDict(sorted(d.items(), key=lambda item: item[1]))
+def exec_kubectl(args, env=None, timeout=(3 * 3600),
+                 capture_output=False, hide_cmd=False,
+                 retries=5, retries_max_sleep_seconds=30,
+                 allowed_error_codes=[]):
+    kubectl_cmd = [get_kubectl_bin(), *args]
+    for attempt in tenacity.Retrying(
+            stop=tenacity.stop_after_attempt(retries),  # pyright: ignore
+            wait=tenacity.wait_exponential(max=retries_max_sleep_seconds),  # pyright: ignore # noqa:
+            reraise=True):
+        with attempt:
+            stdout = None
+            stderr = None
+            try:
+                stdout, stderr = run_shell_cmd(
+                    cmd=kubectl_cmd,
+                    env=env,
+                    timeout=timeout,
+                    capture_output=capture_output,
+                    hide_cmd=hide_cmd)
+            except subprocess.CalledProcessError as ex:
+                if ex.returncode not in allowed_error_codes:
+                    raise ex
+            if stdout:
+                stdout = stdout.decode().strip()
+            if stderr:
+                stderr = stderr.decode().strip()
+            return stdout, stderr
+
+
+def upload_to_pod(pod_name, local_path, remote_path):
+    exec_kubectl(["cp", local_path, f"{pod_name}:{remote_path}"])
+
+
+def download_from_pod(pod_name, remote_path, local_path):
+    exec_kubectl(["cp", f"{pod_name}:{remote_path}", local_path])
+
+
+def validate_non_empty_env_variables(env_vars_names=[]):
+    for var_name in env_vars_names:
+        if not os.environ.get(var_name):
+            raise e2e_exceptions.EnvVarNotFound(
+                f"Env variable {var_name} is not set")
+
+
+def get_file_content(file_path):
+    with open(file_path) as f:
+        return f.read().strip()

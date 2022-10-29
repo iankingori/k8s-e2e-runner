@@ -2,15 +2,12 @@
 
 import logging
 import os
-
 from datetime import datetime
 
 import configargparse
-
 from azure.core import exceptions as azure_exceptions
 from azure.identity import ClientSecretCredential
 from azure.mgmt.resource import ResourceManagementClient
-
 
 logger = logging.getLogger("cleanup-azure-rgs")
 

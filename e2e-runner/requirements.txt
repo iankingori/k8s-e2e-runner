@@ -1,9 +1,11 @@
 azure-identity
-azure-mgmt-resource
 azure-mgmt-compute
+azure-mgmt-containerservice
 azure-mgmt-network
+azure-mgmt-resource
 cliff
 configargparse
 jinja2
-sh
+kubernetes
+pendulum
 tenacity

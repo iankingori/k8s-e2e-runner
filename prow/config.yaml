@@ -52,9 +52,9 @@ presets:
 - labels:
     preset-ssh-key: "true"
   env:
-  - name: SSH_KEY
+  - name: SSH_PRIVATE_KEY_PATH
     value: /etc/ssh/id_rsa
-  - name: SSH_KEY_PUB
+  - name: SSH_PUBLIC_KEY_PATH
     value: /etc/ssh/id_rsa.pub
   volumes:
   - name: ssh

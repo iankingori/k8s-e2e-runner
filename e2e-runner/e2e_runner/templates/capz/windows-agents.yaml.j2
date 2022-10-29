@@ -82,8 +82,8 @@ spec:
           name: '{{ ds.meta_data["local_hostname"] }}'
 {%- endraw %}
       preKubeadmCommands:
-      - curl.exe -Lo /run/kubeadm/kubeadm-bootstrap.ps1 http://{{ bootstrap_vm_address }}/scripts/kubeadm-bootstrap.ps1
-      - powershell -C "/run/kubeadm/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_address }}{% if k8s_bins %} -K8sBins{% endif %}{% if containerd_bins %} -ContainerdBins{% endif %}{% if containerd_shim_bins %} -ContainerdShimBins{% endif %}{% if cri_tools_bins %} -CRIToolsBins{% endif %}{% if sdn_cni_bins %} -SDNCNIBins{% endif %}"
+      - curl.exe -Lo /run/kubeadm/kubeadm-bootstrap.ps1 http://{{ bootstrap_vm_endpoint }}/scripts/kubeadm-bootstrap.ps1
+      - powershell -C "/run/kubeadm/kubeadm-bootstrap.ps1 -CIPackagesBaseURL http://{{ bootstrap_vm_endpoint }}{% if k8s_bins %} -K8sBins{% endif %}{% if containerd_bins %} -ContainerdBins{% endif %}{% if containerd_shim_bins %} -ContainerdShimBins{% endif %}{% if cri_tools_bins %} -CRIToolsBins{% endif %}{% if sdn_cni_bins %} -SDNCNIBins{% endif %}"
       users:
       - groups: Administrators
         name: capi

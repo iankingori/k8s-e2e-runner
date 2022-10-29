@@ -1,0 +1,39 @@
+#cloud-config
+
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+
+packages_update: true
+
+packages:
+  - build-essential
+  - ca-certificates
+  - curl
+  - curl
+  - docker-ce
+  - docker-ce-cli
+  - git
+  - gnupg
+  - jq
+  - libffi-dev
+  - libssl-dev
+  - lsb-release
+  - net-tools
+  - openssh-client
+  - rsync
+  - vim
+
+groups:
+  - docker
+
+system_info:
+  default_user:
+    groups: [docker]
+
+write_files:
+  - path: /cloud-init-complete
+    # defer writing the file until 'final' stage, after users are created, and packages are installed.
+    defer: true
