@@ -6,7 +6,6 @@ import time
 import pendulum
 import tenacity
 from e2e_runner import logger as e2e_logger
-from urllib3.exceptions import HTTPError
 
 from kubernetes import client, config, utils, watch
 
@@ -44,10 +43,10 @@ class KubernetesClient(object):
                 if not self.is_pod_running(name, namespace):
                     break
 
-            except HTTPError as e:
+            except Exception as e:
                 logging.warning("Failed to read logs for pod %s: %s", name, e)
 
-            logging.warning("Pod %s log read interrupted", name)
+            logging.warning("Pod %s log read interrupted. Resuming...", name)
             if last_log_time:
                 delta = (pendulum.now(tz="UTC") -
                          pendulum.parse(last_log_time, tz="UTC"))  # pyright: ignore # noqa:
