@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 
 from e2e_runner import constants as e2e_constants
 from e2e_runner import exceptions as e2e_exceptions
@@ -174,8 +175,13 @@ class CI(object):
         self.k8s_client.wait_running_pod(self.JUMPBOX_POD)
         e2e_utils.exec_pod(self.JUMPBOX_POD, ["apk", "add", "openssh-client"])
         e2e_utils.exec_pod(self.JUMPBOX_POD, ["mkdir", "-p", "/root/.ssh"])
+        # Make sure that 'self.ssh_private_key_path' is not a symlink before
+        # trying to upload it to pod via 'upload_to_pod'. The utils function
+        # 'upload_to_pod' uses 'kubectl cp', and it doesn't follow symlinks.
+        shutil.copy2(
+            self.ssh_private_key_path, "/tmp/id_rsa", follow_symlinks=True)
         e2e_utils.upload_to_pod(
-            self.JUMPBOX_POD, self.ssh_private_key_path, "/root/.ssh/id_rsa")
+            self.JUMPBOX_POD, "/tmp/id_rsa", "/root/.ssh/id_rsa")
 
     def _remove_jumpbox(self):
         self.k8s_client.delete_pod(self.JUMPBOX_POD)
