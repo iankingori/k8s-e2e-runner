@@ -15,7 +15,6 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-master
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=k8sbins
@@ -44,7 +43,6 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-master
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=k8sbins
@@ -73,7 +71,6 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.25
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
@@ -100,7 +97,6 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.25
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
@@ -127,7 +123,6 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.25
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
@@ -153,7 +148,6 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.25
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
@@ -178,7 +172,6 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.24
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - aks
@@ -200,7 +193,6 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.24
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - aks
