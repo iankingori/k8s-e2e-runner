@@ -171,24 +171,6 @@ def get_kubectl_bin():
     return "kubectl"
 
 
-def label_linux_nodes_no_schedule():
-    linux_nodes, _ = exec_kubectl(  # pyright: ignore
-        args=[
-            "get", "nodes", "--selector", "kubernetes.io/os=linux",
-            "--no-headers", "-o", "custom-columns=NAME:.metadata.name"
-        ],
-        capture_output=True)
-    for node in linux_nodes.split("\n"):  # pyright: ignore
-        exec_kubectl([
-            "taint", "nodes", "--overwrite", node,
-            "node-role.kubernetes.io/master=:NoSchedule"
-        ])
-        exec_kubectl([
-            "label", "nodes", "--overwrite", node,
-            "node-role.kubernetes.io/master=NoSchedule"
-        ])
-
-
 def exec_kubectl(args, env=None, timeout=(3 * 3600),
                  capture_output=False, hide_cmd=False,
                  retries=5, retries_max_sleep_seconds=30,

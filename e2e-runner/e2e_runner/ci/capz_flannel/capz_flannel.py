@@ -797,6 +797,11 @@ class CapzFlannelCI(e2e_base.CI):
         self._delete_capz_rg(wait=True)
         self.bootstrap_vm.cleanup_vnet_peerings()
 
+    def _conformance_nodes_non_blocking_taints(self):
+        return [
+            "node-role.kubernetes.io/control-plane",
+        ]
+
     def _build_k8s_linux_bins(self):
         self.logging.info("Building K8s Linux binaries")
         self.bootstrap_vm.exec(
