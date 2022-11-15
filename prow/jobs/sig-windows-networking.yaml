@@ -157,7 +157,7 @@ periodics:
         - --win-os=ltsc2022
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
-- name: aks-e2e-ltsc2019-azurecni
+- name: aks-e2e-ltsc2019-azurecni-1.24
   cron: "0 2 * * *"
   always_run: true
   labels:
@@ -175,10 +175,11 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - aks
+        - --aks-version=1.24.6
         - --win-agents-sku=Windows2019
         - --cluster-name=aks-e2e-ltsc2019-$(BUILD_ID)
 
-- name: aks-e2e-ltsc2022-azurecni
+- name: aks-e2e-ltsc2022-azurecni-1.24
   cron: "0 8 * * *"
   always_run: true
   labels:
@@ -196,6 +197,7 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - aks
+        - --aks-version=1.24.6
         - --win-agents-sku=Windows2022
         - --cluster-name=aks-e2e-ltsc2022-$(BUILD_ID)
 
