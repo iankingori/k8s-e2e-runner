@@ -50,6 +50,21 @@ kind: Pod
 metadata:
   name: conformance-tests
 spec:
+{%- if e2e_bin_url is defined %}
+  initContainers:
+  - name: init-conformance
+    image: curlimages/curl:latest
+    securityContext:
+      runAsUser: 0
+    command:
+    - sh
+    args:
+    - -exc
+    - "curl -L -o /conformance/e2e.test {{ e2e_bin_url }} && chmod +x /conformance/e2e.test"
+    volumeMounts:
+    - name: conformance-storage
+      mountPath: /conformance
+{%- endif %}
   containers:
   - name: conformance-tests
     image: {{ conformance_image }}
@@ -67,13 +82,21 @@ spec:
       mountPath: /docker-creds
       readOnly: true
 {%- endif %}
+{%- if e2e_bin_url is defined %}
+    - name: conformance-storage
+      mountPath: /conformance
+{%- endif %}
     command:
     - /usr/local/bin/ginkgo
     args:
 {%- for key, value in ginkgo_flags.items() %}
     - --{{ key }}={{ value }}
 {%- endfor %}
+{%- if e2e_bin_url is defined %}
+    - /conformance/e2e.test
+{%- else %}
     - /usr/local/bin/e2e.test
+{%- endif %}
     - --
 {%- for key, value in e2e_flags.items() %}
     - --{{ key }}={{ value }}
@@ -89,6 +112,11 @@ spec:
   - name: docker-creds
     secret:
       secretName: docker-creds
+{%- endif %}
+{%- if e2e_bin_url is defined %}
+  - name: conformance-storage
+    hostPath:
+      path: /tmp/conformance-storage
 {%- endif %}
   restartPolicy: Never
   serviceAccountName: k8s-admin

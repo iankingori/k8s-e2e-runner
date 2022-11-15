@@ -3,7 +3,6 @@ import os
 
 import tenacity
 import yaml
-
 from e2e_runner import constants as e2e_constants
 from e2e_runner import exceptions as e2e_exceptions
 from e2e_runner import logger as e2e_logger
@@ -129,6 +128,8 @@ class CI(object):
             'ginkgo_flags': ginkgo_flags,
             'e2e_flags': e2e_flags,
         }
+        if self.opts.e2e_bin:
+            ctxt["e2e_bin_url"] = self.opts.e2e_bin
         output_file = "/tmp/conformance.yaml"
         e2e_utils.render_template("templates/conformance.yaml.j2", output_file,
                                   ctxt, self.e2e_runner_dir)

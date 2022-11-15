@@ -44,6 +44,10 @@ class RunCI(Command):
             help="Download link for the manifest file used to pre-pull the "
                  "container images on the nodes.")
         p.add_argument(
+            "--e2e-bin",
+            default=None,
+            help="URL with the Kubernetes E2E tests binary.")
+        p.add_argument(
             "--test-focus-regex",
             default="\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]")  # noqa
         p.add_argument(
