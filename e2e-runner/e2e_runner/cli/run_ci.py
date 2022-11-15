@@ -39,11 +39,6 @@ class RunCI(Command):
             default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/images/image-repo-list",  # noqa
             help="Repo list with registries for test images.")
         p.add_argument(
-            "--prepull-yaml",
-            default="https://raw.githubusercontent.com/kubernetes-sigs/windows-testing/master/gce/prepull.yaml",  # noqa
-            help="Download link for the manifest file used to pre-pull the "
-                 "container images on the nodes.")
-        p.add_argument(
             "--e2e-bin",
             default=None,
             help="URL with the Kubernetes E2E tests binary.")

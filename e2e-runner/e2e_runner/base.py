@@ -1,8 +1,6 @@
 import json
 import os
 
-import tenacity
-import yaml
 from e2e_runner import constants as e2e_constants
 from e2e_runner import exceptions as e2e_exceptions
 from e2e_runner import logger as e2e_logger
@@ -59,7 +57,6 @@ class CI(object):
             json.dump(metadata, f)
 
     def _prepare_tests(self):
-        self._prepull_images()
         self._setup_repo_list_configmap()
         self._setup_private_registry_secret()
         e2e_utils.label_linux_nodes_no_schedule()
@@ -75,38 +72,6 @@ class CI(object):
         if pod_phase != "Succeeded":
             raise e2e_exceptions.ConformanceTestsFailed(
                 "The end-to-end conformance tests failed")
-
-    def _prepull_images(self, timeout=3600):
-        self.logging.info("Starting Windows images pre-pull")
-        prepull_yaml_path = "/tmp/prepull-windows-images.yaml"
-        e2e_utils.download_file(self.opts.prepull_yaml, prepull_yaml_path)
-        e2e_utils.exec_kubectl(["apply", "-f", prepull_yaml_path])
-
-        self.logging.info("Waiting up to %.2f minutes to pre-pull "
-                          "Windows container images", timeout / 60.0)
-        kwargs = {
-            "stop": tenacity.stop_after_delay(timeout),  # pyright: ignore
-            "wait": tenacity.wait_exponential(max=15),  # pyright: ignore
-            "retry": tenacity.retry_if_exception_type(AssertionError),  # pyright: ignore # noqa:
-            "reraise": True,
-        }
-        for attempt in tenacity.Retrying(**kwargs):
-            with attempt:
-                ds_yaml, _ = e2e_utils.exec_kubectl(  # pyright: ignore
-                    args=["get", "-o", "yaml", "-f", prepull_yaml_path],
-                    capture_output=True,
-                    hide_cmd=True,
-                )
-                ds = yaml.safe_load(ds_yaml)  # pyright: ignore
-                ready_nr = ds["status"]["numberReady"]
-                desired_ready_nr = ds["status"]["desiredNumberScheduled"]
-                assert ready_nr == desired_ready_nr, (
-                    f"Windows images pre-pull failed: "
-                    f"{ready_nr}/{desired_ready_nr} pods ready.")
-
-        self.logging.info("Windows images successfully pre-pulled")
-        self.logging.info("Cleaning up")
-        e2e_utils.exec_kubectl(["delete", "--wait", "-f", prepull_yaml_path])
 
     def _setup_repo_list_configmap(self):
         repo_list_file = "/tmp/repo-list.yaml"

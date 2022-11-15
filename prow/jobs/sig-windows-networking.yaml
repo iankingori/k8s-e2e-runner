@@ -16,7 +16,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-master
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=k8sbins
@@ -46,7 +45,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-master
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-master.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=k8sbins
@@ -76,7 +74,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.25
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.25.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
@@ -104,7 +101,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.25
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.25.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
@@ -132,7 +128,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.25
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.25.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
@@ -159,7 +154,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.25
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.25.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
@@ -185,7 +179,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.24
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.24.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - aks
@@ -208,7 +201,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.24
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.24.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - aks
@@ -232,7 +224,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
@@ -259,7 +250,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
@@ -287,7 +277,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
@@ -314,7 +303,6 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
-        - --prepull-yaml=https://capzwin.blob.core.windows.net/images/prepull-release-1.23.yaml
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
