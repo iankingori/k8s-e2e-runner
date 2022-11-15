@@ -59,7 +59,6 @@ class CI(object):
     def _prepare_tests(self):
         self._setup_repo_list_configmap()
         self._setup_private_registry_secret()
-        e2e_utils.label_linux_nodes_no_schedule()
 
     def _run_tests(self):
         self._start_conformance_tests()
@@ -106,6 +105,9 @@ class CI(object):
         tag = self.kubernetes_version.replace("+", "_")
         return f"registry.k8s.io/conformance:{tag}"
 
+    def _conformance_nodes_non_blocking_taints(self):
+        return []
+
     def _conformance_tests_flags(self, num_nodes="2", node_os_distro="windows",
                                  output_dir="/output"):
         ginkgoFlags = {
@@ -133,6 +135,9 @@ class CI(object):
             "prepull-images": "true",
             "disable-log-dump": "true",
         }
+        non_blocking_taints = self._conformance_nodes_non_blocking_taints()
+        if len(non_blocking_taints) > 0:
+            e2eFlags["non-blocking-taints"] = ",".join(non_blocking_taints)
         if os.environ.get("DOCKER_CONFIG_FILE"):
             e2eFlags["docker-config-file"] = "/docker-creds/config.json"
 

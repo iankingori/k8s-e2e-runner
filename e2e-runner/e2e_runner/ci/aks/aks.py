@@ -80,6 +80,11 @@ class AksCI(e2e_base.CI):
             secret=os.environ["AZURE_CLIENT_SECRET"],
         )
 
+    def _get_linux_agents_taints(self):
+        return [
+            "CriticalAddonsOnly=true:NoSchedule",
+        ]
+
     def _get_linux_agents_profile(self):
         return aks_models.ManagedClusterAgentPoolProfile(
             name=self.linux_pool_name,
@@ -89,6 +94,7 @@ class AksCI(e2e_base.CI):
             os_sku=aks_models.OSSKU.UBUNTU,
             type=aks_models.AgentPoolType.VIRTUAL_MACHINE_SCALE_SETS,
             mode=aks_models.AgentPoolMode.SYSTEM,
+            node_taints=self._get_linux_agents_taints(),
             orchestrator_version=self.aks_version,
             os_disk_size_gb=128,
             tags=self.tags,
@@ -170,3 +176,9 @@ class AksCI(e2e_base.CI):
         with open(self.kubeconfig_path, "w") as f:
             f.write(cfgs[0].value.decode(encoding='UTF-8'))  # pyright: ignore
         os.environ["KUBECONFIG"] = self.kubeconfig_path
+
+    def _conformance_nodes_non_blocking_taints(self):
+        linux_agents_taints = [
+            taint.split("=")[0] for taint in self._get_linux_agents_taints()
+        ]
+        return linux_agents_taints
