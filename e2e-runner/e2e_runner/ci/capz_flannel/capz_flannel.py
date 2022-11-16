@@ -799,6 +799,7 @@ class CapzFlannelCI(e2e_base.CI):
 
     def _conformance_nodes_non_blocking_taints(self):
         return [
+            "node-role.kubernetes.io/master",  # TODO: Remove this once Docker support is removed.  # noqa:
             "node-role.kubernetes.io/control-plane",
         ]
 
