@@ -200,6 +200,22 @@ def exec_kubectl(args, env=None, timeout=(3 * 3600),
             return stdout, stderr
 
 
+def get_k8s_agents_private_addresses(operating_system):
+    private_addresses, _ = exec_kubectl(
+        args=[
+            "get", "nodes",  # pyright: ignore
+            "-o", "jsonpath=\"{{.items[?(@.status.nodeInfo.operatingSystem == '{}')].status.addresses[?(@.type == 'InternalIP')].address}}\"".format(operating_system),  # pyright: ignore # noqa:
+        ],
+        capture_output=True,
+        hide_cmd=True,
+    )
+    return private_addresses.strip().split()  # pyright: ignore
+
+
+def exec_pod(pod_name, cmd):
+    exec_kubectl(["exec", pod_name, "--", *cmd])
+
+
 def upload_to_pod(pod_name, local_path, remote_path):
     exec_kubectl(["cp", local_path, f"{pod_name}:{remote_path}"])
 

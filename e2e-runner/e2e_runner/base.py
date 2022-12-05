@@ -11,6 +11,7 @@ from e2e_runner.utils import utils as e2e_utils
 class CI(object):
     HELPER_POD = "alpine"
     CONFORMANCE_POD = "conformance-tests"
+    JUMPBOX_POD = "jumpbox"
 
     def __init__(self, opts):
         self.e2e_runner_dir = os.path.dirname(__file__)
@@ -19,6 +20,7 @@ class CI(object):
         self.kubernetes_version = e2e_constants.DEFAULT_KUBERNETES_VERSION
         self.kubeconfig_dir = os.path.join(os.environ["HOME"], ".kube")
         self.kubeconfig_path = os.path.join(self.kubeconfig_dir, "config")
+        self.ssh_private_key_path = os.environ["SSH_PRIVATE_KEY_PATH"]
 
     @property
     def k8s_client(self):
@@ -142,3 +144,38 @@ class CI(object):
             e2eFlags["docker-config-file"] = "/docker-creds/config.json"
 
         return ginkgoFlags, e2eFlags
+
+    def _jumpbox_exec_ssh(self, user, address, cmd):
+        ssh_opts = [
+            "StrictHostKeyChecking=no",
+            "UserKnownHostsFile=/dev/null",
+        ]
+        ssh_opts_args = [f"-o {opt}" for opt in ssh_opts]
+        ssh_cmd = ["ssh", *ssh_opts_args, f"{user}@{address}", *cmd]
+        e2e_utils.exec_pod(self.JUMPBOX_POD, ssh_cmd)
+
+    def _jumpbox_exec_scp(self, user, address, file_path, remote_file_path):
+        ssh_opts = [
+            "StrictHostKeyChecking=no",
+            "UserKnownHostsFile=/dev/null",
+        ]
+        ssh_opts_args = [f"-o {opt}" for opt in ssh_opts]
+        scp_cmd = [
+            "scp",
+            *ssh_opts_args,
+            file_path, f"{user}@{address}:{remote_file_path}",
+        ]
+        e2e_utils.exec_pod(self.JUMPBOX_POD, scp_cmd)
+
+    def _setup_jumpbox(self):
+        manifest_file = os.path.join(
+            self.e2e_runner_dir, "templates/jumpbox.yaml")
+        self.k8s_client.create_from_yaml(manifest_file)
+        self.k8s_client.wait_running_pod(self.JUMPBOX_POD)
+        e2e_utils.exec_pod(self.JUMPBOX_POD, ["apk", "add", "openssh-client"])
+        e2e_utils.exec_pod(self.JUMPBOX_POD, ["mkdir", "-p", "/root/.ssh"])
+        e2e_utils.upload_to_pod(
+            self.JUMPBOX_POD, self.ssh_private_key_path, "/root/.ssh/id_rsa")
+
+    def _remove_jumpbox(self):
+        self.k8s_client.delete_pod(self.JUMPBOX_POD)

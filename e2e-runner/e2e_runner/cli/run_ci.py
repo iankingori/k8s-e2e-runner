@@ -54,6 +54,12 @@ class RunCI(Command):
             default=False,
             help="Retain the testing environment, if the conformance tests "
                  "failed. Useful for debugging purposes.")
+        p.add_argument(
+            "--win-private-bins-zip-url",
+            type=str,
+            help="URL of the zip archive with the private binaries to be "
+                 "installed on the Kubernetes Windows agents before running "
+                 "the E2E tests.")
 
         p.add_argument(
             "--k8s-repo",

@@ -6,7 +6,6 @@ import time
 import pendulum
 import tenacity
 from e2e_runner import logger as e2e_logger
-
 from kubernetes import client, config, utils, watch
 
 logging = e2e_logger.get_logger(__name__)
@@ -111,6 +110,9 @@ class KubernetesClient(object):
     def wait_running_pod(self, name, namespace="default", timeout=300):
         self.wait_pod_phase(
             name, "Running", namespace=namespace, timeout=timeout)
+
+    def delete_pod(self, name, namespace="default"):
+        self.core_v1_api.delete_namespaced_pod(name=name, namespace=namespace)
 
     def create_configmap(self, name, data, namespace="default"):
         config_map = client.V1ConfigMap()

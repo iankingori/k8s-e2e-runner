@@ -26,6 +26,10 @@ class KubernetesEndpointNotFound(Exception):
     pass
 
 
+class KubernetesNodeNotFound(Exception):
+    pass
+
+
 class InvalidKubernetesEndpoint(Exception):
     pass
 

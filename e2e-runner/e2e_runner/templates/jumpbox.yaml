@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jumpbox
+spec:
+  containers:
+  - name: alpine
+    image: alpine:latest
+    command:
+    - sleep
+    args:
+    - infinity
+  priorityClassName: system-node-critical
+  tolerations:
+  - operator: Exists
+    effect: NoSchedule
+  nodeSelector:
+    kubernetes.io/os: linux
