@@ -232,13 +232,27 @@ class AksCI(e2e_base.CI):
                 **ssh_kwargs,
             )
 
-            # replace kube-proxy binary
+            # replace kube-proxy binary and enable feature gate
             self._jumpbox_exec_ssh(
                 cmd=["/k/nssm", "stop", "kubeproxy"],
                 **ssh_kwargs,
             )
             self._jumpbox_exec_ssh(
                 cmd=["powershell", "cp", "-force", f"/{dir_name}/kube-proxy.exe", "/k/kube-proxy.exe"],  # noqa:
+                **ssh_kwargs,
+            )
+            script_file = "enable-proxy-terminating-endpoints-feature.ps1"
+            ps_script_path = os.path.join(
+                self.e2e_runner_dir, f"scripts/aks/{script_file}")
+            e2e_utils.upload_to_pod(
+                self.JUMPBOX_POD, ps_script_path, f"/tmp/{script_file}")
+            self._jumpbox_exec_scp(
+                file_path=f"/tmp/{script_file}",
+                remote_file_path=f"/{script_file}",
+                **ssh_kwargs,
+            )
+            self._jumpbox_exec_ssh(
+                cmd=["powershell", "-File", f"/{script_file}"],
                 **ssh_kwargs,
             )
 
