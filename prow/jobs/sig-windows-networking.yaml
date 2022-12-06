@@ -16,7 +16,7 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - --build=k8sbins
         - --build=containerdbins
         - --build=sdncnibins
@@ -44,7 +44,7 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - --build=k8sbins
         - --build=containerdbins
         - --build=sdncnibins
@@ -72,7 +72,7 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - --build=sdncnibins
         - capz_flannel
         - --kubernetes-version=v1.25.2
@@ -98,7 +98,7 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - --build=sdncnibins
         - capz_flannel
         - --kubernetes-version=v1.25.2
@@ -124,7 +124,7 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -149,7 +149,7 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
@@ -172,9 +172,10 @@ periodics:
       command:
          - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].LoadBalancers
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --win-private-bins-zip-url=http://10.244.0.235/proxy_terminating_endpoints.zip
+        - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24.6-patched
         - aks
         - --aks-version=1.24.6
         - --win-agents-sku=Windows2019
@@ -196,7 +197,7 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - aks
         - --aks-version=1.24.6
         - --win-agents-sku=Windows2022
@@ -218,7 +219,7 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - aks
         - --aks-version=1.25.2
         - --win-agents-sku=Windows2019
@@ -240,7 +241,7 @@ periodics:
          - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - aks
         - --aks-version=1.25.2
         - --win-agents-sku=Windows2022
@@ -264,7 +265,7 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
         - --kubernetes-version=v1.23.9
         - --flannel-mode=host-gw
@@ -290,7 +291,7 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
         - --kubernetes-version=v1.23.9
         - --flannel-mode=host-gw
@@ -317,7 +318,7 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
         - --kubernetes-version=v1.23.9
         - --flannel-mode=overlay
@@ -343,7 +344,7 @@ periodics:
       args:
         - --repo-list=https://capzwin.blob.core.windows.net/images/image-repo-list-release-1.23
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]|\[Excluded\:WindowsDocker\]|Guestbook.application.should.create.and.stop.a.working.application
         - capz_flannel
         - --kubernetes-version=v1.23.9
         - --flannel-mode=overlay
