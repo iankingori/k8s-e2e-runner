@@ -1,6 +1,6 @@
 periodics:
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master
-  cron: "0 0/12 * * *"
+  cron: "0 0 */2 * *"
   always_run: true
   labels:
     preset-test-regex: "true"
@@ -28,7 +28,7 @@ periodics:
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
-  cron: "0 6/12 * * *"
+  cron: "0 6 */2 * *"
   always_run: true
   labels:
     preset-test-regex: "true"
@@ -56,7 +56,7 @@ periodics:
         - --cluster-name=capzctrd-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
-  cron: "0 1 * * *"
+  cron: "0 1 */2 * *"
   always_run: true
   labels:
     preset-test-regex: "true"
@@ -82,7 +82,7 @@ periodics:
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
-  cron: "0 3 * * *"
+  cron: "0 3 */2 * *"
   always_run: true
   labels:
     preset-test-regex: "true"
@@ -108,7 +108,7 @@ periodics:
         - --cluster-name=capzctrd-ltsc2019-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable
-  cron: "0 5 * * *"
+  cron: "0 5 */2 * *"
   always_run: true
   labels:
     preset-test-regex: "true"
@@ -133,7 +133,7 @@ periodics:
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable
-  cron: "0 7 * * *"
+  cron: "0 7 */2 * *"
   always_run: true
   labels:
     preset-test-regex: "true"
@@ -248,7 +248,7 @@ periodics:
         - --cluster-name=aks-e2e-ltsc2022-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable
-  cron: "0 9 * * *"
+  cron: "0 9 */3 * *"
   always_run: true
   labels:
     preset-test-regex: "true"
@@ -274,7 +274,7 @@ periodics:
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled
-  cron: "0 11 * * *"
+  cron: "0 11 */3 * *"
   always_run: true
   labels:
     preset-test-regex: "true"
@@ -301,7 +301,7 @@ periodics:
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable
-  cron: "0 13 * * *"
+  cron: "0 13 */3 * *"
   always_run: true
   labels:
     preset-test-regex: "true"
@@ -327,7 +327,7 @@ periodics:
         - --cluster-name=capzdocker-$(BUILD_ID)
 
 - name: k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled
-  cron: "0 15 * * *"
+  cron: "0 15 */3 * *"
   always_run: true
   labels:
     preset-test-regex: "true"
