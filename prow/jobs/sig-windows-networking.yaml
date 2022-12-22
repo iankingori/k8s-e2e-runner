@@ -157,6 +157,29 @@ periodics:
         - --win-os=ltsc2022
         - --cluster-name=capzctrd-ltsc2022-$(BUILD_ID)
 
+- name: aks-e2e-ltsc2019-azurecni-1.24-not-patched
+  cron: "30 2 * * *"
+  always_run: true
+  labels:
+    preset-test-regex: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
+      imagePullPolicy: Always
+      command:
+         - /workspace/entrypoint.sh
+      args:
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].LoadBalancers
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24.6-patched
+        - aks
+        - --aks-version=1.24.6
+        - --win-agents-sku=Windows2019
+        - --cluster-name=aks-e2e-ltsc2019-$(BUILD_ID)
+
 - name: aks-e2e-ltsc2019-azurecni-1.24
   cron: "0 2 * * *"
   always_run: true
