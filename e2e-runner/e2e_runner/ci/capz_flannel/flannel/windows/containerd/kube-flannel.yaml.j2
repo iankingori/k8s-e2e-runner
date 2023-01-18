@@ -166,6 +166,10 @@ spec:
           value: "{{ control_plane_cidr }}"
         - name: NODE_CIDR
           value: "{{ node_cidr }}"
+        - name: SERVICE_SUBNET
+          value: "{{ service_subnet }}"
+        - name: POD_SUBNET
+          value: "{{ pod_subnet }}"
       containers:
       - name: kube-flannel
         image: {{ container_image_registry }}/flannel-{{ container_runtime }}-{{ win_os }}:{{ container_image_tag }}
@@ -176,6 +180,10 @@ spec:
         - name: kube-proxy
           mountPath: /flannel-config-file
         env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: "{{ kubernetes_service_host }}"
+        - name: KUBERNETES_SERVICE_PORT
+          value: "{{ kubernetes_service_port }}"
         - name: POD_NAME
           valueFrom:
             fieldRef:

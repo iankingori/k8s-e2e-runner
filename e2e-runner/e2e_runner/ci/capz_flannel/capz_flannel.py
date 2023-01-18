@@ -655,7 +655,13 @@ class CapzFlannelCI(e2e_base.CI):
 
         os.environ["KUBECONFIG"] = self.kubeconfig_path
 
+    def _get_kubeadm_cluster_config(self):
+        cfg_map = self.k8s_client.core_v1_api.read_namespaced_config_map(
+            name="kubeadm-config", namespace="kube-system")
+        return yaml.safe_load(cfg_map.data['ClusterConfiguration'])
+
     def _add_flannel_cni(self):
+        cluster_config = self._get_kubeadm_cluster_config()
         context = {
             "win_os": self.opts.win_os,
             "container_image_tag": self.opts.container_image_tag,
@@ -665,6 +671,10 @@ class CapzFlannelCI(e2e_base.CI):
             "container_runtime": self.opts.container_runtime,
             "control_plane_cidr": self.opts.control_plane_subnet_cidr_block,
             "node_cidr": self.opts.node_subnet_cidr_block,
+            "service_subnet": cluster_config['networking']['serviceSubnet'],
+            "pod_subnet": cluster_config['networking']['podSubnet'],
+            "kubernetes_service_host": self.control_plane_public_address,
+            "kubernetes_service_port": self.control_plane_public_port,
         }
         flannel_dir = os.path.join(self.capz_flannel_dir, "flannel")
         kube_flannel = "/tmp/kube-flannel.yaml"
@@ -684,9 +694,11 @@ class CapzFlannelCI(e2e_base.CI):
             context=context,
             searchpath=f"{flannel_dir}/windows/{self.opts.container_runtime}",
         )
+        # TODO: Remove this once Docker support is removed.
         self._setup_flannel_configmaps()
         e2e_utils.exec_kubectl(["apply", "-f", kube_flannel_windows])
 
+    # TODO: Remove this once Docker support is removed.
     def _setup_flannel_configmaps(self):
         for cfgmap_name in ["kubeadm-config", "kube-proxy"]:
             configmap_yaml, _ = e2e_utils.exec_kubectl(  # pyright: ignore

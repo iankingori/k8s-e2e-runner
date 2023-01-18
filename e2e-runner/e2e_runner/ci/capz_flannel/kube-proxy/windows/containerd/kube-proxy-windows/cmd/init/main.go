@@ -13,7 +13,13 @@ import (
 	"kube-proxy-windows/utils"
 
 	"github.com/Microsoft/hcsshim/hcn"
-	"gopkg.in/yaml.v3"
+	"k8s.io/kube-proxy/config/v1alpha1"
+	"sigs.k8s.io/yaml"
+)
+
+var (
+	kubeProxyConfPath = filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "var/lib/kube-proxy/config.conf")
+	kubeconfigPath    = filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "var/lib/kube-proxy/kubeconfig.conf")
 )
 
 func parseSourceVipFile() (*types.SourceVip, error) {
@@ -100,14 +106,16 @@ func getSourceVip() (string, error) {
 
 func createKubeProxyConfig() error {
 	fmt.Printf("create %s file\n", utils.KubeProxyConfFile)
-	bytes, err := os.ReadFile(filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "var/lib/kube-proxy/config.conf"))
+
+	bytes, err := os.ReadFile(kubeProxyConfPath)
 	if err != nil {
 		return err
 	}
-	data := make(map[string]interface{})
-	if err := yaml.Unmarshal(bytes, &data); err != nil {
+	cfg := v1alpha1.KubeProxyConfiguration{}
+	if err := yaml.Unmarshal(bytes, &cfg); err != nil {
 		return err
 	}
+
 	network, err := getHnsNetwork()
 	if err != nil {
 		return err
@@ -116,29 +124,36 @@ func createKubeProxyConfig() error {
 	if err != nil {
 		return err
 	}
-	winkernel := data["winkernel"].(map[string]interface{})
-	winkernel["networkName"] = network.Name
-	winkernel["enableDSR"] = enableDSR
-	featureGates := make(map[string]bool)
-	featureGates["WinDSR"] = enableDSR
+
+	cfg.Mode = "kernelspace"
+	cfg.Winkernel.NetworkName = network.Name
+	cfg.Winkernel.EnableDSR = enableDSR
+
+	cfg.FeatureGates = make(map[string]bool)
+	cfg.FeatureGates["WinDSR"] = enableDSR
 	if network.Type == hcn.Overlay {
 		sourceVip, err := getSourceVip()
 		if err != nil {
 			return err
 		}
-		winkernel["sourceVip"] = sourceVip
-		featureGates["WinOverlay"] = true
+		cfg.Winkernel.SourceVip = sourceVip
+		cfg.FeatureGates["WinOverlay"] = true
 	}
-	data["mode"] = "kernelspace"
-	data["winkernel"] = winkernel
-	data["featureGates"] = featureGates
-	yamlBytes, err := yaml.Marshal(data)
+
+	// TODO: remove this once containerd v1.7.0 is released, and bind volume mount behavior is used all the time.
+	if err := utils.CopyFile(kubeconfigPath, utils.KubeconfigFile); err != nil {
+		return err
+	}
+	cfg.ClientConnection.Kubeconfig = utils.KubeconfigFile
+
+	yamlBytes, err := yaml.Marshal(cfg)
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile(utils.KubeProxyConfFile, yamlBytes, 0644); err != nil {
 		return err
 	}
+
 	return nil
 }
 

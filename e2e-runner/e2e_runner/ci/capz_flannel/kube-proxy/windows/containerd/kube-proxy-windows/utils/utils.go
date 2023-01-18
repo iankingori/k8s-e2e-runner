@@ -7,11 +7,12 @@ import (
 )
 
 var (
-	CNIBinDir         string = "/opt/cni/bin"
-	CNIConfFile       string = "/etc/cni/net.d/10-flannel.conf"
-	KubeProxyDir      string = "/k/kube-proxy"
-	KubeProxyConfFile string = filepath.Join(KubeProxyDir, "config.conf")
-	SourceVipFile     string = filepath.Join(KubeProxyDir, "sourceVip.json")
+	CNIBinDir         = "/opt/cni/bin"
+	CNIConfFile       = "/etc/cni/net.d/10-flannel.conf"
+	KubeProxyDir      = "/k/kube-proxy"
+	KubeProxyConfFile = filepath.Join(KubeProxyDir, "config.conf")
+	KubeconfigFile    = filepath.Join(KubeProxyDir, "kubeconfig.conf")
+	SourceVipFile     = filepath.Join(KubeProxyDir, "sourceVip.json")
 )
 
 func CopyFile(src, dest string) error {

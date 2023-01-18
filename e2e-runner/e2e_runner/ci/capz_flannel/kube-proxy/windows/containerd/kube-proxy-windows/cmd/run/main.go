@@ -5,49 +5,56 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"kube-proxy-windows/utils"
 )
 
 var (
-	buildDir string = "/build"
+	kubeProxyBinPath = filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "kube-proxy/kube-proxy.exe")
+
+	nodeName     = os.Getenv("NODE_NAME")
+	enableWinDSR = os.Getenv("ENABLE_WIN_DSR")
 )
 
-func fixKubeconfig() error {
-	fmt.Printf("fix kube-proxy kubeconfig.conf file\n")
-	bytes, err := os.ReadFile(filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "var/lib/kube-proxy/kubeconfig.conf"))
-	if err != nil {
-		return err
+// TODO: remove this once containerd v1.7.0 is released, and bind volume mount behavior is used all the time.
+func fixInClusterConfig() {
+	saDirPath := "/var/run/secrets/kubernetes.io/serviceaccount"
+	kubeProxySADirPath := filepath.Join(utils.KubeProxyDir, saDirPath)
+	containerSADirPath := filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), saDirPath)
+	saFiles := []string{"ca.crt", "token"}
+
+	if err := os.MkdirAll(kubeProxySADirPath, os.ModeDir); err != nil {
+		panic(fmt.Errorf("failed to create kube-proxy SA directory %s: %v", kubeProxySADirPath, err))
 	}
-	newPath := filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "var")
-	kubeconfig := strings.Replace(string(bytes), "/var", newPath, -1)
-	if err := os.MkdirAll("/var/lib/kube-proxy", os.ModeDir); err != nil {
-		return fmt.Errorf("error creating /var/lib/kube-proxy dir: %v", err)
+
+	for _, file := range saFiles {
+		saFilePath := filepath.Join(kubeProxySADirPath, file)
+		if _, err := os.Stat(saFilePath); os.IsNotExist(err) {
+			srcPath := filepath.Join(containerSADirPath, file)
+			if err := utils.CopyFile(srcPath, saFilePath); err != nil {
+				panic(fmt.Errorf("failed to copy file %s to %s: %v", srcPath, saFilePath, err))
+			}
+		}
 	}
-	if err := os.WriteFile("/var/lib/kube-proxy/kubeconfig.conf", []byte(kubeconfig), 0644); err != nil {
-		return err
-	}
-	return nil
 }
 
 func main() {
-	buildBinary := filepath.Join(buildDir, "kube-proxy.exe")
+	// TODO: remove this once containerd v1.7.0 is released, and bind volume mount behavior is used all the time.
+	fixInClusterConfig()
+
+	// copy CI binary (if present)
+	buildBinary := "/build/kube-proxy.exe"
 	if _, err := os.Stat(buildBinary); err == nil {
 		fmt.Printf("kube-proxy build binary found (%s), using it", buildBinary)
-		utils.CopyFile(
-			buildBinary,
-			filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "kube-proxy/kube-proxy.exe"),
-		)
+		if err := utils.CopyFile(buildBinary, kubeProxyBinPath); err != nil {
+			panic(fmt.Errorf("failed to copy file %s to %s: %v", buildBinary, kubeProxyBinPath, err))
+		}
 	}
-	// this is a workaround since the go-client doesn't know about the path CONTAINER_SANDBOX_MOUNT_POINT from environment
-	if err := fixKubeconfig(); err != nil {
-		panic(fmt.Errorf("error fixing kube-proxy kubeconfig: %v", err))
-	}
+
 	cmd := exec.Command(
-		filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "kube-proxy/kube-proxy.exe"),
-		fmt.Sprintf("--hostname-override=%s", os.Getenv("NODE_NAME")),
-		fmt.Sprintf("--enable-dsr=%s", os.Getenv("ENABLE_WIN_DSR")),
+		kubeProxyBinPath,
+		fmt.Sprintf("--hostname-override=%s", nodeName),
+		fmt.Sprintf("--enable-dsr=%s", enableWinDSR),
 		fmt.Sprintf("--config=%s", utils.KubeProxyConfFile),
 		"--v=4",
 	)
