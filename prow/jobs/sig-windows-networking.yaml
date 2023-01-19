@@ -21,7 +21,6 @@ periodics:
         - --build=containerdbins
         - --build=sdncnibins
         - capz_flannel
-        - --kubernetes-version=v1.25.2
         - --flannel-mode=host-gw
         - --container-runtime=containerd
         - --win-os=ltsc2019
@@ -49,7 +48,6 @@ periodics:
         - --build=containerdbins
         - --build=sdncnibins
         - capz_flannel
-        - --kubernetes-version=v1.25.2
         - --flannel-mode=overlay
         - --container-runtime=containerd
         - --win-os=ltsc2019
@@ -75,7 +73,6 @@ periodics:
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - --build=sdncnibins
         - capz_flannel
-        - --kubernetes-version=v1.25.2
         - --flannel-mode=host-gw
         - --container-runtime=containerd
         - --win-os=ltsc2019
@@ -101,7 +98,6 @@ periodics:
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - --build=sdncnibins
         - capz_flannel
-        - --kubernetes-version=v1.25.2
         - --flannel-mode=overlay
         - --container-runtime=containerd
         - --win-os=ltsc2019

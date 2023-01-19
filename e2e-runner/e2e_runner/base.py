@@ -121,6 +121,7 @@ class CI(object):
             "focus": self.opts.test_focus_regex,
             "skip": self.opts.test_skip_regex,
         }
+        # TODO: Remove this once Docker support is removed.
         if self.kubernetes_version > "v1.25":
             ginkgoFlags["no-color"] = "true"
             ginkgoFlags["slow-spec-threshold"] = "5m"
