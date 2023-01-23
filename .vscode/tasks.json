@@ -1,0 +1,44 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "docker-build",
+			"label": "docker-build",
+			"platform": "python",
+			"dockerBuild": {
+				"tag": "k8s-e2e-runner:debug",
+				"dockerfile": "${workspaceFolder}/e2e-runner/debug/Dockerfile",
+				"context": "${workspaceFolder}/e2e-runner",
+				"pull": true
+			}
+		},
+		{
+			"type": "docker-run",
+			"label": "docker-run: debug",
+			"dependsOn": [
+				"docker-build"
+			],
+			"python": {
+				"module": "e2e_runner.cli.shell"
+			},
+			"dockerRun": {
+				"volumes": [
+					{
+						"localPath": "${workspaceFolder}/e2e-runner/debug/.env/docker-creds",
+						"containerPath": "/etc/docker-creds",
+					},
+					{
+						"localPath": "${workspaceFolder}/e2e-runner/debug/.env/ssh",
+						"containerPath": "/root/.ssh"
+					}
+				],
+				"envFiles": [
+					"${workspaceFolder}/e2e-runner/debug/.env/env.sh"
+				],
+				"customOptions": "--platform linux/amd64",
+				"image": "k8s-e2e-runner:debug",
+				"remove": true,
+			}
+		}
+	]
+}

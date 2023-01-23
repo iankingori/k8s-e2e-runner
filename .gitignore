@@ -1,8 +1,6 @@
-.vscode
-.DS_Store
-__pycache__
+**/__pycache__
+**/.env
+**/.DS_Store
 
-*.pyc
-
-e2e-runner/e2e_runner.egg-info
+e2e-runner/*.egg-info
 e2e-runner/.eggs

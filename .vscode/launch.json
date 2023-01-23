@@ -1,0 +1,298 @@
+{
+    "configurations": [
+        {
+            "name": "k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master)"
+                ],
+            }
+        },
+        {
+            "name": "k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master)"
+                ],
+            }
+        },
+        {
+            "name": "k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable)"
+                ],
+            }
+        },
+        {
+            "name": "k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable)"
+                ],
+            }
+        },
+        {
+            "name": "k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable)"
+                ],
+            }
+        },
+        {
+            "name": "k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable)"
+                ],
+            }
+        },
+        {
+            "name": "aks-e2e-ltsc2019-azurecni-1.24",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml aks-e2e-ltsc2019-azurecni-1.24)"
+                ],
+            }
+        },
+        {
+            "name": "aks-e2e-ltsc2022-azurecni-1.24",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml aks-e2e-ltsc2022-azurecni-1.24)"
+                ],
+            }
+        },
+        {
+            "name": "aks-e2e-ltsc2019-azurecni-1.25",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml aks-e2e-ltsc2019-azurecni-1.25)"
+                ],
+            }
+        },
+        {
+            "name": "aks-e2e-ltsc2022-azurecni-1.25",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml aks-e2e-ltsc2022-azurecni-1.25)"
+                ],
+            }
+        },
+        {
+            "name": "k8s-e2e-ltsc2019-docker-flannel-winbridge-stable",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-docker-flannel-winbridge-stable)"
+                ],
+            }
+        },
+        {
+            "name": "k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled)"
+                ],
+            }
+        },
+        {
+            "name": "k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable)"
+                ],
+            }
+        },
+        {
+            "name": "k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled)"
+                ],
+            }
+        }
+    ]
+}

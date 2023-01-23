@@ -1,0 +1,7 @@
+{
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.exclude": [
+        "**/.eggs/*",
+        "**/e2e_runner.egg-info/*",
+    ],
+}
