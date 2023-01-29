@@ -9,7 +9,11 @@
 				"tag": "k8s-e2e-runner:debug",
 				"dockerfile": "${workspaceFolder}/e2e-runner/debug/Dockerfile",
 				"context": "${workspaceFolder}/e2e-runner",
-				"pull": true
+				"pull": true,
+				"customOptions": "--platform linux/amd64",
+				"buildArgs": {
+					"BASE_IMAGE": "ghcr.io/e2e-win/k8s-e2e-runner:main",
+				}
 			}
 		},
 		{

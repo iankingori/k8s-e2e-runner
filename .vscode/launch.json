@@ -17,7 +17,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -38,7 +40,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -59,7 +63,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -80,7 +86,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -101,7 +109,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -122,7 +132,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -143,7 +155,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml aks-e2e-ltsc2019-azurecni-1.24)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2019-azurecni-1.24)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -164,7 +178,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml aks-e2e-ltsc2022-azurecni-1.24)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2022-azurecni-1.24)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -185,7 +201,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml aks-e2e-ltsc2019-azurecni-1.25)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2019-azurecni-1.25)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -206,7 +224,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml aks-e2e-ltsc2022-azurecni-1.25)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2022-azurecni-1.25)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -227,7 +247,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-docker-flannel-winbridge-stable)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-docker-flannel-winbridge-stable)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -248,7 +270,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-docker-flannel-winbridge-stable-dsr-disabled)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -269,7 +293,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         },
@@ -290,7 +316,9 @@
                     "run",
                     "ci",
                     "--quiet",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py ${workspaceFolder}/prow/config.yaml ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled)"
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-docker-flannel-winoverlay-stable-dsr-disabled)",
+                    "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
         }
