@@ -1,4 +1,6 @@
-FROM ghcr.io/e2e-win/k8s-e2e-runner:main
+ARG BASE_IMAGE="ghcr.io/e2e-win/k8s-e2e-runner:main"
+
+FROM $BASE_IMAGE
 
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
