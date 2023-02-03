@@ -69,9 +69,15 @@ jobs:
           set -e
           set -o pipefail
 
-          MANIFEST_FROM_IMAGE=${{ inputs.manifest_from_image }}
           IMAGE=ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:${{ steps.meta.outputs.version }}
 
+          MANIFEST_MEDIA_TYPE=$(docker buildx imagetools inspect --raw $IMAGE | jq -r '.mediaType')
+          if [[ $MANIFEST_MEDIA_TYPE != "application/vnd.docker.distribution.manifest.list.v2+json" ]]; then
+              echo "Image manifest is not a manifest list. Skipping manifest copy."
+              exit 0
+          fi
+
+          MANIFEST_FROM_IMAGE=${{ inputs.manifest_from_image }}
           PLATFORM=$(docker buildx imagetools inspect --raw $MANIFEST_FROM_IMAGE | jq -cr '.manifests[] | select(.platform.os=="windows") | .platform')
           ARCH=$(echo $PLATFORM | jq -r ".architecture")
           OS_VERSION=$(echo $PLATFORM | jq -r '."os.version"')
