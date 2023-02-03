@@ -240,7 +240,7 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - aks
-        - --aks-version=1.25.2
+        - --aks-version=1.25.4
         - --win-agents-sku=Windows2019
         - --cluster-name=aks-e2e-ltsc2019-$(BUILD_ID)
 
@@ -262,7 +262,7 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - aks
-        - --aks-version=1.25.2
+        - --aks-version=1.25.4
         - --win-agents-sku=Windows2022
         - --cluster-name=aks-e2e-ltsc2022-$(BUILD_ID)
 
