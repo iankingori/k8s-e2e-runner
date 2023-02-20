@@ -173,7 +173,7 @@ periodics:
         - --win-private-bins-zip-url=http://10.244.0.235/proxy_terminating_endpoints.zip
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24.6-patched
         - aks
-        - --aks-version=1.24.6
+        - --aks-version=1.24
         - --win-agents-sku=Windows2019
         - --cluster-name=aks-e2e-ltsc2019-$(BUILD_ID)
 
@@ -195,7 +195,7 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - aks
-        - --aks-version=1.24.6
+        - --aks-version=1.24
         - --win-agents-sku=Windows2022
         - --cluster-name=aks-e2e-ltsc2022-$(BUILD_ID)
 
@@ -217,7 +217,7 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - aks
-        - --aks-version=1.25.4
+        - --aks-version=1.25
         - --win-agents-sku=Windows2019
         - --cluster-name=aks-e2e-ltsc2019-$(BUILD_ID)
 
@@ -239,7 +239,7 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
         - aks
-        - --aks-version=1.25.4
+        - --aks-version=1.25
         - --win-agents-sku=Windows2022
         - --cluster-name=aks-e2e-ltsc2022-$(BUILD_ID)
 

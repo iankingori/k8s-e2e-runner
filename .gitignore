@@ -4,3 +4,5 @@
 
 e2e-runner/*.egg-info
 e2e-runner/.eggs
+
+/.venv

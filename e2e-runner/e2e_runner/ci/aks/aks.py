@@ -24,7 +24,6 @@ class AksCI(e2e_base.CI):
         self.logging = e2e_logger.get_logger(__name__)
 
         self.aks_name = self.opts.cluster_name
-        self.aks_version = self.opts.aks_version
         self.rg_name = self.aks_name
         self.tags = e2e_azure_utils.get_resource_group_tags()
         self.linux_pool_name = "linagt"
@@ -38,8 +37,6 @@ class AksCI(e2e_base.CI):
         self.ssh_public_key = e2e_utils.get_file_content(
             os.environ["SSH_PUBLIC_KEY_PATH"])
 
-        self.kubernetes_version = f"v{self.aks_version}"
-
         creds, sub_id = e2e_azure_utils.get_credentials()
         self.mgmt_client = ResourceManagementClient(creds, sub_id)
         self.aks_client = ContainerServiceClient(creds, sub_id)
@@ -47,6 +44,9 @@ class AksCI(e2e_base.CI):
         self.compute_client = ComputeManagementClient(creds, sub_id)
 
         self.location = self._get_location()
+        self.aks_version = self._get_latest_aks_patch(
+            self.location, self.opts.aks_version)
+        self.kubernetes_version = f"v{self.aks_version}"
 
     @property
     def windows_private_addresses(self):
@@ -77,6 +77,24 @@ class AksCI(e2e_base.CI):
                 self.compute_client, self.network_client)
         self.logging.info("Using Azure location %s", location)
         return location
+
+    @e2e_utils.retry_on_error()
+    def _get_latest_aks_patch(self, location, aks_version):
+        versions = [
+            i.orchestrator_version
+            for i in self.aks_client.container_services.list_orchestrators(
+                location=location,
+                resource_type='managedClusters').orchestrators
+            if i.orchestrator_version.startswith(aks_version)
+        ]
+        if len(versions) == 0:
+            raise e2e_exceptions.KubernetesVersionNotFound(
+                "Didn't find any AKS version patch corresponding to "
+                f"orchestrator version {aks_version}"
+            )
+        versions.sort()
+        self.logging.info("Using AKS version: %s", versions[-1])
+        return versions[-1]
 
     def _generate_win_admin_pass(self):
         special_chars = "+-.<=>@_"
