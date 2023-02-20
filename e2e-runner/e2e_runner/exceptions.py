@@ -30,6 +30,10 @@ class KubernetesNodeNotFound(Exception):
     pass
 
 
+class KubernetesVersionNotFound(Exception):
+    pass
+
+
 class InvalidKubernetesEndpoint(Exception):
     pass
 
