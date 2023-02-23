@@ -65,7 +65,7 @@ class CI(object):
 
     def _run_tests(self):
         self._start_conformance_tests()
-        self.k8s_client.watch_pod_log(self.CONFORMANCE_POD)
+        e2e_utils.kubectl_watch_logs(self.k8s_client, self.CONFORMANCE_POD)
 
         e2e_utils.download_from_pod(
             self.HELPER_POD, "output", self.opts.artifacts_directory)

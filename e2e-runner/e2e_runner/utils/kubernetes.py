@@ -5,6 +5,7 @@ import time
 
 import pendulum
 import tenacity
+from e2e_runner import exceptions as e2e_exceptions
 from e2e_runner import logger as e2e_logger
 from kubernetes import client, config, utils, watch
 
@@ -89,6 +90,19 @@ class KubernetesClient(object):
     def get_pod_phase(self, name, namespace="default"):
         pod = self.get_pod(name, namespace)
         return pod.status.phase  # pyright: ignore
+
+    def get_pod_container_status(self, pod_name, container_name,
+                                 namespace="default"):
+        pod = self.get_pod(pod_name, namespace)
+        container_statuses = [
+            c_status for c_status in pod.status.container_statuses
+            if c_status.name == container_name
+        ]
+        if len(container_statuses) == 0:
+            raise e2e_exceptions.PodContainerStatusNotFound(
+                f"Pod({pod_name}) container({container_name}) "
+                "status not found")
+        return container_statuses[0]
 
     def wait_pod_phase(self, name, wanted_phase, namespace="default",
                        timeout=300):

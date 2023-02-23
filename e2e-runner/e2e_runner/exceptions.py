@@ -22,6 +22,10 @@ class PodNotFound(Exception):
     pass
 
 
+class PodContainerStatusNotFound(Exception):
+    pass
+
+
 class KubernetesEndpointNotFound(Exception):
     pass
 

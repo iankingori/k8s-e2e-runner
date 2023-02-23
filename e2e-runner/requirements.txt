@@ -8,4 +8,5 @@ configargparse
 jinja2
 kubernetes
 pendulum
+sh
 tenacity

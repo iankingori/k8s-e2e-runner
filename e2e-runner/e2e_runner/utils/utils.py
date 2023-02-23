@@ -9,11 +9,14 @@ from urllib.request import urlretrieve
 
 import configargparse
 import jinja2
+import sh
 import tenacity
 from e2e_runner import exceptions as e2e_exceptions
 from e2e_runner import logger as e2e_logger
 
 logging = e2e_logger.get_logger(__name__)
+
+LAST_LOG_TIMESTAMP = None
 
 
 def str2bool(v):
@@ -198,6 +201,54 @@ def exec_kubectl(args, env=None, timeout=(3 * 3600),
             if stderr:
                 stderr = stderr.decode().strip()
             return stdout, stderr
+
+
+def kubectl_watch_logs(k8s_client, pod_name, namespace="default",
+                       container_name=None):
+
+    def print_stdout(line):
+        global LAST_LOG_TIMESTAMP
+        split_at = line.find(' ')
+        LAST_LOG_TIMESTAMP = line[:split_at]
+        line = line[split_at + 1:]
+        print(line, end="")
+
+    def print_stderr(line):
+        print(line, end="")
+
+    if not container_name:
+        pod = k8s_client.get_pod(pod_name, namespace)
+        container_name = pod.spec.containers[0].name
+
+    kubectl_args = ["logs", "--namespace", namespace, pod_name,
+                    "--container", container_name,
+                    "--follow", "--timestamps"]
+    global LAST_LOG_TIMESTAMP
+    while True:
+        args = kubectl_args
+        if LAST_LOG_TIMESTAMP:
+            args += ["--since-time", LAST_LOG_TIMESTAMP]
+        p = sh.kubectl(*args, _out=print_stdout, _err=print_stderr,
+                       _bg=True, _bg_exc=False)
+        try:
+            p.wait()
+        except Exception:
+            logging.warning(
+                "Pod (%s) container (%s) log read interrupted. Resuming log "
+                "read if pod container is still running...", pod_name,
+                container_name)
+
+        container_status = k8s_client.get_pod_container_status(
+            pod_name, container_name, namespace)
+        if container_status.state.terminated:
+            LAST_LOG_TIMESTAMP = None
+            break
+
+    logging.info("Pod (%s) container (%s) log read finished. "
+                 "Waiting until pod is not running anymore...",
+                 pod_name, container_name)
+    while k8s_client.is_pod_running(pod_name, namespace):
+        time.sleep(1)
 
 
 def get_k8s_agents_private_addresses(operating_system):
