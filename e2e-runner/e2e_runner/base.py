@@ -114,20 +114,23 @@ class CI(object):
     def _conformance_tests_flags(self, num_nodes="2", node_os_distro="windows",
                                  output_dir="/output"):
         ginkgoFlags = {
-            "progress": "true",
             "trace": "true",
             "v": "true",
             "nodes": self.opts.parallel_test_nodes,
             "focus": self.opts.test_focus_regex,
             "skip": self.opts.test_skip_regex,
         }
-        # TODO: Remove this once Docker support is removed.
-        if self.kubernetes_version > "v1.25":
-            ginkgoFlags["no-color"] = "true"
-            ginkgoFlags["slow-spec-threshold"] = "5m"
+        if self.kubernetes_version >= "v1.27":
+            ginkgoFlags["show-node-events"] = "true"
+            ginkgoFlags["poll-progress-after"] = "5m"
         else:
-            ginkgoFlags["noColor"] = "true"
-            ginkgoFlags["slowSpecThreshold"] = "300.0"
+            ginkgoFlags["progress"] = "true"
+            if self.kubernetes_version >= "v1.25":
+                ginkgoFlags["no-color"] = "true"
+                ginkgoFlags["slow-spec-threshold"] = "5m"
+            else:
+                ginkgoFlags["noColor"] = "true"
+                ginkgoFlags["slowSpecThreshold"] = "300.0"
 
         e2eFlags = {
             "provider": "skeleton",

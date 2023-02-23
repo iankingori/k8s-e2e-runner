@@ -12,8 +12,6 @@ get_systemd_logs() {
     systemd_logs="$LOGS_DIR/systemd"
     mkdir -p "$systemd_logs"
 
-    journalctl -u "docker.service" --no-pager > "$systemd_logs/docker.service.log"
-
     for service_name in $(systemctl list-unit-files | grep kube | awk  -F " " '{print $1}'); do
         journalctl -u "$service_name" --no-pager > "$systemd_logs/$service_name.log"
     done

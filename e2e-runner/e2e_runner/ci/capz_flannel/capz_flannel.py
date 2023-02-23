@@ -1,7 +1,6 @@
 import base64
 import os
 import shutil
-import tempfile
 import time
 from datetime import datetime
 from urllib.parse import urlparse
@@ -694,26 +693,7 @@ class CapzFlannelCI(e2e_base.CI):
             context=context,
             searchpath=f"{flannel_dir}/windows/{self.opts.container_runtime}",
         )
-        # TODO: Remove this once Docker support is removed.
-        self._setup_flannel_configmaps()
         e2e_utils.exec_kubectl(["apply", "-f", kube_flannel_windows])
-
-    # TODO: Remove this once Docker support is removed.
-    def _setup_flannel_configmaps(self):
-        for cfgmap_name in ["kubeadm-config", "kube-proxy"]:
-            configmap_yaml, _ = e2e_utils.exec_kubectl(  # pyright: ignore
-                args=[
-                    "get", "configmap", cfgmap_name, "-n", "kube-system",
-                    "-o", "yaml",
-                ],
-                capture_output=True,
-            )
-            configmap = yaml.safe_load(configmap_yaml)  # pyright: ignore
-            configmap["metadata"]["namespace"] = "kube-flannel"
-            with tempfile.NamedTemporaryFile(suffix=".yaml") as f:
-                f.write(yaml.dump(configmap).encode())
-                f.flush()
-                e2e_utils.exec_kubectl(["apply", "-f", f.name])
 
     def _setup_ssh_config(self):
         ssh_dir = os.path.join(os.environ["HOME"], ".ssh")
@@ -811,7 +791,6 @@ class CapzFlannelCI(e2e_base.CI):
 
     def _conformance_nodes_non_blocking_taints(self):
         return [
-            "node-role.kubernetes.io/master",  # TODO: Remove this once Docker support is removed.  # noqa:
             "node-role.kubernetes.io/control-plane",
         ]
 
