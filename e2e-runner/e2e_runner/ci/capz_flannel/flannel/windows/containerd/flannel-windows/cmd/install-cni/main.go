@@ -11,7 +11,7 @@ import (
 	"github.com/Microsoft/hcsshim/hcn"
 	"github.com/Microsoft/windows-container-networking/cni"
 	"github.com/flannel-io/flannel/pkg/ip"
-	"github.com/flannel-io/flannel/subnet"
+	"github.com/flannel-io/flannel/pkg/subnet"
 )
 
 func getFlannelNetConf() (*subnet.Config, error) {

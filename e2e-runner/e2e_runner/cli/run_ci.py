@@ -109,8 +109,8 @@ class RunCI(Command):
         p = subparsers.add_parser("capz_flannel")
         p.add_argument(
             "--container-runtime",
-            default="docker",
-            choices=["docker", "containerd"],
+            default="containerd",
+            choices=["containerd"],
             help="Container runtime used by the Kubernetes agents.")
         p.add_argument(
             "--flannel-mode",

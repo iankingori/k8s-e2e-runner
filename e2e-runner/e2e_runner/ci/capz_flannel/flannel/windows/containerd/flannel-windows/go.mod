@@ -3,9 +3,9 @@ module flannel-windows
 go 1.19
 
 require (
-	github.com/Microsoft/hcsshim v0.9.6
+	github.com/Microsoft/hcsshim v0.9.7
 	github.com/Microsoft/windows-container-networking v0.3.0
-	github.com/flannel-io/flannel v0.20.2
+	github.com/flannel-io/flannel v0.21.2
 )
 
 require (
@@ -19,7 +19,8 @@ require (
 	github.com/vishvananda/netlink v1.2.1-beta.2 // indirect
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/net v0.0.0-20220907135653-1e95f45603a7 // indirect
-	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
+	golang.org/x/net v0.4.0 // indirect
+	golang.org/x/sys v0.3.0 // indirect
 	k8s.io/klog v1.0.0 // indirect
+	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 )

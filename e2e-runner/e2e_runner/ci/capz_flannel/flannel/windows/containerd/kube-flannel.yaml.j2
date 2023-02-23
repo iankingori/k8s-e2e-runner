@@ -159,8 +159,6 @@ spec:
           mountPath: /etc/kube-flannel/
         - name: flannel-windows-cfg
           mountPath: /etc/kube-flannel-windows/
-        - name: kubeadm-config
-          mountPath: /etc/kubeadm-config/
         env:
         - name: CONTROL_PLANE_CIDR
           value: "{{ control_plane_cidr }}"
@@ -177,8 +175,6 @@ spec:
         volumeMounts:
         - name: flannel-cfg
           mountPath: /etc/kube-flannel/
-        - name: kube-proxy
-          mountPath: /flannel-config-file
         env:
         - name: KUBERNETES_SERVICE_HOST
           value: "{{ kubernetes_service_host }}"
@@ -206,11 +202,5 @@ spec:
       - name: flannel-windows-cfg
         configMap:
           name: kube-flannel-windows-cfg
-      - name: kubeadm-config
-        configMap:
-          name: kubeadm-config
-      - name: kube-proxy
-        configMap:
-          name: kube-proxy
   updateStrategy:
     type: RollingUpdate

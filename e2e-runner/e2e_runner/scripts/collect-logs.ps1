@@ -18,17 +18,6 @@ function Get-WindowsLogs {
         Out-File -FilePath "$logsPath\crashes.log" -Encoding Ascii
 }
 
-function Get-DockerLogs {
-    Write-Output "Collecting Docker logs"
-
-    $logsPath = Join-Path -Path $LOGS_DIR -ChildPath "docker"
-    New-Item -ItemType Directory -Path $logsPath -Force | Out-Null
-
-    Get-EventLog -LogName Application -Source Docker -ErrorAction SilentlyContinue | `
-        Select-Object -Property TimeGenerated, Index, EntryType, Message | Format-List * | `
-        Out-File -FilePath "$logsPath\docker.log" -Encoding Ascii
-}
-
 function Get-KubernetesLogs {
     Write-Output "Collecting Kubernetes logs"
 
@@ -50,9 +39,6 @@ if(Test-Path $LOGS_DIR) {
 New-Item -ItemType Directory -Path $LOGS_DIR | Out-Null
 
 Get-WindowsLogs
-if(Get-Service -Name Docker -ErrorAction SilentlyContinue) {
-    Get-DockerLogs
-}
 Get-KubernetesLogs
 Get-CloudbaseInitLogs
 

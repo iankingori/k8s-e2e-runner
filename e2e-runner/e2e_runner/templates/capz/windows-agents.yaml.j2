@@ -26,15 +26,10 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureMachineTemplate
 metadata:
-  annotations:
-    runtime: {% if container_runtime == "docker" %}dockershim{% endif %}{% if container_runtime == "containerd" %}containerd{% endif %}
   name: {{ cluster_name }}-md-win
   namespace: default
 spec:
   template:
-    metadata:
-      annotations:
-        runtime: {% if container_runtime == "docker" %}dockershim{% endif %}{% if container_runtime == "containerd" %}containerd{% endif %}
     spec:
       osDisk:
         diskSizeGB: 128
