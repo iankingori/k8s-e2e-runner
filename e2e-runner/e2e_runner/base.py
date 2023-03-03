@@ -126,11 +126,13 @@ class CI(object):
         else:
             ginkgoFlags["progress"] = "true"
             if self.kubernetes_version >= "v1.25":
-                ginkgoFlags["no-color"] = "true"
                 ginkgoFlags["slow-spec-threshold"] = "5m"
             else:
-                ginkgoFlags["noColor"] = "true"
                 ginkgoFlags["slowSpecThreshold"] = "300.0"
+        if self.kubernetes_version >= "v1.25":
+            ginkgoFlags["no-color"] = "true"
+        else:
+            ginkgoFlags["noColor"] = "true"
 
         e2eFlags = {
             "provider": "skeleton",
