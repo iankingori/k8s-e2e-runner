@@ -236,3 +236,43 @@ periodics:
         - --aks-version=1.25
         - --win-agents-sku=Windows2022
         - --cluster-name=aks-e2e-ltsc2022-$(BUILD_ID)
+
+- name: aks-e2e-ltsc2019-azurecni-1.26
+  cron: "0 9 * * *"
+  always_run: true
+  labels:
+    preset-test-regex: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
+      imagePullPolicy: Always
+      args:
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - aks
+        - --aks-version=1.26
+        - --win-agents-sku=Windows2019
+        - --cluster-name=aks-e2e-ltsc2019-$(BUILD_ID)
+
+- name: aks-e2e-ltsc2022-azurecni-1.26
+  cron: "0 15 * * *"
+  always_run: true
+  labels:
+    preset-test-regex: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
+      imagePullPolicy: Always
+      args:
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - aks
+        - --aks-version=1.26
+        - --win-agents-sku=Windows2022
+        - --cluster-name=aks-e2e-ltsc2022-$(BUILD_ID)
