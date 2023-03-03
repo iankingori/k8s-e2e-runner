@@ -39,6 +39,9 @@ class RunCI(Command):
             default="https://capzwin.blob.core.windows.net/images/image-repo-list",  # noqa
             help="Repo list with registries for test images.")
         p.add_argument(
+            "--conformance-image",
+            help="Conformance test image to use for the E2E tests.")
+        p.add_argument(
             "--e2e-bin",
             default=None,
             help="URL with the Kubernetes E2E tests binary.")
