@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 
 from e2e_runner import constants as e2e_constants
@@ -89,9 +90,10 @@ class CI(object):
             "docker-creds", docker_config_file, secret_file_name="config.json")
 
     def _start_conformance_tests(self):
-        ginkgo_flags, e2e_flags = self._conformance_tests_flags()
+        image = self._conformance_image()
+        ginkgo_flags, e2e_flags = self._conformance_tests_flags(image)
         ctxt = {
-            'conformance_image': self._conformance_image(),
+            'conformance_image': image,
             'ginkgo_flags': ginkgo_flags,
             'e2e_flags': e2e_flags,
         }
@@ -105,14 +107,30 @@ class CI(object):
         self.k8s_client.wait_running_pod(self.CONFORMANCE_POD)
 
     def _conformance_image(self):
+        if self.opts.conformance_image:
+            return self.opts.conformance_image
         tag = self.kubernetes_version.replace("+", "_")
         return f"registry.k8s.io/conformance:{tag}"
 
     def _conformance_nodes_non_blocking_taints(self):
         return []
 
-    def _conformance_tests_flags(self, num_nodes="2", node_os_distro="windows",
-                                 output_dir="/output"):
+    def _parse_conformance_image_tag(self, image):
+        tag = image.split(":")[-1]
+        if re.match("^v[0-1]\\.[0-9]+", tag):
+            return tag
+        raise e2e_exceptions.InvalidConformanceImageTag(
+            f"Invalid conformance image tag: {tag}. The tag must have the "
+            "Kubernetes release as prefix, e.g. v1.26-testing-image")
+
+    def _conformance_tests_flags(
+            self,
+            image,
+            num_nodes="2",
+            node_os_distro="windows",
+            output_dir="/output"):
+
+        conformance_image_tag = self._parse_conformance_image_tag(image)
         ginkgoFlags = {
             "trace": "true",
             "v": "true",
@@ -120,16 +138,16 @@ class CI(object):
             "focus": self.opts.test_focus_regex,
             "skip": self.opts.test_skip_regex,
         }
-        if self.kubernetes_version >= "v1.27":
+        if conformance_image_tag >= "v1.27":
             ginkgoFlags["show-node-events"] = "true"
             ginkgoFlags["poll-progress-after"] = "5m"
         else:
             ginkgoFlags["progress"] = "true"
-            if self.kubernetes_version >= "v1.25":
+            if conformance_image_tag >= "v1.25":
                 ginkgoFlags["slow-spec-threshold"] = "5m"
             else:
                 ginkgoFlags["slowSpecThreshold"] = "300.0"
-        if self.kubernetes_version >= "v1.25":
+        if conformance_image_tag >= "v1.25":
             ginkgoFlags["no-color"] = "true"
         else:
             ginkgoFlags["noColor"] = "true"

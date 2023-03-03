@@ -46,5 +46,9 @@ class InvalidOperatingSystem(Exception):
     pass
 
 
+class InvalidConformanceImageTag(Exception):
+    pass
+
+
 class VersionMismatch(Exception):
     pass
