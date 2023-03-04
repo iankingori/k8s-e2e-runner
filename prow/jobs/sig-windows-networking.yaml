@@ -12,6 +12,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
@@ -36,6 +38,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
@@ -60,6 +64,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
@@ -82,6 +88,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
@@ -104,6 +112,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
@@ -126,6 +136,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
@@ -147,6 +159,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].LoadBalancers
         - --test-skip-regex=$(TEST_SKIP_REGEX)
@@ -169,6 +183,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
@@ -189,6 +205,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
@@ -209,6 +227,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
@@ -229,6 +249,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
@@ -249,6 +271,8 @@ periodics:
     containers:
     - image: ghcr.io/e2e-win/k8s-e2e-runner:main
       imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
