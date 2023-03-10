@@ -794,6 +794,7 @@ class CapzFlannelCI(e2e_base.CI):
             "node-role.kubernetes.io/control-plane",
         ]
 
+    @e2e_utils.retry_on_error()
     def _build_k8s_linux_bins(self):
         self.logging.info("Building K8s Linux binaries")
         self.bootstrap_vm.exec(
@@ -802,6 +803,7 @@ class CapzFlannelCI(e2e_base.CI):
             ],
             cwd=self.k8s_path)
 
+    @e2e_utils.retry_on_error()
     def _build_k8s_windows_bins(self):
         self.logging.info("Building K8s Windows binaries")
         self.bootstrap_vm.exec(
@@ -810,6 +812,7 @@ class CapzFlannelCI(e2e_base.CI):
             ],
             cwd=self.k8s_path)
 
+    @e2e_utils.retry_on_error()
     def _build_k8s_linux_daemonset_images(self):
         self.logging.info("Building K8s Linux DaemonSet container images")
         self.bootstrap_vm.exec(
@@ -895,6 +898,7 @@ class CapzFlannelCI(e2e_base.CI):
             f"{artifacts_containerd_bin_dir}")
         self.bootstrap_vm.exec(script)
 
+    @e2e_utils.retry_on_error()
     def _build_containerd_windows_bins(self):
         self.logging.info("Building containerd binaries")
         self.bootstrap_vm.exec(
@@ -914,6 +918,7 @@ class CapzFlannelCI(e2e_base.CI):
         self._build_containerd_windows_bins()
         self._copy_containerd_build_artifacts()
 
+    @e2e_utils.retry_on_error()
     def _build_containerd_shim_windows_bins(self):
         self.logging.info("Building containerd shim")
         self.bootstrap_vm.exec(
@@ -945,6 +950,7 @@ class CapzFlannelCI(e2e_base.CI):
         self._build_containerd_shim_windows_bins()
         self._copy_containerd_shim_build_artifacts()
 
+    @e2e_utils.retry_on_error()
     def _build_cri_tools_windows_bins(self):
         self.logging.info("Building cri-tools")
         self.bootstrap_vm.exec(
@@ -977,6 +983,7 @@ class CapzFlannelCI(e2e_base.CI):
         self._build_cri_tools_windows_bins()
         self._copy_cri_tools_build_artifacts()
 
+    @e2e_utils.retry_on_error()
     def _build_sdn_cni_windows_bins(self):
         self.logging.info("Building the SDN CNI binaries")
         self.bootstrap_vm.exec(
