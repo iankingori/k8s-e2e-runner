@@ -39,6 +39,9 @@
 				"envFiles": [
 					"${workspaceFolder}/e2e-runner/debug/.env/env.sh"
 				],
+				"env": {
+					"PYDEVD_WARN_EVALUATION_TIMEOUT": "3600",
+				},
 				"customOptions": "--platform linux/amd64",
 				"image": "k8s-e2e-runner:debug",
 				"remove": true,
