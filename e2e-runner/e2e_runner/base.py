@@ -23,6 +23,7 @@ class CI(object):
         self.kubeconfig_dir = os.path.join(os.environ["HOME"], ".kube")
         self.kubeconfig_path = os.path.join(self.kubeconfig_dir, "config")
         self.ssh_private_key_path = os.environ["SSH_PRIVATE_KEY_PATH"]
+        self.is_jumpbox_pod_ready = False
 
     @property
     def k8s_client(self):
@@ -179,7 +180,21 @@ class CI(object):
         ssh_cmd = ["ssh", *ssh_opts_args, f"{user}@{address}", *cmd]
         e2e_utils.exec_pod(self.JUMPBOX_POD, ssh_cmd)
 
-    def _jumpbox_exec_scp(self, user, address, file_path, remote_file_path):
+    def _jumpbox_scp_download(self, user, address,
+                              remote_file_path, file_path):
+        ssh_opts = [
+            "StrictHostKeyChecking=no",
+            "UserKnownHostsFile=/dev/null",
+        ]
+        ssh_opts_args = [f"-o {opt}" for opt in ssh_opts]
+        scp_cmd = [
+            "scp",
+            *ssh_opts_args,
+            f"{user}@{address}:{remote_file_path}", file_path,
+        ]
+        e2e_utils.exec_pod(self.JUMPBOX_POD, scp_cmd)
+
+    def _jumpbox_scp_upload(self, user, address, file_path, remote_file_path):
         ssh_opts = [
             "StrictHostKeyChecking=no",
             "UserKnownHostsFile=/dev/null",
@@ -193,6 +208,8 @@ class CI(object):
         e2e_utils.exec_pod(self.JUMPBOX_POD, scp_cmd)
 
     def _setup_jumpbox(self):
+        if self.is_jumpbox_pod_ready:
+            return
         manifest_file = os.path.join(
             self.e2e_runner_dir, "templates/jumpbox.yaml")
         self.k8s_client.create_from_yaml(manifest_file)
@@ -206,6 +223,30 @@ class CI(object):
             self.ssh_private_key_path, "/tmp/id_rsa", follow_symlinks=True)
         e2e_utils.upload_to_pod(
             self.JUMPBOX_POD, "/tmp/id_rsa", "/root/.ssh/id_rsa")
+        self.is_jumpbox_pod_ready = True
 
     def _remove_jumpbox(self):
         self.k8s_client.delete_pod(self.JUMPBOX_POD)
+        self.is_jumpbox_pod_ready = False
+
+    def _get_k8s_nodes_names(self, operating_system):
+        nodes_names, _ = e2e_utils.exec_kubectl(
+            args=[
+                "get", "nodes",
+                "-o", "jsonpath=\"{{.items[?(@.status.nodeInfo.operatingSystem == '{}')].metadata.name}}\"".format(operating_system),  # noqa:
+            ],
+            capture_output=True,
+            hide_cmd=True,
+        )
+        return nodes_names.strip().split()
+
+    def _get_k8s_node_private_address(self, node_name):
+        private_address, _ = e2e_utils.exec_kubectl(
+            args=[
+                "get", "node", node_name,
+                "-o", "jsonpath=\"{.status.addresses[?(@.type == 'InternalIP')].address}\"",  # noqa:
+            ],
+            capture_output=True,
+            hide_cmd=True,
+        )
+        return private_address.strip()
