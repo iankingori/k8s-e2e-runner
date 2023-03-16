@@ -22,6 +22,7 @@ class AksCI(e2e_base.CI):
 
         self.aks_dir = os.path.dirname(__file__)
         self.logging = e2e_logger.get_logger(__name__)
+        self.artifacts_directory = self.opts.artifacts_directory
 
         self.aks_name = self.opts.cluster_name
         self.rg_name = self.aks_name
@@ -69,6 +70,17 @@ class AksCI(e2e_base.CI):
         self.logging.info("Deleting AKS cluster resource group")
         e2e_azure_utils.delete_resource_group(
             self.mgmt_client, self.rg_name, wait=False)
+
+    def collect_logs(self):
+        self._setup_jumpbox()
+
+        nodes_names = self._get_k8s_nodes_names("windows")
+        for node_name in nodes_names:
+            try:
+                self._collect_node_logs(node_name)
+            except Exception as e:
+                self.logging.warning(
+                    "Failed to collect logs from node %s: %s", node_name, e)
 
     def _get_location(self):
         location = self.opts.location
@@ -236,7 +248,7 @@ class AksCI(e2e_base.CI):
             }
 
             # upload zip archive with the private bins, and extract it
-            self._jumpbox_exec_scp(
+            self._jumpbox_scp_upload(
                 file_path=f"/tmp/{dir_name}.zip",
                 remote_file_path=f"/{dir_name}.zip",
                 **ssh_kwargs,
@@ -264,7 +276,7 @@ class AksCI(e2e_base.CI):
                 self.e2e_runner_dir, f"scripts/aks/{script_file}")
             e2e_utils.upload_to_pod(
                 self.JUMPBOX_POD, ps_script_path, f"/tmp/{script_file}")
-            self._jumpbox_exec_scp(
+            self._jumpbox_scp_upload(
                 file_path=f"/tmp/{script_file}",
                 remote_file_path=f"/{script_file}",
                 **ssh_kwargs,
@@ -299,4 +311,38 @@ class AksCI(e2e_base.CI):
                 **ssh_kwargs,
             )
 
-        self._remove_jumpbox()
+    def _collect_node_logs(self, node_name):
+        self.logging.info("Collecting logs from node: %s", node_name)
+
+        node_address = self._get_k8s_node_private_address(node_name)
+        script_file = "collect-logs.ps1"
+        ps_script_path = os.path.join(
+            self.e2e_runner_dir, f"scripts/aks/{script_file}")
+        ssh_kwargs = {
+            "user": "azureuser",
+            "address": node_address,
+        }
+
+        e2e_utils.upload_to_pod(
+            self.JUMPBOX_POD,
+            ps_script_path,
+            f"/tmp/{script_file}")
+        self._jumpbox_scp_upload(
+            file_path=f"/tmp/{script_file}",
+            remote_file_path=f"/{script_file}",
+            **ssh_kwargs,
+        )
+        self._jumpbox_exec_ssh(
+            cmd=["powershell", "-File", f"/{script_file}"],
+            **ssh_kwargs,
+        )
+        self._jumpbox_scp_download(
+            remote_file_path="/logs.zip",
+            file_path=f"/tmp/{node_name}_logs.zip",
+            **ssh_kwargs,
+        )
+        e2e_utils.download_from_pod(
+            pod_name=self.JUMPBOX_POD,
+            remote_path=f"/tmp/{node_name}_logs.zip",
+            local_path=f"{self.artifacts_directory}/{node_name}_logs.zip",
+        )
