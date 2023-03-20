@@ -187,7 +187,7 @@ class RunCI(Command):
             help="The operating system of the K8s Windows agents.")
         p.add_argument(
             "--win-agent-size",
-            default="Standard_D2s_v3",
+            default="Standard_D4s_v3",
             help="Size of K8s Windows agents.")
 
     def add_aks_subparser(self, subparsers):
@@ -219,7 +219,7 @@ class RunCI(Command):
             help="Number of AKS Windows agents.")
         p.add_argument(
             "--win-agents-size",
-            default="Standard_D2s_v3",
+            default="Standard_D4s_v3",
             help="Size of K8s Windows agents.")
         p.add_argument(
             "--win-agents-sku",
