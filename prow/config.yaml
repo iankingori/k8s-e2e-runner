@@ -17,8 +17,8 @@ plank:
         sidecar: gcr.io/k8s-prow/sidecar:v20220903-297376003e
 
 sinker:
-  max_prowjob_age: 48h
-  max_pod_age: 48h
+  max_prowjob_age: 72h
+  max_pod_age: 72h
 
 prowjob_namespace: prow
 pod_namespace: test-pods
