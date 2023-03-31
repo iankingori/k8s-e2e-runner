@@ -1,4 +1,9 @@
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prow
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,7 +30,7 @@ spec:
       terminationGracePeriodSeconds: 180
       containers:
       - name: hook
-        image: gcr.io/k8s-prow/hook:v20220903-297376003e
+        image: gcr.io/k8s-prow/hook:v20230329-c93d79fb7d
         imagePullPolicy: Always
         args:
         - --dry-run=false
@@ -100,7 +105,6 @@ spec:
     app: hook
   ports:
   - port: 8888
-  type: NodePort
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -122,7 +126,7 @@ spec:
       serviceAccountName: "sinker"
       containers:
       - name: sinker
-        image: gcr.io/k8s-prow/sinker:v20220903-297376003e
+        image: gcr.io/k8s-prow/sinker:v20230329-c93d79fb7d
         args:
         - --config-path=/etc/config/config.yaml
         - --job-config-path=/etc/job-config
@@ -168,7 +172,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
       - name: deck
-        image: gcr.io/k8s-prow/deck:v20220903-297376003e
+        image: gcr.io/k8s-prow/deck:v20230329-c93d79fb7d
         args:
         - --config-path=/etc/config/config.yaml
         - --plugin-config=/etc/plugins/plugins.yaml
@@ -247,7 +251,6 @@ spec:
   ports:
   - port: 80
     targetPort: 8080
-  type: NodePort
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -272,7 +275,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
       - name: horologium
-        image: gcr.io/k8s-prow/horologium:v20220903-297376003e
+        image: gcr.io/k8s-prow/horologium:v20230329-c93d79fb7d
         args:
         - --dry-run=false
         - --config-path=/etc/config/config.yaml
@@ -314,7 +317,7 @@ spec:
       serviceAccountName: "tide"
       containers:
       - name: tide
-        image: gcr.io/k8s-prow/tide:v20220903-297376003e
+        image: gcr.io/k8s-prow/tide:v20230329-c93d79fb7d
         args:
         - --dry-run=false
         - --config-path=/etc/config/config.yaml
@@ -374,7 +377,40 @@ spec:
   ports:
   - port: 80
     targetPort: 8888
-  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: prow
+  name: prow
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le
+spec:
+  defaultBackend:
+    service:
+      name: deck
+      port:
+        number: 80
+  rules:
+  - host: k8s-sig-win-networking-prow.westus2.cloudapp.azure.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: deck
+            port:
+              number: 80
+      - path: /hook
+        pathType: Prefix
+        backend:
+          service:
+            name: hook
+            port:
+              number: 8888
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -397,7 +433,7 @@ spec:
       terminationGracePeriodSeconds: 180
       containers:
       - name: statusreconciler
-        image: gcr.io/k8s-prow/status-reconciler:v20220903-297376003e
+        image: gcr.io/k8s-prow/status-reconciler:v20230329-c93d79fb7d
         args:
         - --dry-run=false
         - --continue-on-error=true
@@ -448,6 +484,11 @@ spec:
       - name: gcs-credentials
         secret:
           secretName: gcs-credentials
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-pods
 ---
 kind: ServiceAccount
 apiVersion: v1
@@ -755,120 +796,6 @@ subjects:
 - kind: ServiceAccount
   name: "statusreconciler"
 ---
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  namespace: prow
-  name: pushgateway
-  labels:
-    app: pushgateway
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: pushgateway
-  template:
-    metadata:
-      labels:
-        app: pushgateway
-    spec:
-      containers:
-      - name: pushgateway
-        image: prom/pushgateway:v0.4.0
-        ports:
-          - name: http
-            containerPort: 9091
----
-apiVersion: v1
-kind: Service
-metadata:
-  namespace: prow
-  name: pushgateway
-  labels:
-    app: pushgateway
-spec:
-  ports:
-  - name: pushgateway
-    port: 80
-    targetPort: http
-  type: NodePort
-  selector:
-    app: pushgateway
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  namespace: prow
-  name: pushgateway-proxy-config
-data:
-  nginx.conf: |-
-    user www-data;
-    worker_processes 4;
-    pid /run/nginx.pid;
-    error_log /dev/stdout;
-    events {
-      worker_connections 1024;
-    }
-    http {
-      access_log /dev/stdout;
-      server {
-        listen 0.0.0.0:8081;
-        location / {
-          limit_except GET {
-            deny all;
-          }
-          proxy_pass http://pushgateway;
-        }
-      }
-    }
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  namespace: prow
-  name: pushgateway-proxy
-  labels:
-    app: pushgateway-proxy
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: pushgateway-proxy
-  template:
-    metadata:
-      labels:
-        app: pushgateway-proxy
-    spec:
-      containers:
-      - name: nginx
-        ports:
-          - name: http
-            containerPort: 8081
-        image: nginx:1
-        volumeMounts:
-        - name: config-volume
-          mountPath: /etc/nginx/
-      volumes:
-      - name: config-volume
-        configMap:
-          name: pushgateway-proxy-config
----
-apiVersion: v1
-kind: Service
-metadata:
-  namespace: prow
-  name: pushgateway-external
-  labels:
-    app: pushgateway-external
-spec:
-  ports:
-  - name: pushgateway-external
-    port: 80
-    targetPort: http
-  type: NodePort
-  selector:
-    app: pushgateway-proxy
----
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -905,11 +832,10 @@ spec:
     spec:
       containers:
       - name: ghproxy
-        image: gcr.io/k8s-prow/ghproxy:v20220903-297376003e
+        image: gcr.io/k8s-prow/ghproxy:v20230329-c93d79fb7d
         args:
         - --cache-dir=/cache
         - --cache-sizeGB=99
-        - --push-gateway=pushgateway
         - --serve-metrics=true
         ports:
         - containerPort: 8888
@@ -975,7 +901,7 @@ spec:
             secretKeyRef:
               name: github-token
               key: appid
-        image: gcr.io/k8s-prow/prow-controller-manager:v20220903-297376003e
+        image: gcr.io/k8s-prow/prow-controller-manager:v20230329-c93d79fb7d
         volumeMounts:
         - name: github-token
           mountPath: /etc/github
@@ -1116,7 +1042,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
       - name: crier
-        image: gcr.io/k8s-prow/crier:v20220903-297376003e
+        image: gcr.io/k8s-prow/crier:v20230329-c93d79fb7d
         args:
         - --blob-storage-workers=10
         - --config-path=/etc/config/config.yaml

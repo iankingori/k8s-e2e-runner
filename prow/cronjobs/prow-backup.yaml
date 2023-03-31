@@ -1,5 +1,5 @@
 ---
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: prow-backup
@@ -73,23 +73,3 @@ spec:
             secret:
               defaultMode: 0400
               secretName: ssh-key
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: k8s-admin-role-binding
-  namespace: test-pods
-subjects:
-- kind: ServiceAccount
-  name: k8s-admin
-  namespace: test-pods
-roleRef:
-  kind: ClusterRole
-  name: cluster-admin
-  apiGroup: rbac.authorization.k8s.io
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: k8s-admin
-  namespace: test-pods
