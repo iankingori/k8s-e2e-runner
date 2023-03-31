@@ -1,0 +1,61 @@
+podSecurityContext:
+  fsGroup: 65532
+
+ingressRoute:
+  dashboard:
+    enabled: false
+
+globalArguments:
+  - --global.checknewversion
+
+certResolvers:
+  le:
+    email: ibalutoiu@cloudbasesolutions.com
+    httpChallenge:
+      entryPoint: web
+    storage: /data/acme.json
+
+ports:
+  web:
+    nodePort: 30080
+  websecure:
+    nodePort: 30443
+
+service:
+  enabled: true
+  type: LoadBalancer
+  annotations:
+    service.beta.kubernetes.io/azure-dns-label-name: k8s-sig-win-networking-prow
+
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 128Mi
+  path: /data
+
+extraObjects:
+  # Global IngressRoute for HTTP to HTTPS redirect
+  - apiVersion: traefik.containo.us/v1alpha1
+    kind: Middleware
+    metadata:
+      name: redirect-to-https
+    spec:
+      redirectScheme:
+        scheme: https
+        permanent: true
+  - apiVersion: traefik.containo.us/v1alpha1
+    kind: IngressRoute
+    metadata:
+      name: http-to-https-redirect
+    spec:
+      entryPoints:
+        - web
+      routes:
+        - kind: Rule
+          match: PathPrefix(`/`)
+          priority: 1
+          middlewares:
+            - name: redirect-to-https
+          services:
+            - kind: TraefikService
+              name: noop@internal
