@@ -164,7 +164,7 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].LoadBalancers
         - --test-skip-regex=$(TEST_SKIP_REGEX)
-        - --win-private-bins-zip-url=http://10.244.0.235/proxy_terminating_endpoints.zip
+        - --win-private-bins-zip-url=http://private-bins/proxy_terminating_endpoints.zip
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24.6-patched
         - aks
         - --aks-version=1.24
