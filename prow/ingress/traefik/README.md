@@ -14,5 +14,5 @@ Deployment steps:
 * Install the Traefik Ingress Controller:
 
     ```bash
-    ./install.sh
+    ./setup.sh
     ```
