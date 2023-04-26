@@ -150,8 +150,12 @@ class CI(object):
                 ginkgoFlags["slowSpecThreshold"] = "300.0"
         if conformance_image_tag >= "v1.25":
             ginkgoFlags["no-color"] = "true"
+            if self.opts.flake_attempts:
+                ginkgoFlags["flake-attempts"] = self.opts.flake_attempts
         else:
             ginkgoFlags["noColor"] = "true"
+            if self.opts.flake_attempts:
+                ginkgoFlags["flakeAttempts"] = self.opts.flake_attempts
 
         e2eFlags = {
             "provider": "skeleton",

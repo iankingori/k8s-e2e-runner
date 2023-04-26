@@ -164,6 +164,7 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].LoadBalancers
         - --test-skip-regex=$(TEST_SKIP_REGEX)
+        - --flake-attempts=2
         - --win-private-bins-zip-url=http://private-bins/proxy_terminating_endpoints.zip
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24.6-patched
         - aks
@@ -188,6 +189,7 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --flake-attempts=2
         - aks
         - --aks-version=1.24
         - --win-agents-sku=Windows2022
@@ -210,6 +212,7 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --flake-attempts=2
         - aks
         - --aks-version=1.25
         - --win-agents-sku=Windows2019
@@ -232,6 +235,7 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --flake-attempts=2
         - aks
         - --aks-version=1.25
         - --win-agents-sku=Windows2022
@@ -254,6 +258,7 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --flake-attempts=2
         - aks
         - --aks-version=1.26
         - --win-agents-sku=Windows2019
@@ -276,6 +281,7 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --flake-attempts=2
         - aks
         - --aks-version=1.26
         - --win-agents-sku=Windows2022
