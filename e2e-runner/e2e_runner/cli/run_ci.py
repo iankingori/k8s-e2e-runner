@@ -63,6 +63,13 @@ class RunCI(Command):
             help="URL of the zip archive with the private binaries to be "
                  "installed on the Kubernetes Windows agents before running "
                  "the E2E tests.")
+        p.add_argument(
+            "--flake-attempts",
+            type=int,
+            default=0,
+            help="Ginkgo flake attempts. If the value is greater than 0, the "
+                 "E2E tests will be run multiple times, until they pass or "
+                 "the number of attempts is reached.")
 
         p.add_argument(
             "--k8s-repo",
