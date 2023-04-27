@@ -125,6 +125,20 @@ class KubernetesClient(object):
         self.wait_pod_phase(
             name, "Running", namespace=namespace, timeout=timeout)
 
+    def wait_non_running_pod(self, name, namespace="default", timeout=300):
+        logging.info("Waiting for pod %s to finish", name)
+        kwargs = {
+            "stop": tenacity.stop_after_delay(timeout),
+            "wait": tenacity.wait_exponential(max=10),
+            "retry": tenacity.retry_if_exception_type(AssertionError),
+            "reraise": True,
+        }
+        for attempt in tenacity.Retrying(**kwargs):
+            with attempt:
+                phase = self.get_pod_phase(name, namespace)
+                assert phase != "Running", (
+                    f"Pod {name} is still running after {timeout} seconds")
+
     def delete_pod(self, name, namespace="default"):
         self.core_v1_api.delete_namespaced_pod(name=name, namespace=namespace)
 
