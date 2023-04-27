@@ -60,6 +60,7 @@ class AksCI(e2e_base.CI):
 
     def up(self):
         start = time.time()
+        self._create_metadata_artifact()
         self._setup_aks_cluster()
         self._setup_aks_kubeconfig()
         self.logging.info("The cluster provisioned in %.2f minutes",
