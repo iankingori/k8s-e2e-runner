@@ -251,6 +251,14 @@ def kubectl_watch_logs(k8s_client, pod_name, namespace="default",
         time.sleep(1)
 
 
+def get_pod_logs(pod_name, namespace="default", container_name=None):
+    args = ["logs", "--namespace", namespace]
+    if container_name:
+        args += ["--container", container_name]
+    args += [pod_name]
+    _, _ = exec_kubectl(args)
+
+
 def get_k8s_agents_private_addresses(operating_system):
     private_addresses, _ = exec_kubectl(
         args=[

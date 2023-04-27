@@ -14,6 +14,7 @@ class CI(object):
     HELPER_POD = "alpine"
     CONFORMANCE_POD = "conformance-tests"
     JUMPBOX_POD = "jumpbox"
+    TESTS_TIMEOUT = 2 * 3600  # 2 hours
 
     def __init__(self, opts):
         self.e2e_runner_dir = os.path.dirname(__file__)
@@ -67,8 +68,10 @@ class CI(object):
 
     def _run_tests(self):
         self._start_conformance_tests()
-        e2e_utils.kubectl_watch_logs(self.k8s_client, self.CONFORMANCE_POD)
 
+        self.k8s_client.wait_non_running_pod(self.CONFORMANCE_POD,
+                                             timeout=self.TESTS_TIMEOUT)
+        e2e_utils.get_pod_logs(self.CONFORMANCE_POD)
         e2e_utils.download_from_pod(
             self.HELPER_POD, "output", self.opts.artifacts_directory)
 
@@ -103,6 +106,7 @@ class CI(object):
         output_file = "/tmp/conformance.yaml"
         e2e_utils.render_template("templates/conformance.yaml.j2", output_file,
                                   ctxt, self.e2e_runner_dir)
+        self.logging.info("Starting the conformance tests")
         self.k8s_client.create_from_yaml(output_file)
         self.k8s_client.wait_running_pod(self.HELPER_POD)
         self.k8s_client.wait_running_pod(self.CONFORMANCE_POD)
