@@ -93,6 +93,6 @@ presets:
     preset-test-regex: "true"
   env:
   - name: TEST_FOCUS_REGEX
-    value: \\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption
+    value: \\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption|\\[sig-network\\].Networking.Granular.Checks
   - name: TEST_SKIP_REGEX
-    value: \\[LinuxOnly\\]|\\[Serial\\]|\\[alpha\\]|GMSA|\\[Feature\\:GPUDevicePlugin\\]|\\[sig-api-machinery\\].Garbage.collector
+    value: \\[LinuxOnly\\]|\\[Serial\\]|\\[alpha\\]|GMSA|\\[Feature\\:GPUDevicePlugin\\]|\\[sig-api-machinery\\].Garbage.collector|\\[Feature\\:SCTPConnectivity\\]|\\[Disruptive\\]|should.function.for.service.endpoints.using.hostNetwork
