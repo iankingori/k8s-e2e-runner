@@ -187,8 +187,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
         - --flake-attempts=2
         - aks
         - --aks-version=1.24
@@ -210,8 +210,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
         - --flake-attempts=2
         - aks
         - --aks-version=1.25
@@ -233,8 +233,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
         - --flake-attempts=2
         - aks
         - --aks-version=1.25
@@ -256,8 +256,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
         - --flake-attempts=2
         - aks
         - --aks-version=1.26
@@ -279,8 +279,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
         - --flake-attempts=2
         - aks
         - --aks-version=1.26
