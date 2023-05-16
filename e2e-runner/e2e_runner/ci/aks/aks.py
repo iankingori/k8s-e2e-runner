@@ -34,7 +34,6 @@ class AksCI(e2e_base.CI):
         self.win_agents_count = self.opts.win_agents_count
         self.win_agents_size = self.opts.win_agents_size
         self.win_agents_sku = self.opts.win_agents_sku
-        self.win_private_bins_zip_url = self.opts.win_private_bins_zip_url
         self.ssh_public_key = e2e_utils.get_file_content(
             os.environ["SSH_PUBLIC_KEY_PATH"])
 
@@ -65,7 +64,8 @@ class AksCI(e2e_base.CI):
         self._setup_aks_kubeconfig()
         self.logging.info("The cluster provisioned in %.2f minutes",
                           (time.time() - start) / 60)
-        self._apply_proxy_terminating_endpoints_windows_patch()
+        if self.kubernetes_version < "v1.26":
+            self._enable_proxy_terminating_endpoints_feature_gate()
 
     def down(self):
         self.logging.info("Deleting AKS cluster resource group")
@@ -229,52 +229,16 @@ class AksCI(e2e_base.CI):
         ]
         return linux_agents_taints
 
-    def _apply_proxy_terminating_endpoints_windows_patch(self):
-        if not self.win_private_bins_zip_url:
-            self.logging.info(
-                "The CI option '--win-private-bins-zip-url' was not "
-                "specified. Skipping Windows agents patching.")
-            return
-
+    def _enable_proxy_terminating_endpoints_feature_gate(self):
         self._setup_jumpbox()
-
-        dir_name = "proxy_terminating_endpoints"
-        e2e_utils.download_file(
-            self.win_private_bins_zip_url, f"/tmp/{dir_name}.zip")
-        e2e_utils.upload_to_pod(
-            self.JUMPBOX_POD, f"/tmp/{dir_name}.zip", f"/tmp/{dir_name}.zip")
-
         for address in self.windows_private_addresses:
-            self.logging.info("Patching K8s Windows agent: %s", address)
+            self.logging.info(
+                "Enabling ProxyTerminatingEndpoints feature gate on "
+                "K8s Windows agent: %s", address)
             ssh_kwargs = {
                 "user": "azureuser",
                 "address": address,
             }
-
-            # upload zip archive with the private bins, and extract it
-            self._jumpbox_scp_upload(
-                file_path=f"/tmp/{dir_name}.zip",
-                remote_file_path=f"/{dir_name}.zip",
-                **ssh_kwargs,
-            )
-            self._jumpbox_exec_ssh(
-                cmd=["powershell", "mkdir", "-force", f"/{dir_name}"],
-                **ssh_kwargs,
-            )
-            self._jumpbox_exec_ssh(
-                cmd=["tar", "xzf", f"/{dir_name}.zip", "-C", f"/{dir_name}"],
-                **ssh_kwargs,
-            )
-
-            # replace kube-proxy binary and enable feature gate
-            self._jumpbox_exec_ssh(
-                cmd=["/k/nssm", "stop", "kubeproxy"],
-                **ssh_kwargs,
-            )
-            self._jumpbox_exec_ssh(
-                cmd=["powershell", "cp", "-force", f"/{dir_name}/kube-proxy.exe", "/k/kube-proxy.exe"],  # noqa:
-                **ssh_kwargs,
-            )
             script_file = "enable-proxy-terminating-endpoints-feature.ps1"
             ps_script_path = os.path.join(
                 self.e2e_runner_dir, f"scripts/aks/{script_file}")
@@ -287,31 +251,6 @@ class AksCI(e2e_base.CI):
             )
             self._jumpbox_exec_ssh(
                 cmd=["powershell", "-File", f"/{script_file}"],
-                **ssh_kwargs,
-            )
-
-            # install the HNS private binaries
-            self._jumpbox_exec_ssh(
-                cmd=["bcdedit", "/set", "testsigning", "on"],
-                **ssh_kwargs,
-            )
-            hns_binaries_map = {
-                "HostNetSvc.dll": "/Windows/System32/HostNetSvc.dll",
-                "vfpapi.dll": "/Windows/System32/vfpapi.dll",
-                "vfpctrl.exe": "/Windows/System32/vfpctrl.exe",
-                "vfpext.sys": "/Windows/System32/drivers/vfpext.sys",
-            }
-            for file_name in hns_binaries_map:
-                self._jumpbox_exec_ssh(
-                    cmd=[
-                        f"/{dir_name}/sfpcopy.exe",
-                        f"/{dir_name}/{file_name}",
-                        hns_binaries_map[file_name],
-                    ],
-                    **ssh_kwargs,
-                )
-            self._jumpbox_exec_ssh(
-                cmd=["shutdown", "/r", "/t", "0"],
                 **ssh_kwargs,
             )
 
