@@ -105,9 +105,12 @@ class AksCI(e2e_base.CI):
                 "Didn't find any AKS version patch corresponding to "
                 f"orchestrator version {aks_version}"
             )
-        versions.sort()
-        self.logging.info("Using AKS version: %s", versions[-1])
-        return versions[-1]
+        patches = [int(v.split(".")[-1]) for v in versions]
+        patches.sort()
+        version_split = aks_version.split(".")
+        version = f"{version_split[0]}.{version_split[1]}.{patches[-1]}"
+        self.logging.info("Using AKS version: %s", version)
+        return version
 
     def _generate_win_admin_pass(self):
         special_chars = "+-.<=>@_"
