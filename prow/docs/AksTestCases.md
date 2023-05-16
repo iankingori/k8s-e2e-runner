@@ -16,7 +16,7 @@
 ||||
 | Node to Pod | ICMP | - |
 ||||
-| Pod to External IP | TCP | <ol><li>`[sig-windows] Hybrid cluster network for all supported CNIs should provide Internet connection for Windows containers using DNS [Feature:Networking-DNS]`</li><li>`[sig-network] LoadBalancers should not have connectivity disruption during rolling update with externalTrafficPolicy=Cluster (only on AKS v1.24)`</li><li>`[sig-network] LoadBalancers should not have connectivity disruption during rolling update with externalTrafficPolicy=Local (only on AKS v1.24)`</li></ol> |
+| Pod to External IP | TCP | <ol><li>`[sig-windows] Hybrid cluster network for all supported CNIs should provide Internet connection for Windows containers using DNS [Feature:Networking-DNS]`</li><li>`[sig-network] LoadBalancers should not have connectivity disruption during rolling update with externalTrafficPolicy=Cluster`</li><li>`[sig-network] LoadBalancers should not have connectivity disruption during rolling update with externalTrafficPolicy=Local`</li></ol> |
 ||||
 | Pod to External IP | UDP | <ol><li>`[sig-windows] Hybrid cluster network for all supported CNIs should provide Internet connection for Linux containers using DNS [Feature:Networking-DNS]`</li><li>`[sig-windows] Hybrid cluster network for all supported CNIs should provide Internet connection for Windows containers using DNS [Feature:Networking-DNS]`</li><ol> |
 ||||
