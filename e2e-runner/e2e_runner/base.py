@@ -139,6 +139,7 @@ class CI(object):
         ginkgoFlags = {
             "trace": "true",
             "v": "true",
+            "timeout": "3h",
             "nodes": self.opts.parallel_test_nodes,
             "focus": self.opts.test_focus_regex,
             "skip": self.opts.test_skip_regex,
