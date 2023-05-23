@@ -164,7 +164,6 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
-        - --flake-attempts=2
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24-e2e-patched
         - aks
         - --aks-version=1.24
@@ -188,7 +187,6 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
-        - --flake-attempts=2
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24-e2e-patched
         - aks
         - --aks-version=1.24
@@ -212,7 +210,6 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
-        - --flake-attempts=2
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.25-e2e-patched
         - aks
         - --aks-version=1.25
@@ -236,7 +233,6 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
-        - --flake-attempts=2
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.25-e2e-patched
         - aks
         - --aks-version=1.25
@@ -260,7 +256,6 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
-        - --flake-attempts=2
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.26-e2e-patched
         - aks
         - --aks-version=1.26
@@ -284,7 +279,6 @@ periodics:
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
         - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
-        - --flake-attempts=2
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.26-e2e-patched
         - aks
         - --aks-version=1.26
