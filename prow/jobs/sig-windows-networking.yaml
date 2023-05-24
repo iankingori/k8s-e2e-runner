@@ -163,7 +163,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24-e2e-patched
         - aks
         - --aks-version=1.24
@@ -186,7 +186,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24-e2e-patched
         - aks
         - --aks-version=1.24
@@ -209,7 +209,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.25-e2e-patched
         - aks
         - --aks-version=1.25
@@ -232,7 +232,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.25-e2e-patched
         - aks
         - --aks-version=1.25
@@ -255,7 +255,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.26-e2e-patched
         - aks
         - --aks-version=1.26
@@ -278,7 +278,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork
+        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.26-e2e-patched
         - aks
         - --aks-version=1.26
