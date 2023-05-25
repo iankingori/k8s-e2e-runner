@@ -3,7 +3,7 @@ periodics:
   cron: "0 0 */2 * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -16,7 +16,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=k8sbins
         - --build=containerdbins
         - --build=sdncnibins
@@ -29,7 +29,7 @@ periodics:
   cron: "0 6 */2 * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -42,7 +42,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=k8sbins
         - --build=containerdbins
         - --build=sdncnibins
@@ -55,7 +55,7 @@ periodics:
   cron: "0 1 */2 * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -68,7 +68,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -79,7 +79,7 @@ periodics:
   cron: "0 3 */2 * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -92,7 +92,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
@@ -103,7 +103,7 @@ periodics:
   cron: "0 5 */2 * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -116,7 +116,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -127,7 +127,7 @@ periodics:
   cron: "0 7 */2 * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -140,7 +140,7 @@ periodics:
         - /workspace/entrypoint.sh
       args:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Slow\]
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
@@ -151,7 +151,7 @@ periodics:
   cron: "0 2 * * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-aks-test-regex: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -162,8 +162,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24-e2e-patched
         - aks
         - --aks-version=1.24
@@ -174,7 +174,7 @@ periodics:
   cron: "0 8 * * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-aks-test-regex: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -185,8 +185,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24-e2e-patched
         - aks
         - --aks-version=1.24
@@ -197,7 +197,7 @@ periodics:
   cron: "0 4 * * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-aks-test-regex: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -208,8 +208,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.25-e2e-patched
         - aks
         - --aks-version=1.25
@@ -220,7 +220,7 @@ periodics:
   cron: "0 10 * * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-aks-test-regex: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -231,8 +231,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.25-e2e-patched
         - aks
         - --aks-version=1.25
@@ -243,7 +243,7 @@ periodics:
   cron: "0 9 * * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-aks-test-regex: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -254,8 +254,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.26-e2e-patched
         - aks
         - --aks-version=1.26
@@ -266,7 +266,7 @@ periodics:
   cron: "0 15 * * *"
   always_run: true
   labels:
-    preset-test-regex: "true"
+    preset-aks-test-regex: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -277,8 +277,8 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --test-focus-regex=$(TEST_FOCUS_REGEX)|\[sig-network\].Networking.Granular.Checks|\[sig-network\].LoadBalancers
-        - --test-skip-regex=$(TEST_SKIP_REGEX)|\[Feature\:SCTPConnectivity\]|\[Disruptive\]|should.function.for.service.endpoints.using.hostNetwork|works.for.CRD.preserving.unknown.fields.in.an.embedded.object|works.for.multiple.CRDs.of.different.groups
+        - --test-focus-regex=$(TEST_FOCUS_REGEX)
+        - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.26-e2e-patched
         - aks
         - --aks-version=1.26
