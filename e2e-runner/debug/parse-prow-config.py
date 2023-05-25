@@ -39,8 +39,12 @@ def main():
     config = get_prow_config(args)
     jobs = get_prow_jobs(args)
 
+    preset_name = 'preset-flannel-test-regex'
+    if args.job_name.startswith('aks-e2e'):
+        preset_name = 'preset-aks-test-regex'
+
     for c in config['presets']:
-        if 'preset-test-regex' not in c['labels']:
+        if preset_name not in c['labels']:
             continue
         test_focus_regex = [
             e['value'] for e in c['env'] if e['name'] == 'TEST_FOCUS_REGEX'][0]

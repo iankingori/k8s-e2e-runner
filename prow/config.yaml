@@ -90,9 +90,17 @@ presets:
         name: github-readonly-token
 
 - labels:
-    preset-test-regex: "true"
+    preset-flannel-test-regex: "true"
   env:
   - name: TEST_FOCUS_REGEX
     value: \\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]
   - name: TEST_SKIP_REGEX
-    value: \\[LinuxOnly\\]|\\[Serial\\]|\\[Feature\\:GPUDevicePlugin\\]|\\[sig-api-machinery\\].Garbage.collector
+    value: \\[LinuxOnly\\]|\\[Serial\\]|\\[Slow\\]|\\[Feature\\:GPUDevicePlugin\\]|\\[sig-api-machinery\\].Garbage.collector
+
+- labels:
+    preset-aks-test-regex: "true"
+  env:
+  - name: TEST_FOCUS_REGEX
+    value: \\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-network\\].Networking.Granular.Checks|\\[sig-network\\].LoadBalancers
+  - name: TEST_SKIP_REGEX
+    value: \\[LinuxOnly\\]|\\[Serial\\]|\\[Feature\\:GPUDevicePlugin\\]|\\[Feature\\:SCTPConnectivity\\]|\\[Disruptive\\]|should.function.for.service.endpoints.using.hostNetwork|\\[sig-api-machinery\\]|\\[sig-cli\\]
