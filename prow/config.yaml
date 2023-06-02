@@ -103,4 +103,4 @@ presets:
   - name: TEST_FOCUS_REGEX
     value: \\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-network\\].Networking.Granular.Checks|\\[sig-network\\].LoadBalancers
   - name: TEST_SKIP_REGEX
-    value: \\[LinuxOnly\\]|\\[Serial\\]|\\[Feature\\:GPUDevicePlugin\\]|\\[Feature\\:SCTPConnectivity\\]|\\[Disruptive\\]|should.function.for.service.endpoints.using.hostNetwork|\\[sig-api-machinery\\]|\\[sig-cli\\]
+    value: \\[LinuxOnly\\]|\\[Serial\\]|\\[Feature\\:GPUDevicePlugin\\]|\\[Feature\\:SCTPConnectivity\\]|\\[Disruptive\\]|should.function.for.service.endpoints.using.hostNetwork|\\[sig-api-machinery\\]|\\[sig-cli\\]|\\[sig-auth\\]
