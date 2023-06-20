@@ -162,7 +162,7 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --parallel-test-nodes=2
+        - --parallel-test-nodes=1
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24-e2e-patched
@@ -186,7 +186,7 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --parallel-test-nodes=2
+        - --parallel-test-nodes=1
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.24-e2e-patched
@@ -210,7 +210,7 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --parallel-test-nodes=2
+        - --parallel-test-nodes=1
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.25-e2e-patched
@@ -234,7 +234,7 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --parallel-test-nodes=2
+        - --parallel-test-nodes=1
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.25-e2e-patched
@@ -258,7 +258,7 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --parallel-test-nodes=2
+        - --parallel-test-nodes=1
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.26-e2e-patched
@@ -282,7 +282,7 @@ periodics:
       command:
         - /workspace/entrypoint.sh
       args:
-        - --parallel-test-nodes=2
+        - --parallel-test-nodes=1
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.26-e2e-patched
