@@ -14,7 +14,7 @@ class CI(object):
     HELPER_POD = "alpine"
     CONFORMANCE_POD = "conformance-tests"
     JUMPBOX_POD = "jumpbox"
-    TESTS_TIMEOUT = 2 * 3600  # 2 hours
+    TESTS_TIMEOUT = 3 * 3600  # 3 hours
 
     def __init__(self, opts):
         self.e2e_runner_dir = os.path.dirname(__file__)
@@ -168,7 +168,7 @@ class CI(object):
             "e2e-output-dir": f"{output_dir}/e2e-output",
             "num-nodes": num_nodes,
             "node-os-distro": node_os_distro,
-            "test.timeout": "2h",
+            "test.timeout": "3h",
             "prepull-images": "true",
             "disable-log-dump": "true",
         }
