@@ -139,52 +139,6 @@
             }
         },
         {
-            "name": "aks-e2e-ltsc2019-azurecni-1.24",
-            "type": "docker",
-            "request": "launch",
-            "preLaunchTask": "docker-run: debug",
-            "python": {
-                "pathMappings": [
-                    {
-                        "localRoot": "${workspaceFolder}/e2e-runner",
-                        "remoteRoot": "/app"
-                    },
-                ],
-                "projectType": "general",
-                "args": [
-                    "run",
-                    "ci",
-                    "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2019-azurecni-1.24)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
-            }
-        },
-        {
-            "name": "aks-e2e-ltsc2022-azurecni-1.24",
-            "type": "docker",
-            "request": "launch",
-            "preLaunchTask": "docker-run: debug",
-            "python": {
-                "pathMappings": [
-                    {
-                        "localRoot": "${workspaceFolder}/e2e-runner",
-                        "remoteRoot": "/app"
-                    },
-                ],
-                "projectType": "general",
-                "args": [
-                    "run",
-                    "ci",
-                    "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2022-azurecni-1.24)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
-            }
-        },
-        {
             "name": "aks-e2e-ltsc2019-azurecni-1.25",
             "type": "docker",
             "request": "launch",
@@ -226,6 +180,98 @@
                     "--quiet",
                     "$(echo $OTHER_RUNNER_PARAMS)",
                     "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2022-azurecni-1.25)",
+                    "$(echo $OTHER_CI_PARAMS)"
+                ],
+            }
+        },
+        {
+            "name": "aks-e2e-ltsc2019-azurecni-1.26",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2019-azurecni-1.26)",
+                    "$(echo $OTHER_CI_PARAMS)"
+                ],
+            }
+        },
+        {
+            "name": "aks-e2e-ltsc2022-azurecni-1.26",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2022-azurecni-1.26)",
+                    "$(echo $OTHER_CI_PARAMS)"
+                ],
+            }
+        },
+        {
+            "name": "aks-e2e-ltsc2019-azurecni-1.27",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2019-azurecni-1.27)",
+                    "$(echo $OTHER_CI_PARAMS)"
+                ],
+            }
+        },
+        {
+            "name": "aks-e2e-ltsc2022-azurecni-1.27",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/e2e-runner",
+                        "remoteRoot": "/app"
+                    },
+                ],
+                "projectType": "general",
+                "args": [
+                    "run",
+                    "ci",
+                    "--quiet",
+                    "$(echo $OTHER_RUNNER_PARAMS)",
+                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2022-azurecni-1.27)",
                     "$(echo $OTHER_CI_PARAMS)"
                 ],
             }
