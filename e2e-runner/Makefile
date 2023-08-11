@@ -1,12 +1,6 @@
-REGISTRY := docker.io/e2eteam
+SHELL := bash
 
-.PHONY: all
-all: docker-build docker-push
 
-.PHONY: docker-push
-docker-push:
-	docker push $(REGISTRY)/k8s-e2e-runner:latest
-
-.PHONY: docker-build
-docker-build:
-	docker build -t $(REGISTRY)/k8s-e2e-runner:latest .
+.PHONY: debug-env
+debug-env:
+	./debug/setup-env.sh
