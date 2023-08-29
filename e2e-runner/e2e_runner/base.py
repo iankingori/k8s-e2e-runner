@@ -140,6 +140,7 @@ class CI(object):
             "trace": "true",
             "v": "true",
             "timeout": "3h",
+            "no-color": "true",
             "nodes": self.opts.parallel_test_nodes,
             "focus": self.opts.test_focus_regex,
             "skip": self.opts.test_skip_regex,
@@ -149,18 +150,9 @@ class CI(object):
             ginkgoFlags["poll-progress-after"] = "5m"
         else:
             ginkgoFlags["progress"] = "true"
-            if conformance_image_tag >= "v1.25":
-                ginkgoFlags["slow-spec-threshold"] = "5m"
-            else:
-                ginkgoFlags["slowSpecThreshold"] = "300.0"
-        if conformance_image_tag >= "v1.25":
-            ginkgoFlags["no-color"] = "true"
-            if self.opts.flake_attempts:
-                ginkgoFlags["flake-attempts"] = self.opts.flake_attempts
-        else:
-            ginkgoFlags["noColor"] = "true"
-            if self.opts.flake_attempts:
-                ginkgoFlags["flakeAttempts"] = self.opts.flake_attempts
+            ginkgoFlags["slow-spec-threshold"] = "5m"
+        if self.opts.flake_attempts:
+            ginkgoFlags["flake-attempts"] = self.opts.flake_attempts
 
         e2eFlags = {
             "provider": "skeleton",
