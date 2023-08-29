@@ -146,7 +146,6 @@ class CI(object):
             "skip": self.opts.test_skip_regex,
         }
         if conformance_image_tag >= "v1.27":
-            ginkgoFlags["show-node-events"] = "true"
             ginkgoFlags["poll-progress-after"] = "5m"
         else:
             ginkgoFlags["progress"] = "true"
