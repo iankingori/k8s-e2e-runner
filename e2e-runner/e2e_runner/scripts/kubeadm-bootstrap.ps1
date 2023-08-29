@@ -92,6 +92,34 @@ function Set-PowerProfile {
     }
 }
 
+function Add-ToServiceEnv {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$ServiceName,
+        [Parameter(Mandatory=$true)]
+        [string]$Name,
+        [Parameter(Mandatory=$true)]
+        [string]$Value
+    )
+    $newEnv = @()
+    $storedEnv = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$ServiceName" -Name "Environment" -ErrorAction SilentlyContinue
+    if($storedEnv) {
+        $newEnv = $storedEnv.Environment.Split()
+    }
+    $newEnv += "${Name}=${Value}"
+    $kwargs = @{
+        Path = "HKLM:\SYSTEM\CurrentControlSet\Services\$ServiceName"
+        Name = "Environment"
+        Type = "MultiString"
+        Value = $newEnv
+    }
+    if($storedEnv) {
+        Set-ItemProperty @kwargs
+    } else {
+        New-ItemProperty @kwargs
+    }
+}
+
 function Install-Crictl {
     Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
     tar xzf $env:TEMP\crictl-windows-amd64.tar.gz -C $CONTAINERD_DIR
@@ -152,6 +180,7 @@ function Update-Containerd {
     foreach($bin in $binaries) {
         Install-CIBinary "$CIPackagesBaseURL/containerd/bin/$bin" "$CONTAINERD_DIR\$bin"
     }
+    Add-ToServiceEnv -ServiceName "containerd" -Name "DISABLE_CRI_SANDBOXES" -Value "1"
     Start-Service -Name "containerd"
 }
 
