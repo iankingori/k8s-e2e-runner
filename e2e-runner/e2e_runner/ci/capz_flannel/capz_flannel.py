@@ -494,6 +494,9 @@ class CapzFlannelCI(e2e_base.CI):
             secret_value=os.environ["AZURE_CLIENT_SECRET"],
         )
         self.logging.info("Setup the Azure Cluster API components")
+        clusterctlEnv = {}
+        if os.environ.get("GITHUB_TOKEN"):
+            clusterctlEnv["GITHUB_TOKEN"] = os.environ.get("GITHUB_TOKEN")
         e2e_utils.retry_on_error()(e2e_utils.run_shell_cmd)(
             cmd=[
                 "clusterctl", "init",
@@ -501,9 +504,7 @@ class CapzFlannelCI(e2e_base.CI):
                 "--infrastructure", "azure",
                 "--wait-providers",
             ],
-            env={
-                "GITHUB_TOKEN": os.environ["GITHUB_TOKEN"],
-            },
+            env=clusterctlEnv,
         )
 
     def _create_capz_cluster(self):
