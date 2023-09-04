@@ -30,3 +30,5 @@ DEFAULT_AKS_VERSION = "1.27"
 
 FLANNEL_MODE_OVERLAY = "overlay"
 FLANNEL_MODE_L2BRIDGE = "host-gw"
+
+CLOUD_PROVIDER_AZURE_HELM_REPO = "https://raw.githubusercontent.com/kubernetes-sigs/cloud-provider-azure/master/helm/repo"  # noqa: E501

@@ -40,7 +40,7 @@ spec:
       - operator: Exists
       initContainers:
       - name: init-kube-proxy
-        image: {{ container_image_registry }}/kube-proxy-{{ container_runtime }}-{{ win_os }}:{{ container_image_tag }}
+        image: {{ container_image_registry }}/kube-proxy-containerd-{{ win_os }}:{{ container_image_tag }}
         imagePullPolicy: Always
         command:
         - "%CONTAINER_SANDBOX_MOUNT_POINT%\\kube-proxy\\init.exe"
@@ -57,7 +57,7 @@ spec:
           mountPath: /var/lib/kube-proxy
       containers:
       - name: kube-proxy
-        image: {{ container_image_registry }}/kube-proxy-{{ container_runtime }}-{{ win_os }}:{{ container_image_tag }}
+        image: {{ container_image_registry }}/kube-proxy-containerd-{{ win_os }}:{{ container_image_tag }}
         imagePullPolicy: Always
         env:
         - name: NODE_NAME

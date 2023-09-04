@@ -112,11 +112,6 @@ class RunCI(Command):
     def add_capz_flannel_subparser(self, subparsers):
         p = subparsers.add_parser("capz_flannel")
         p.add_argument(
-            "--container-runtime",
-            default="containerd",
-            choices=["containerd"],
-            help="Container runtime used by the Kubernetes agents.")
-        p.add_argument(
             "--flannel-mode",
             default=e2e_constants.FLANNEL_MODE_OVERLAY,
             choices=[e2e_constants.FLANNEL_MODE_OVERLAY,

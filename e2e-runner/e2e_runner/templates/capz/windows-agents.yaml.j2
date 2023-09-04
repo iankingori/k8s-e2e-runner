@@ -66,13 +66,12 @@ spec:
         permissions: "0644"
       joinConfiguration:
         nodeRegistration:
-{%- if container_runtime == "containerd" %}
           criSocket: npipe:////./pipe/containerd-containerd
-{%- endif %}
           kubeletExtraArgs:
             azure-container-registry-config: c:/k/azure.json
-            cloud-config: c:/k/azure.json
-            cloud-provider: azure
+            cloud-provider: external
+            v: "2"
+            windows-priorityclass: ABOVE_NORMAL_PRIORITY_CLASS
 {%- raw %}
           name: '{{ ds.meta_data["local_hostname"] }}'
 {%- endraw %}
