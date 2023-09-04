@@ -1,6 +1,8 @@
 import base64
 import os
 import shutil
+import stat
+import tempfile
 import time
 from datetime import datetime
 from urllib.parse import urlparse
@@ -109,10 +111,7 @@ class CapzFlannelCI(e2e_base.CI):
             raise e2e_exceptions.InvalidOperatingSystem(
                 f"Unknown win_os: {self.opts.win_os}"
             )
-        sku = f"windows-{os_version}"
-        if self.opts.container_runtime == "containerd":
-            sku += "-containerd"
-        return f"{sku}-gen1"
+        return f"windows-{os_version}-containerd-gen1"
 
     @property
     def k8s_path(self):
@@ -448,6 +447,7 @@ class CapzFlannelCI(e2e_base.CI):
             self._create_capz_cluster()
             self._wait_capz_control_plane(timeout=600)
             self._setup_capz_kubeconfig()
+            self._add_azure_cloud_provider()
             self._add_flannel_cni()
             self._wait_windows_agents(timeout=600)
             self._setup_ssh_config()
@@ -557,7 +557,6 @@ class CapzFlannelCI(e2e_base.CI):
 
             "kubernetes_version": self.kubernetes_version,
             "flannel_mode": self.opts.flannel_mode,
-            "container_runtime": self.opts.container_runtime,
             "k8s_bins": "k8sbins" in self.bins_built,
             "sdn_cni_bins": "sdncnibins" in self.bins_built,
             "containerd_bins": "containerdbins" in self.bins_built,
@@ -597,9 +596,10 @@ class CapzFlannelCI(e2e_base.CI):
         self.logging.info(
             "Waiting up to %.2f minutes for the CAPZ control-plane",
             timeout / 60.0)
-        self._wait_running_capz_machines(
+        self._wait_capz_machines(
             wanted_count=1,
             selector="cluster.x-k8s.io/control-plane=",
+            status="Provisioned",
             timeout=timeout)
         self.logging.info("Control-plane is ready")
 
@@ -607,7 +607,7 @@ class CapzFlannelCI(e2e_base.CI):
         self.logging.info(
             "Waiting up to %.2f minutes for the Windows agents",
             timeout / 60.0)
-        self._wait_running_capz_machines(
+        self._wait_capz_machines(
             wanted_count=2,
             selector="cluster.x-k8s.io/deployment-name={}-md-win".format(
                 self.opts.cluster_name),
@@ -615,8 +615,8 @@ class CapzFlannelCI(e2e_base.CI):
         )
         self.logging.info("Windows agents are ready")
 
-    def _wait_running_capz_machines(self, wanted_count, selector="",
-                                    timeout=3600):
+    def _wait_capz_machines(self, wanted_count, selector="", status="Running",
+                            timeout=3600):
         for attempt in tenacity.Retrying(
                 stop=tenacity.stop_after_delay(timeout),  # pyright: ignore
                 wait=tenacity.wait_exponential(max=30),  # pyright: ignore
@@ -627,7 +627,7 @@ class CapzFlannelCI(e2e_base.CI):
                     args=[
                         "get", "machine", "-l", f"'{selector}'",
                         "--kubeconfig", self.mgmt_kubeconfig_path,
-                        "-o", "jsonpath=\"{.items[?(@.status.phase == 'Running')].metadata.name}\"",  # noqa:
+                        "-o", f"jsonpath=\"{{.items[?(@.status.phase == '{status}')].metadata.name}}\"",  # noqa:
                     ],
                     capture_output=True,
                     hide_cmd=True,
@@ -652,6 +652,7 @@ class CapzFlannelCI(e2e_base.CI):
         )
         with open(self.kubeconfig_path, 'w') as f:
             f.write(output.decode())
+        os.chmod("/root/.kube/config", stat.S_IRUSR | stat.S_IWUSR)
 
         os.environ["KUBECONFIG"] = self.kubeconfig_path
 
@@ -668,7 +669,6 @@ class CapzFlannelCI(e2e_base.CI):
             "container_image_registry": self.opts.container_image_registry,
             "cluster_network_subnet": self.opts.cluster_network_subnet,
             "flannel_mode": self.opts.flannel_mode,
-            "container_runtime": self.opts.container_runtime,
             "control_plane_cidr": self.opts.control_plane_subnet_cidr_block,
             "node_cidr": self.opts.node_subnet_cidr_block,
             "service_subnet": cluster_config['networking']['serviceSubnet'],
@@ -692,9 +692,39 @@ class CapzFlannelCI(e2e_base.CI):
             template_file="kube-flannel.yaml.j2",
             output_file=kube_flannel_windows,
             context=context,
-            searchpath=f"{flannel_dir}/windows/{self.opts.container_runtime}",
+            searchpath=f"{flannel_dir}/windows/containerd",
         )
         e2e_utils.exec_kubectl(["apply", "-f", kube_flannel_windows])
+
+    def _azure_cloud_provider_values(self):
+        helm_values = {
+            "infra": {
+                "clusterName": self.opts.cluster_name,
+            },
+            "cloudControllerManager": {
+                "clusterCIDR": self.opts.cluster_network_subnet,
+                "configureCloudRoutes": False,
+            }
+        }
+        if self.opts.flannel_mode == "host-gw":
+            helm_values["cloudControllerManager"]["configureCloudRoutes"] = True  # noqa: E501
+        if "k8sbins" not in self.bins_built:
+            helm_values["cloudControllerManager"]["imageTag"] = self.kubernetes_version  # noqa: E501
+        return helm_values
+
+    def _add_azure_cloud_provider(self):
+        with tempfile.NamedTemporaryFile(suffix=".yaml") as f:
+            f.write(yaml.safe_dump(
+                self._azure_cloud_provider_values()).encode())
+            f.flush()
+            e2e_utils.run_shell_cmd(
+                cmd=[
+                    "helm", "install",
+                    "--repo", e2e_constants.CLOUD_PROVIDER_AZURE_HELM_REPO,
+                    "cloud-provider-azure",
+                    "--generate-name", "--values", f.name,
+                ],
+            )
 
     def _setup_ssh_config(self):
         ssh_dir = os.path.join(os.environ["HOME"], ".ssh")
@@ -740,7 +770,6 @@ class CapzFlannelCI(e2e_base.CI):
                     cmd=f"curl.exe --fail -L -o /build/kube-proxy.exe https://dl.k8s.io/{self.kubernetes_version}/bin/windows/amd64/kube-proxy.exe",  # noqa:
                 )
         context = {
-            "container_runtime": self.opts.container_runtime,
             "win_os": self.opts.win_os,
             "container_image_tag": self.opts.container_image_tag,
             "container_image_registry": self.opts.container_image_registry,
@@ -752,7 +781,7 @@ class CapzFlannelCI(e2e_base.CI):
             template_file="kube-proxy.yaml.j2",
             output_file=output_file,
             context=context,
-            searchpath=f"{self.capz_flannel_dir}/kube-proxy/windows/{self.opts.container_runtime}",  # noqa:
+            searchpath=f"{self.capz_flannel_dir}/kube-proxy/windows/containerd",  # noqa:
         )
         e2e_utils.exec_kubectl(["apply", "-f", output_file])
 

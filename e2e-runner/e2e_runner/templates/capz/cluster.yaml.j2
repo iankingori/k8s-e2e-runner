@@ -2,8 +2,6 @@
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
-  labels:
-    cni: flannel-windows
   name: {{ cluster_name }}
   namespace: default
 spec:

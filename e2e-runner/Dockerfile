@@ -29,6 +29,12 @@ RUN curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION
     mkdir ~/.kube
 ENV KUBECTL_PATH "/usr/local/bin/kubectl"
 
+# Install helm
+RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
+    chmod +x get_helm.sh && \
+    ./get_helm.sh && \
+    rm ./get_helm.sh
+
 WORKDIR /workspace
 
 ADD cleanup-azure-rgs.py /workspace
