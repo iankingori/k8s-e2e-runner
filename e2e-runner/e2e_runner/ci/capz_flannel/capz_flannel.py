@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 import shutil
 import stat
@@ -696,20 +697,32 @@ class CapzFlannelCI(e2e_base.CI):
         )
         e2e_utils.exec_kubectl(["apply", "-f", kube_flannel_windows])
 
+    def _get_latest_azure_cloud_provider_image_tag(self):
+        api_tags = json.loads(
+            e2e_utils.url_get(e2e_constants.CLOUD_PROVIDER_AZURE_TAGS))
+        tags = [t["name"] for t in api_tags]
+        tags.sort()
+        return tags[-1]
+
     def _azure_cloud_provider_values(self):
+        image_tag = self.kubernetes_version
+        if "k8sbins" in self.bins_built:
+            image_tag = self._get_latest_azure_cloud_provider_image_tag()
         helm_values = {
             "infra": {
                 "clusterName": self.opts.cluster_name,
             },
             "cloudControllerManager": {
+                "imageTag": image_tag,
                 "clusterCIDR": self.opts.cluster_network_subnet,
                 "configureCloudRoutes": False,
-            }
+            },
+            "cloudNodeManager": {
+                "imageTag": image_tag,
+            },
         }
         if self.opts.flannel_mode == "host-gw":
             helm_values["cloudControllerManager"]["configureCloudRoutes"] = True  # noqa: E501
-        if "k8sbins" not in self.bins_built:
-            helm_values["cloudControllerManager"]["imageTag"] = self.kubernetes_version  # noqa: E501
         return helm_values
 
     def _add_azure_cloud_provider(self):

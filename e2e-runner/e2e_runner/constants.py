@@ -32,3 +32,4 @@ FLANNEL_MODE_OVERLAY = "overlay"
 FLANNEL_MODE_L2BRIDGE = "host-gw"
 
 CLOUD_PROVIDER_AZURE_HELM_REPO = "https://raw.githubusercontent.com/kubernetes-sigs/cloud-provider-azure/master/helm/repo"  # noqa: E501
+CLOUD_PROVIDER_AZURE_TAGS = "https://api.github.com/repos/kubernetes-sigs/cloud-provider-azure/tags"  # noqa: E501

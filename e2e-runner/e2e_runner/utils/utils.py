@@ -5,7 +5,7 @@ import tarfile
 import tempfile
 import time
 from collections import OrderedDict
-from urllib.request import urlretrieve
+from urllib.request import urlopen, urlretrieve
 
 import configargparse
 import jinja2
@@ -161,6 +161,12 @@ def make_tgz_archive(source_dir, output_file):
 @retry_on_error()
 def download_file(url, dest):
     urlretrieve(url, dest)
+
+
+@retry_on_error()
+def url_get(url):
+    with urlopen(url) as f:
+        return f.read().decode()
 
 
 def sort_dict_by_value(d):
