@@ -13,8 +13,6 @@ $ErrorActionPreference = "Stop"
 $global:BUILD_DIR = Join-Path $env:SystemDrive "build"
 $global:KUBERNETES_DIR = Join-Path $env:SystemDrive "k"
 $global:CONTAINERD_DIR = Join-Path $env:ProgramFiles "containerd"
-# https://github.com/kubernetes-sigs/cri-tools/releases
-$global:CRICTL_VERSION = "v1.27.0"
 
 
 function Start-ExecuteWithRetry {
@@ -120,22 +118,6 @@ function Add-ToServiceEnv {
     }
 }
 
-function Install-Crictl {
-    Start-FileDownload "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-windows-amd64.tar.gz" "$env:TEMP\crictl-windows-amd64.tar.gz"
-    tar xzf $env:TEMP\crictl-windows-amd64.tar.gz -C $CONTAINERD_DIR
-    if($LASTEXITCODE) {
-        Throw "Failed to unzip crictl.zip"
-    }
-    Remove-Item -Force "$env:TEMP\crictl-windows-amd64.tar.gz"
-    $crictlYaml = @(
-        "runtime-endpoint: npipe:\\.\pipe\containerd-containerd",
-        "image-endpoint: npipe:\\.\pipe\containerd-containerd"
-    )
-    New-Item -ItemType Directory -Force -Path "${env:HOME}\.crictl"
-    $crictlYaml | Out-File -FilePath "${env:HOME}\.crictl\crictl.yaml" -Encoding ascii
-    Copy-Item -Recurse -Path "${env:HOME}\.crictl" -Destination "${env:SystemDrive}\Users\capi\.crictl"
-}
-
 function Install-CIBinary {
     Param(
         [Parameter(Mandatory=$true)]
@@ -207,7 +189,6 @@ function Update-SDNCNI {
 try {
     $svc = Get-Service -Name "containerd" -ErrorAction SilentlyContinue
     if($svc) {
-        Install-Crictl
         Set-ContainerdLogFile
     }
 

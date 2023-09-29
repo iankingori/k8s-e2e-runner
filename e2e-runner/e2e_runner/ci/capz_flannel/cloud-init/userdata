@@ -12,7 +12,6 @@ packages:
   - build-essential
   - ca-certificates
   - curl
-  - curl
   - docker-ce
   - docker-ce-cli
   - git
