@@ -100,7 +100,7 @@ class CapzFlannelCI(e2e_base.CI):
 
     @property
     def capz_images_ubuntu_sku(self):
-        return "ubuntu-2004-gen1"
+        return "ubuntu-2204-gen1"
 
     @property
     def capz_images_windows_sku(self):
