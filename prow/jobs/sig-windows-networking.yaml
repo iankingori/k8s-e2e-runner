@@ -18,7 +18,6 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=k8sbins
-        - --build=containerdbins
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
@@ -44,7 +43,6 @@ periodics:
         - --test-focus-regex=$(TEST_FOCUS_REGEX)
         - --test-skip-regex=$(TEST_SKIP_REGEX)
         - --build=k8sbins
-        - --build=containerdbins
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay

@@ -162,7 +162,6 @@ function Update-Containerd {
     foreach($bin in $binaries) {
         Install-CIBinary "$CIPackagesBaseURL/containerd/bin/$bin" "$CONTAINERD_DIR\$bin"
     }
-    Add-ToServiceEnv -ServiceName "containerd" -Name "DISABLE_CRI_SANDBOXES" -Value "1"
     Start-Service -Name "containerd"
 }
 
