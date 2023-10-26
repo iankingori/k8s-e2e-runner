@@ -39,11 +39,64 @@ export AZURE_CLIENT_SECRET="<client-secret>"
 ./e2e-runner/debug/setup-env.sh
 ```
 
+or `./e2e-runner/debug/setup-env.ps1` on Windows:
+
+```powershell
+$env:AZURE_SUBSCRIPTION_ID = "<subscription-id>"
+$env:AZURE_TENANT_ID = "<tenant-id>"
+$env:AZURE_CLIENT_ID = "<client-id>"
+$env:AZURE_CLIENT_SECRET = "<client-secret>"
+
+./e2e-runner/debug/setup-env.ps1
+```
+
 After running this script, the directory `./e2e-runner/debug/.env` will be created with the necessary files to locally debug the `e2e-runner` tool.
 
 NOTE: The directory `./e2e-runner/debug/.env/ssh` contains the SSH key pair that will be authorized to the testing Kubernetes clusters. This can be used to manually SSH into the testing Kubernetes clusters, for troubleshooting purposes.
 
-Now, we can start debugging the `e2e-runner` tool.
+Next, we need to create a virtual environment and install the `e2e-runner` tool in editable mode.
+
+Install the `virtualenv` package:
+
+```shell
+pip3 install virtualenv
+```
+
+Create a virtual environment:
+
+```shell
+virtualenv .venv
+```
+
+Activate the virtual environment:
+
+* on Linux/MacOS:
+
+    ```bash
+    source .venv/bin/activate
+    ```
+
+* on Windows:
+
+    ```powershell
+    . ./.venv/scripts/activate.ps1
+    ```
+
+Install the `e2e-runner` tool in editable mode:
+
+```shell
+pip3 install -e ./e2e-runner
+```
+
+Now, we can start debugging the `e2e-runner` tool in Visual Studio Code.
+
+NOTE: When the `k8s-e2e-runner` repository is opened in Visual Studio Code,
+make sure to select the Python interpreter from the virtual environment that
+was created earlier.
+
+![python_interpreter](./images/python_interpreter.png)
+
+This is usually already selected by default, but it's good to double check.
 
 The main entrypoint for the tool is [here](https://github.com/e2e-win/k8s-e2e-runner/blob/1f0a40bb64a057d7b98c415174dbd2aec235b64a/e2e-runner/e2e_runner/cli/run_ci.py#L227-L252). Also, feel free to explore the [codebase](https://github.com/e2e-win/k8s-e2e-runner/tree/1f0a40bb64a057d7b98c415174dbd2aec235b64a/e2e-runner/e2e_runner), and add breakpoints wherever you want.
 
