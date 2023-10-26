@@ -1,4 +1,5 @@
 import os
+import time
 import traceback
 
 import azure.mgmt.containerservice.models as aks_models
@@ -51,6 +52,14 @@ class RunCI(Command):
         p.add_argument(
             "--test-skip-regex",
             default="\\[LinuxOnly\\]")
+        p.add_argument(
+            "--test-regex-file-url",
+            default=None,
+            help="URL with the file containing the test regexes. This must "
+                 "be a YAML file. The file must contain a 'focus' and a "
+                 "'skip' key with the regular expressions for the tests. "
+                 "If this is set, the parameters '--test-focus-regex' and "
+                 "'--test-skip-regex' are ignored.")
         p.add_argument(
             "--retain-testing-env",
             type=e2e_utils.str2bool,
@@ -229,6 +238,9 @@ class RunCI(Command):
         self.logging.info(
             "Creating artifacts dir: %s.", args.artifacts_directory)
         os.makedirs(args.artifacts_directory, exist_ok=True)
+        # add suffix to the cluster name to avoid resource group name
+        # conflicts.
+        args.cluster_name += f"-{int(time.time())}"
         ci = e2e_factory.get_ci(args.ci)(args)
         conformance_tests_failed = False
         try:
