@@ -1,0 +1,2 @@
+focus: "\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-network\\].Networking.Granular.Checks|\\[sig-network\\].LoadBalancers"
+skip: "\\[LinuxOnly\\]|\\[Serial\\]|\\[Feature\\:GPUDevicePlugin\\]|\\[Feature\\:SCTPConnectivity\\]|\\[Disruptive\\]|should.function.for.service.endpoints.using.hostNetwork|\\[sig-api-machinery\\]|\\[sig-cli\\]|\\[sig-auth\\]|\\[sig-apps\\].*\\[Slow\\]|\\[sig-node\\].*\\[Slow\\]"

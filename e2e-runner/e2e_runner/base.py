@@ -2,7 +2,9 @@ import json
 import os
 import re
 import shutil
+import tempfile
 
+import yaml
 from e2e_runner import constants as e2e_constants
 from e2e_runner import exceptions as e2e_exceptions
 from e2e_runner import logger as e2e_logger
@@ -128,6 +130,16 @@ class CI(object):
             f"Invalid conformance image tag: {tag}. The tag must have the "
             "Kubernetes release as prefix, e.g. v1.26-testing-image")
 
+    def _get_test_regex(self):
+        if not self.opts.test_regex_file_url:
+            return self.opts.test_focus_regex, self.opts.test_skip_regex
+
+        with tempfile.NamedTemporaryFile(suffix=".yaml") as f:
+            e2e_utils.download_file(self.opts.test_regex_file_url, f.name)
+            with open(f.name) as f:
+                test_regex = yaml.safe_load(f.read())
+            return test_regex['focus'], test_regex['skip']
+
     def _conformance_tests_flags(
             self,
             image,
@@ -136,14 +148,15 @@ class CI(object):
             output_dir="/output"):
 
         conformance_image_tag = self._parse_conformance_image_tag(image)
+        test_focus_regex, test_skip_regex = self._get_test_regex()
         ginkgoFlags = {
             "trace": "true",
             "v": "true",
             "timeout": "3h",
             "no-color": "true",
             "nodes": self.opts.parallel_test_nodes,
-            "focus": self.opts.test_focus_regex,
-            "skip": self.opts.test_skip_regex,
+            "focus": test_focus_regex,
+            "skip": test_skip_regex,
         }
         if conformance_image_tag >= "v1.27":
             ginkgoFlags["poll-progress-after"] = "5m"

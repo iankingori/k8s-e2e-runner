@@ -1,0 +1,2 @@
+focus: "\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]"
+skip: "\\[LinuxOnly\\]|\\[Serial\\]|\\[Slow\\]|\\[Feature\\:GPUDevicePlugin\\]|\\[sig-api-machinery\\].Garbage.collector"

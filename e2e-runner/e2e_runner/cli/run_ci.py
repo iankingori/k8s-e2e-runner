@@ -53,6 +53,14 @@ class RunCI(Command):
             "--test-skip-regex",
             default="\\[LinuxOnly\\]")
         p.add_argument(
+            "--test-regex-file-url",
+            default=None,
+            help="URL with the file containing the test regexes. This must "
+                 "be a YAML file. The file must contain a 'focus' and a "
+                 "'skip' key with the regular expressions for the tests. "
+                 "If this is set, the parameters '--test-focus-regex' and "
+                 "'--test-skip-regex' are ignored.")
+        p.add_argument(
             "--retain-testing-env",
             type=e2e_utils.str2bool,
             default=False,
