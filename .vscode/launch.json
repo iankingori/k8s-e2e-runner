@@ -10,17 +10,22 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Slow]|[Feature:GPUDevicePlugin]|[sig-api-machinery].Garbage.collector'",
+                    "--build=k8sbins",
+                    "--build=sdncnibins",
+                    "capz_flannel",
+                    "--flannel-mode=host-gw",
+                    "--win-os=ltsc2019",
+                    "--cluster-name=capzctrd"
+                ]
             }
         },
         {
@@ -33,17 +38,22 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Slow]|[Feature:GPUDevicePlugin]|[sig-api-machinery].Garbage.collector'",
+                    "--build=k8sbins",
+                    "--build=sdncnibins",
+                    "capz_flannel",
+                    "--flannel-mode=overlay",
+                    "--win-os=ltsc2019",
+                    "--cluster-name=capzctrd"
+                ]
             }
         },
         {
@@ -56,17 +66,21 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Slow]|[Feature:GPUDevicePlugin]|[sig-api-machinery].Garbage.collector'",
+                    "--build=sdncnibins",
+                    "capz_flannel",
+                    "--flannel-mode=host-gw",
+                    "--win-os=ltsc2019",
+                    "--cluster-name=capzctrd-ltsc2019"
+                ]
             }
         },
         {
@@ -79,17 +93,21 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Slow]|[Feature:GPUDevicePlugin]|[sig-api-machinery].Garbage.collector'",
+                    "--build=sdncnibins",
+                    "capz_flannel",
+                    "--flannel-mode=overlay",
+                    "--win-os=ltsc2019",
+                    "--cluster-name=capzctrd-ltsc2019"
+                ]
             }
         },
         {
@@ -102,17 +120,21 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Slow]|[Feature:GPUDevicePlugin]|[sig-api-machinery].Garbage.collector'",
+                    "--build=sdncnibins",
+                    "capz_flannel",
+                    "--flannel-mode=host-gw",
+                    "--win-os=ltsc2022",
+                    "--cluster-name=capzctrd-ltsc2022"
+                ]
             }
         },
         {
@@ -125,17 +147,21 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Slow]|[Feature:GPUDevicePlugin]|[sig-api-machinery].Garbage.collector'",
+                    "--build=sdncnibins",
+                    "capz_flannel",
+                    "--flannel-mode=overlay",
+                    "--win-os=ltsc2022",
+                    "--cluster-name=capzctrd-ltsc2022"
+                ]
             }
         },
         {
@@ -148,17 +174,22 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2019-azurecni-1.25)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--parallel-test-nodes=1",
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]|[sig-network].Networking.Granular.Checks|[sig-network].LoadBalancers'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Feature:GPUDevicePlugin]|[Feature:SCTPConnectivity]|[Disruptive]|should.function.for.service.endpoints.using.hostNetwork|[sig-api-machinery]|[sig-cli]|[sig-auth]|[sig-apps].*[Slow]|[sig-node].*[Slow]'",
+                    "--e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.25-e2e-patched",
+                    "aks",
+                    "--aks-version=1.25",
+                    "--win-agents-sku=Windows2019",
+                    "--cluster-name=aks-e2e-ltsc2019"
+                ]
             }
         },
         {
@@ -171,17 +202,22 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2022-azurecni-1.25)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--parallel-test-nodes=1",
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]|[sig-network].Networking.Granular.Checks|[sig-network].LoadBalancers'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Feature:GPUDevicePlugin]|[Feature:SCTPConnectivity]|[Disruptive]|should.function.for.service.endpoints.using.hostNetwork|[sig-api-machinery]|[sig-cli]|[sig-auth]|[sig-apps].*[Slow]|[sig-node].*[Slow]'",
+                    "--e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.25-e2e-patched",
+                    "aks",
+                    "--aks-version=1.25",
+                    "--win-agents-sku=Windows2022",
+                    "--cluster-name=aks-e2e-ltsc2022"
+                ]
             }
         },
         {
@@ -194,17 +230,22 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2019-azurecni-1.26)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--parallel-test-nodes=1",
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]|[sig-network].Networking.Granular.Checks|[sig-network].LoadBalancers'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Feature:GPUDevicePlugin]|[Feature:SCTPConnectivity]|[Disruptive]|should.function.for.service.endpoints.using.hostNetwork|[sig-api-machinery]|[sig-cli]|[sig-auth]|[sig-apps].*[Slow]|[sig-node].*[Slow]'",
+                    "--e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.26-e2e-patched",
+                    "aks",
+                    "--aks-version=1.26",
+                    "--win-agents-sku=Windows2019",
+                    "--cluster-name=aks-e2e-ltsc2019"
+                ]
             }
         },
         {
@@ -217,17 +258,22 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2022-azurecni-1.26)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--parallel-test-nodes=1",
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]|[sig-network].Networking.Granular.Checks|[sig-network].LoadBalancers'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Feature:GPUDevicePlugin]|[Feature:SCTPConnectivity]|[Disruptive]|should.function.for.service.endpoints.using.hostNetwork|[sig-api-machinery]|[sig-cli]|[sig-auth]|[sig-apps].*[Slow]|[sig-node].*[Slow]'",
+                    "--e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.26-e2e-patched",
+                    "aks",
+                    "--aks-version=1.26",
+                    "--win-agents-sku=Windows2022",
+                    "--cluster-name=aks-e2e-ltsc2022"
+                ]
             }
         },
         {
@@ -240,17 +286,22 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2019-azurecni-1.27)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--parallel-test-nodes=1",
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]|[sig-network].Networking.Granular.Checks|[sig-network].LoadBalancers'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Feature:GPUDevicePlugin]|[Feature:SCTPConnectivity]|[Disruptive]|should.function.for.service.endpoints.using.hostNetwork|[sig-api-machinery]|[sig-cli]|[sig-auth]|[sig-apps].*[Slow]|[sig-node].*[Slow]'",
+                    "--e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.27-e2e-patched",
+                    "aks",
+                    "--aks-version=1.27",
+                    "--win-agents-sku=Windows2019",
+                    "--cluster-name=aks-e2e-ltsc2019"
+                ]
             }
         },
         {
@@ -263,17 +314,22 @@
                     {
                         "localRoot": "${workspaceFolder}/e2e-runner",
                         "remoteRoot": "/app"
-                    },
+                    }
                 ],
                 "projectType": "general",
                 "args": [
                     "run",
                     "ci",
                     "--quiet",
-                    "$(echo $OTHER_RUNNER_PARAMS)",
-                    "$(${workspaceFolder}/e2e-runner/debug/parse-prow-config.py --prow-config-path ${workspaceFolder}/prow/config.yaml --prow-jobs-path ${workspaceFolder}/prow/jobs/sig-windows-networking.yaml --job-name aks-e2e-ltsc2022-azurecni-1.27)",
-                    "$(echo $OTHER_CI_PARAMS)"
-                ],
+                    "--parallel-test-nodes=1",
+                    "--test-focus-regex='[Conformance]|[NodeConformance]|[sig-windows]|[sig-network].Networking.Granular.Checks|[sig-network].LoadBalancers'",
+                    "--test-skip-regex='[LinuxOnly]|[Serial]|[Feature:GPUDevicePlugin]|[Feature:SCTPConnectivity]|[Disruptive]|should.function.for.service.endpoints.using.hostNetwork|[sig-api-machinery]|[sig-cli]|[sig-auth]|[sig-apps].*[Slow]|[sig-node].*[Slow]'",
+                    "--e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-1.27-e2e-patched",
+                    "aks",
+                    "--aks-version=1.27",
+                    "--win-agents-sku=Windows2022",
+                    "--cluster-name=aks-e2e-ltsc2022"
+                ]
             }
         }
     ]

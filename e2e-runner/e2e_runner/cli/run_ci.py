@@ -1,4 +1,5 @@
 import os
+import time
 import traceback
 
 import azure.mgmt.containerservice.models as aks_models
@@ -229,6 +230,9 @@ class RunCI(Command):
         self.logging.info(
             "Creating artifacts dir: %s.", args.artifacts_directory)
         os.makedirs(args.artifacts_directory, exist_ok=True)
+        # add suffix to the cluster name to avoid resource group name
+        # conflicts.
+        args.cluster_name += f"-{int(time.time())}"
         ci = e2e_factory.get_ci(args.ci)(args)
         conformance_tests_failed = False
         try:
