@@ -704,10 +704,7 @@ class CapzFlannelCI(e2e_base.CI):
         tags.sort()
         return tags[-1]
 
-    def _azure_cloud_provider_values(self):
-        image_tag = self.kubernetes_version
-        if "k8sbins" in self.bins_built:
-            image_tag = self._get_latest_azure_cloud_provider_image_tag()
+    def _azure_cloud_provider_values(self, image_tag):
         helm_values = {
             "infra": {
                 "clusterName": self.opts.cluster_name,
@@ -726,14 +723,21 @@ class CapzFlannelCI(e2e_base.CI):
         return helm_values
 
     def _add_azure_cloud_provider(self):
+        image_tag = self.kubernetes_version
+        if "k8sbins" in self.bins_built:
+            image_tag = self._get_latest_azure_cloud_provider_image_tag()
+        repo = e2e_constants.CLOUD_PROVIDER_AZURE_HELM_REPO.format(image_tag)
         with tempfile.NamedTemporaryFile(suffix=".yaml") as f:
-            f.write(yaml.safe_dump(
-                self._azure_cloud_provider_values()).encode())
+            f.write(
+                yaml.safe_dump(
+                    self._azure_cloud_provider_values(image_tag)
+                ).encode()
+            )
             f.flush()
             e2e_utils.run_shell_cmd(
                 cmd=[
                     "helm", "install",
-                    "--repo", e2e_constants.CLOUD_PROVIDER_AZURE_HELM_REPO,
+                    "--repo", repo,
                     "cloud-provider-azure",
                     "--generate-name", "--values", f.name,
                 ],

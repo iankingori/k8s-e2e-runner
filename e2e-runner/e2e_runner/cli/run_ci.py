@@ -174,7 +174,7 @@ class RunCI(Command):
             help="The node subnet CIDR block.")
         p.add_argument(
             "--bootstrap-vm-size",
-            default="Standard_D2s_v3",
+            default="Standard_D8s_v3",
             help="Size of the bootstrap VM.")
         p.add_argument(
             "--master-vm-size",
@@ -187,7 +187,7 @@ class RunCI(Command):
             help="Number of K8s Windows agents for the deployment.")
         p.add_argument(
             "--win-os",
-            default="ltsc2019",
+            default="ltsc2022",
             choices=["ltsc2019", "ltsc2022"],
             help="The operating system of the K8s Windows agents.")
         p.add_argument(

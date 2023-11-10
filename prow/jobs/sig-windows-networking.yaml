@@ -1,9 +1,8 @@
 periodics:
-- name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master
+- name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-master
   cron: "0 0 */2 * *"
   always_run: true
   labels:
-    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -21,14 +20,13 @@ periodics:
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
-        - --win-os=ltsc2019
+        - --win-os=ltsc2022
         - --cluster-name=capzctrd
 
-- name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
+- name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-master
   cron: "0 6 */2 * *"
   always_run: true
   labels:
-    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -46,14 +44,13 @@ periodics:
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
-        - --win-os=ltsc2019
+        - --win-os=ltsc2022
         - --cluster-name=capzctrd
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
   cron: "0 1 */2 * *"
   always_run: true
   labels:
-    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -76,7 +73,6 @@ periodics:
   cron: "0 3 */2 * *"
   always_run: true
   labels:
-    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -99,7 +95,6 @@ periodics:
   cron: "0 5 */2 * *"
   always_run: true
   labels:
-    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -122,7 +117,6 @@ periodics:
   cron: "0 7 */2 * *"
   always_run: true
   labels:
-    preset-flannel-test-regex: "true"
     preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
@@ -145,7 +139,7 @@ periodics:
   cron: "0 4 * * *"
   always_run: true
   labels:
-    preset-aks-test-regex: "true"
+    preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -168,7 +162,7 @@ periodics:
   cron: "0 10 * * *"
   always_run: true
   labels:
-    preset-aks-test-regex: "true"
+    preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -191,7 +185,7 @@ periodics:
   cron: "0 9 * * *"
   always_run: true
   labels:
-    preset-aks-test-regex: "true"
+    preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -214,7 +208,7 @@ periodics:
   cron: "0 15 * * *"
   always_run: true
   labels:
-    preset-aks-test-regex: "true"
+    preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -237,7 +231,7 @@ periodics:
   cron: "0 2 * * *"
   always_run: true
   labels:
-    preset-aks-test-regex: "true"
+    preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
@@ -260,7 +254,7 @@ periodics:
   cron: "0 8 * * *"
   always_run: true
   labels:
-    preset-aks-test-regex: "true"
+    preset-github-readonly-token: "true"
     preset-ssh-key: "true"
     preset-prod-azure-account: "true"
     preset-windows-private-registry-cred: "true"
