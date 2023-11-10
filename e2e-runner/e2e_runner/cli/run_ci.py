@@ -174,7 +174,7 @@ class RunCI(Command):
             help="The node subnet CIDR block.")
         p.add_argument(
             "--bootstrap-vm-size",
-            default="Standard_D2s_v3",
+            default="Standard_D8s_v3",
             help="Size of the bootstrap VM.")
         p.add_argument(
             "--master-vm-size",
