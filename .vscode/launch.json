@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master",
+            "name": "k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-master",
             "type": "docker",
             "request": "launch",
             "preLaunchTask": "docker-run: debug",
@@ -23,13 +23,13 @@
                     "--build=sdncnibins",
                     "capz_flannel",
                     "--flannel-mode=host-gw",
-                    "--win-os=ltsc2019",
+                    "--win-os=ltsc2022",
                     "--cluster-name=capzctrd"
                 ]
             }
         },
         {
-            "name": "k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master",
+            "name": "k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-master",
             "type": "docker",
             "request": "launch",
             "preLaunchTask": "docker-run: debug",
@@ -51,7 +51,7 @@
                     "--build=sdncnibins",
                     "capz_flannel",
                     "--flannel-mode=overlay",
-                    "--win-os=ltsc2019",
+                    "--win-os=ltsc2022",
                     "--cluster-name=capzctrd"
                 ]
             }

@@ -1,5 +1,5 @@
 periodics:
-- name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-master
+- name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-master
   cron: "0 0 */2 * *"
   always_run: true
   labels:
@@ -20,10 +20,10 @@ periodics:
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=host-gw
-        - --win-os=ltsc2019
+        - --win-os=ltsc2022
         - --cluster-name=capzctrd
 
-- name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-master
+- name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-master
   cron: "0 6 */2 * *"
   always_run: true
   labels:
@@ -44,7 +44,7 @@ periodics:
         - --build=sdncnibins
         - capz_flannel
         - --flannel-mode=overlay
-        - --win-os=ltsc2019
+        - --win-os=ltsc2022
         - --cluster-name=capzctrd
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
