@@ -701,10 +701,8 @@ class CapzFlannelCI(e2e_base.CI):
 
         cluster_config = self._get_kubeadm_cluster_config()
         context = {
-            "win_os": self.opts.win_os,
             "container_image_tag": self.opts.container_image_tag,
             "container_image_registry": self.opts.container_image_registry,
-            "flannel_mode": self.opts.flannel_mode,
             "control_plane_cidr": self.opts.control_plane_subnet_cidr_block,
             "node_cidr": self.opts.node_subnet_cidr_block,
             "service_subnet": cluster_config['networking']['serviceSubnet'],
@@ -712,13 +710,12 @@ class CapzFlannelCI(e2e_base.CI):
             "kubernetes_service_host": self.control_plane_public_address,
             "kubernetes_service_port": self.control_plane_public_port,
         }
-        flannel_dir = os.path.join(self.capz_flannel_dir, "flannel")
         kube_flannel_windows = "/tmp/kube-flannel-windows.yaml"
         e2e_utils.render_template(
-            template_file="kube-flannel.yaml.j2",
+            template_file="kube-flannel-windows.yaml.j2",
             output_file=kube_flannel_windows,
             context=context,
-            searchpath=f"{flannel_dir}/windows/containerd",
+            searchpath=f"{self.capz_flannel_dir}/flannel",
         )
         e2e_utils.exec_kubectl(["apply", "-f", kube_flannel_windows])
 

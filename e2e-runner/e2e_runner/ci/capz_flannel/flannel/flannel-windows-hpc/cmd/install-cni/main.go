@@ -3,9 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"os"
+	"path/filepath"
 
+	"flannel-windows/flannel"
 	"flannel-windows/utils"
 
 	"github.com/Microsoft/hcsshim/hcn"
@@ -14,14 +17,18 @@ import (
 	"github.com/flannel-io/flannel/pkg/subnet"
 )
 
+const (
+	BuildCNIBinDirPath = "/build/cni/bin"
+)
+
 func getFlannelNetConf() (*subnet.Config, error) {
-	bytes, err := os.ReadFile(utils.KubeFlannelNetConfPath)
+	bytes, err := os.ReadFile(flannel.NetConfPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read flannel net config: %v", err)
 	}
 	netConf, err := subnet.ParseConfig(string(bytes))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse flannel net config: %v", err)
 	}
 	return netConf, nil
 }
@@ -47,16 +54,16 @@ func getDefaultIPNet() (*net.IPNet, error) {
 
 func getOutboundNATPolicyKVP() (*cni.KVP, error) {
 	exceptions := []string{
-		utils.ServiceSubnet,
-		utils.PodSubnet,
+		flannel.ServiceSubnet,
+		flannel.PodSubnet,
 	}
 	flannelNetConf, err := getFlannelNetConf()
 	if err != nil {
-		panic(fmt.Errorf("failed to get flannel net config: %v", err))
+		return nil, err
 	}
 	if flannelNetConf.BackendType == "host-gw" {
-		exceptions = append(exceptions, utils.ControlPlaneCIDR)
-		exceptions = append(exceptions, utils.NodeCIDR)
+		exceptions = append(exceptions, flannel.ControlPlaneCIDR)
+		exceptions = append(exceptions, flannel.NodeCIDR)
 	}
 	settings := hcn.OutboundNatPolicySetting{
 		Exceptions: exceptions,
@@ -82,7 +89,7 @@ func getOutboundNATPolicyKVP() (*cni.KVP, error) {
 
 func getServiceSubnetSDNRouteKVP() (*cni.KVP, error) {
 	settings := hcn.SDNRoutePolicySetting{
-		DestinationPrefix: utils.ServiceSubnet,
+		DestinationPrefix: flannel.ServiceSubnet,
 		NeedEncap:         true,
 	}
 	rawJSON, err := json.Marshal(settings)
@@ -178,7 +185,7 @@ func getCNIConfAdditionalArgs() ([]cni.KVP, error) {
 	// vxlan - Append ProviderAddress policy for node address
 	flannelNetConf, err := getFlannelNetConf()
 	if err != nil {
-		panic(fmt.Errorf("failed to get flannel net config: %v", err))
+		return additionalArgs, err
 	}
 	if flannelNetConf.BackendType == "host-gw" {
 		nodeSubnetSDNRouteKVP, err := getNodeSubnetSDNRouteKVP()
@@ -186,8 +193,7 @@ func getCNIConfAdditionalArgs() ([]cni.KVP, error) {
 			return additionalArgs, err
 		}
 		additionalArgs = append(additionalArgs, *nodeSubnetSDNRouteKVP)
-	}
-	if flannelNetConf.BackendType == "vxlan" {
+	} else if flannelNetConf.BackendType == "vxlan" {
 		nodeProviderAddressKVP, err := getNodeProviderAddressKVP()
 		if err != nil {
 			return additionalArgs, err
@@ -198,55 +204,75 @@ func getCNIConfAdditionalArgs() ([]cni.KVP, error) {
 }
 
 func createCNIConf() error {
-	if _, err := os.Stat(utils.CNIConfPath); err == nil {
-		fmt.Println("cni config already exists")
+	if _, err := os.Stat(flannel.CNIConfPath); err == nil {
+		log.Println("CNI config already exists")
 		return nil
 	}
-	bytes, err := os.ReadFile(utils.KubeFlannelWindowsCniConfPath)
+	flannelNetConf, err := getFlannelNetConf()
 	if err != nil {
 		return err
 	}
-	data := make(map[string]interface{})
-	if err := json.Unmarshal(bytes, &data); err != nil {
-		return err
+	cniConf := flannel.NetConf{}
+	cniConf.CNIVersion = "0.3.0"
+	cniConf.Type = "flannel"
+	cniConf.Capabilities = map[string]bool{
+		"portMappings": true,
+		"dns":          true,
 	}
-	cniConf := data["delegate"].(map[string]interface{})
+	if flannelNetConf.BackendType == "host-gw" {
+		cniConf.Name = "cbr0"
+		cniConf.Delegate.Type = "sdnbridge"
+		cniConf.Delegate.OptionalFlags = map[string]bool{
+			"forceBridgeGateway": true,
+		}
+	} else if flannelNetConf.BackendType == "vxlan" {
+		cniConf.Name = "flannel.4096"
+		cniConf.Delegate.Type = "sdnoverlay"
+	}
 	additionalArgs, err := getCNIConfAdditionalArgs()
 	if err != nil {
 		return err
 	}
-	cniConf["AdditionalArgs"] = additionalArgs
-	data["delegate"] = cniConf
-	bytes, err = json.MarshalIndent(data, "", "  ")
+	cniConf.Delegate.AdditionalArgs = additionalArgs
+	bytes, err := json.MarshalIndent(cniConf, "", "  ")
 	if err != nil {
 		return err
 	}
-	fmt.Printf("create CNI config %s\n", utils.CNIConfPath)
-	if err := os.WriteFile(utils.CNIConfPath, bytes, 0644); err != nil {
+	log.Printf("creating CNI config %s", flannel.CNIConfPath)
+	cniConfDir := filepath.Dir(flannel.CNIConfPath)
+	if err := os.MkdirAll(cniConfDir, os.ModeDir); err != nil {
+		return fmt.Errorf("failed to create CNI directory %s: %v", cniConfDir, err)
+	}
+	if err := os.WriteFile(flannel.CNIConfPath, bytes, 0644); err != nil {
 		return err
 	}
 	return nil
 }
 
-func main() {
-	// create flannel directories on the host
-	dirs := []string{
-		"/opt/cni/bin",
-		"/etc/cni/net.d",
+func copyCNIBinaries() error {
+	if flannel.ContainerdCNIBinDirPath == "" {
+		return fmt.Errorf("CONTAINERD_CNI_BIN_DIR environment variable is not set")
 	}
-	for _, dir := range dirs {
-		fmt.Printf("create directory %s\n", dir)
-		if err := os.MkdirAll(dir, os.ModeDir); err != nil {
-			panic(fmt.Errorf("failed to create directory %s: %v", dir, err))
-		}
+	if err := os.MkdirAll(flannel.ContainerdCNIBinDirPath, os.ModeDir); err != nil {
+		return fmt.Errorf("failed to create containerd CNI directory %s: %v", flannel.ContainerdCNIBinDirPath, err)
 	}
-	// copy CNI binaries on the host
-	if err := utils.CopyFiles(utils.CNIBinDirPath, "/opt/cni/bin"); err != nil {
-		panic(fmt.Errorf("failed to copy cni binaries: %v", err))
+	// copy CNI binaries
+	if err := utils.CopyFiles(flannel.CNIBinDirPath, flannel.ContainerdCNIBinDirPath); err != nil {
+		return fmt.Errorf("failed to copy cni binaries: %v", err)
 	}
 	// copy CI CNI binaries (if present)
-	if err := utils.CopyFiles("/build/cni/bin", "/opt/cni/bin"); err != nil {
-		panic(fmt.Errorf("failed to copy cni CI binaries: %v", err))
+	if _, err := os.Stat(BuildCNIBinDirPath); !os.IsNotExist(err) {
+		if err := utils.CopyFiles(BuildCNIBinDirPath, flannel.ContainerdCNIBinDirPath); err != nil {
+			return fmt.Errorf("failed to copy cni CI/CD binaries: %v", err)
+		}
+	}
+	return nil
+}
+
+func main() {
+	// copy CNI binaries
+	if err := copyCNIBinaries(); err != nil {
+		panic(fmt.Errorf("failed to copy CNI binaries: %v", err))
 	}
 	// create flannel CNI config file on the host
 	if err := createCNIConf(); err != nil {

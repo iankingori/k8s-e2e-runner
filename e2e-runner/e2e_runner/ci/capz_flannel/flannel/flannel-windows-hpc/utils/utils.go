@@ -1,23 +1,9 @@
 package utils
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"path/filepath"
-)
-
-var (
-	ControlPlaneCIDR = os.Getenv("CONTROL_PLANE_CIDR")
-	NodeCIDR         = os.Getenv("NODE_CIDR")
-
-	ServiceSubnet = os.Getenv("SERVICE_SUBNET")
-	PodSubnet     = os.Getenv("POD_SUBNET")
-
-	KubeFlannelNetConfPath        = filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "etc/kube-flannel/net-conf.json")
-	KubeFlannelWindowsCniConfPath = filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "etc/kube-flannel-windows/cni-conf.json")
-
-	CNIBinDirPath = filepath.Join(os.Getenv("CONTAINER_SANDBOX_MOUNT_POINT"), "cni/bin")
-	CNIConfPath   = "/etc/cni/net.d/10-flannel.conf"
 )
 
 func CopyFile(src, dest string) error {
@@ -25,7 +11,7 @@ func CopyFile(src, dest string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("copy file %s to %s\n", src, dest)
+	log.Printf("copy file %s to %s", src, dest)
 	bytesRead, err := os.ReadFile(src)
 	if err != nil {
 		return err

@@ -1,0 +1,106 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-flannel-ds-windows-amd64
+  namespace: kube-flannel
+  labels:
+    tier: node
+    app: flannel
+spec:
+  selector:
+    matchLabels:
+      app: flannel
+  template:
+    metadata:
+      labels:
+        tier: node
+        app: flannel
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - windows
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+      securityContext:
+        windowsOptions:
+          hostProcess: true
+          runAsUserName: "NT AUTHORITY\\system"
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      serviceAccountName: flannel
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      initContainers:
+      - name: install-cni
+        image: {{ container_image_registry }}/flannel-windows-hpc:{{ container_image_tag }}
+        imagePullPolicy: Always
+        command:
+        - "%CONTAINER_SANDBOX_MOUNT_POINT%\\flannel\\install-cni.exe"
+        volumeMounts:
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
+        env:
+        - name: CONTAINERD_CNI_BIN_DIR
+          value: /opt/cni/bin
+        - name: FLANNEL_NET_CONF
+          value: /etc/kube-flannel/net-conf.json
+        - name: FLANNEL_CNI_CONF
+          value: /etc/cni/net.d/10-flannel.conf
+        - name: CONTROL_PLANE_CIDR
+          value: "{{ control_plane_cidr }}"
+        - name: NODE_CIDR
+          value: "{{ node_cidr }}"
+        - name: SERVICE_SUBNET
+          value: "{{ service_subnet }}"
+        - name: POD_SUBNET
+          value: "{{ pod_subnet }}"
+      containers:
+      - name: kube-flannel
+        image: {{ container_image_registry }}/flannel-windows-hpc:{{ container_image_tag }}
+        imagePullPolicy: Always
+        command:
+        - "%CONTAINER_SANDBOX_MOUNT_POINT%\\flannel\\flanneld.exe"
+        args:
+        - --kube-subnet-mgr
+        - --ip-masq
+        - --net-config-path
+        - /etc/kube-flannel/net-conf.json
+        - --iface
+        - "%HOST_IP%"
+        volumeMounts:
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
+        env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: "{{ kubernetes_service_host }}"
+        - name: KUBERNETES_SERVICE_PORT
+          value: "{{ kubernetes_service_port }}"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+      volumes:
+      - name: flannel-cfg
+        configMap:
+          name: kube-flannel-cfg
