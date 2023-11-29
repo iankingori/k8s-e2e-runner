@@ -22,6 +22,7 @@
                     "--build=containerdbins",
                     "--build=sdncnibins",
                     "capz_flannel",
+                    "--bootstrap-vm-size=Standard_D8s_v3",
                     "--flannel-mode=host-gw",
                     "--win-os=ltsc2022",
                     "--cluster-name=capzctrd"
@@ -50,6 +51,7 @@
                     "--build=containerdbins",
                     "--build=sdncnibins",
                     "capz_flannel",
+                    "--bootstrap-vm-size=Standard_D8s_v3",
                     "--flannel-mode=vxlan",
                     "--win-os=ltsc2022",
                     "--cluster-name=capzctrd"
