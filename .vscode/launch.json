@@ -50,7 +50,7 @@
                     "--build=containerdbins",
                     "--build=sdncnibins",
                     "capz_flannel",
-                    "--flannel-mode=overlay",
+                    "--flannel-mode=vxlan",
                     "--win-os=ltsc2022",
                     "--cluster-name=capzctrd"
                 ]
@@ -102,7 +102,7 @@
                     "--test-regex-file-url=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/main/prow/test-regex/capz_flannel.yaml",
                     "--build=sdncnibins",
                     "capz_flannel",
-                    "--flannel-mode=overlay",
+                    "--flannel-mode=vxlan",
                     "--win-os=ltsc2019",
                     "--cluster-name=capzctrd-ltsc2019"
                 ]
@@ -154,7 +154,7 @@
                     "--test-regex-file-url=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/main/prow/test-regex/capz_flannel.yaml",
                     "--build=sdncnibins",
                     "capz_flannel",
-                    "--flannel-mode=overlay",
+                    "--flannel-mode=vxlan",
                     "--win-os=ltsc2022",
                     "--cluster-name=capzctrd-ltsc2022"
                 ]

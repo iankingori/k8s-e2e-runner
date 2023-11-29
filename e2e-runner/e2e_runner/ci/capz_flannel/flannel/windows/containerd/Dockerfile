@@ -1,8 +1,7 @@
-ARG BASE_IMAGE="mcr.microsoft.com/windows/nanoserver:1809"
-ARG FLANNEL_VERSION="v0.21.2"
-ARG CNI_PLUGINS_VERSION="v1.2.0"
+ARG FLANNEL_VERSION="v0.23.0"
+ARG CNI_PLUGINS_VERSION="v1.3.0"
 ARG WINDOWS_CNI_PLUGINS_VERSION="v0.3.0"
-ARG FLANNEL_CNI_PLUGIN_VERSION="v1.1.2"
+ARG FLANNEL_CNI_PLUGIN_VERSION="v1.2.0"
 
 # Linux stage
 FROM --platform=linux/amd64 alpine:latest as prep
@@ -30,7 +29,7 @@ RUN go build -ldflags="-s -w" -o install-cni.exe ./cmd/install-cni
 RUN go build -ldflags="-s -w" -o run.exe ./cmd/run
 
 # Windows stage
-FROM $BASE_IMAGE
+FROM mcr.microsoft.com/oss/kubernetes/windows-host-process-containers-base-image:v1.0.0
 
 COPY --from=prep /flannel /flannel
 COPY --from=prep /cni /cni

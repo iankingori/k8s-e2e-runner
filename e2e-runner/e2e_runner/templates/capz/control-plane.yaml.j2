@@ -39,7 +39,7 @@ spec:
         overwrite: false
         tableType: gpt
     files:
-{%- if flannel_mode == "overlay" %}
+{%- if flannel_mode == "vxlan" %}
     - content: |
         network:
           version: 2
@@ -79,7 +79,7 @@ spec:
     preKubeadmCommands:
     - curl -Lo /run/kubeadm/kubeadm-bootstrap.sh http://{{ bootstrap_vm_endpoint }}/scripts/kubeadm-bootstrap.sh
     - bash /run/kubeadm/kubeadm-bootstrap.sh --ci-packages-base-url http://{{ bootstrap_vm_endpoint }} --k8s-bins-built {{ k8s_bins }}
-{%- if flannel_mode == "overlay" %}
+{%- if flannel_mode == "vxlan" %}
     postKubeadmCommands:
     - netplan apply
 {%- endif %}

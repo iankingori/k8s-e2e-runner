@@ -57,9 +57,9 @@ data:
       }
     }
 {%- endif %}
-{%- if flannel_mode == "overlay" %}
+{%- if flannel_mode == "vxlan" %}
     {
-      "name": "vxlan0",
+      "name": "flannel.4096",
       "cniVersion": "0.3.0",
       "type": "flannel",
       "capabilities": {
@@ -138,15 +138,11 @@ spec:
           hostProcess: true
           runAsUserName: "NT AUTHORITY\\system"
       hostNetwork: true
+      priorityClassName: system-node-critical
       serviceAccountName: flannel
       tolerations:
       - operator: Exists
         effect: NoSchedule
-      # Mark the pod as a critical add-on for rescheduling.
-      - key: CriticalAddonsOnly
-        operator: Exists
-      - effect: NoExecute
-        operator: Exists
       initContainers:
       - name: install-cni
         image: {{ container_image_registry }}/flannel-containerd-{{ win_os }}:{{ container_image_tag }}
@@ -201,5 +197,3 @@ spec:
       - name: flannel-windows-cfg
         configMap:
           name: kube-flannel-windows-cfg
-  updateStrategy:
-    type: RollingUpdate

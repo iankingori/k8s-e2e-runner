@@ -17,16 +17,14 @@ buildx-kube-proxy: \
 buildx-flannel-containerd-ltsc2019:
 	docker buildx build \
 		--progress=plain --no-cache --pull --platform windows/amd64 --output=type=registry \
-		--build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:1809 \
-		-t $(REGISTRY)/flannel-containerd-windows:nanoserver-ltsc2019 \
+		-t $(REGISTRY)/flannel-containerd-windows:ltsc2019 \
 		./flannel/windows/containerd
 
 .PHONY: buildx-flannel-containerd-ltsc2022
 buildx-flannel-containerd-ltsc2022:
 	docker buildx build \
 		--progress=plain --no-cache --pull --platform windows/amd64 --output=type=registry \
-		--build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022 \
-		-t $(REGISTRY)/flannel-containerd-windows:nanoserver-ltsc2022 \
+		-t $(REGISTRY)/flannel-containerd-windows:ltsc2022 \
 		./flannel/windows/containerd
 
 .PHONY: buildx-kube-proxy-containerd-ltsc2019

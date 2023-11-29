@@ -12,7 +12,4 @@ jobs:
       image_name: flannel-containerd-ltsc2019
       context: ./e2e-runner/e2e_runner/ci/capz_flannel/flannel/windows/containerd
       platform: windows/amd64
-      build_args: |
-        BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:1809
-      manifest_from_image: mcr.microsoft.com/windows/nanoserver:1809
     secrets: inherit
