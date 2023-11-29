@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
 ARG CAPI_VERSION=v1.5.2
-ARG KUBECTL_VERSION=v1.27.1
+ARG KUBECTL_VERSION=v1.28.4
 
 # Install system APT packages & dependencies
 ENV DEBIAN_FRONTEND=noninteractive
