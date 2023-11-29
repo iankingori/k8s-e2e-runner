@@ -26,7 +26,7 @@ NETWORK_QUOTAS = [
 ]
 
 DEFAULT_KUBERNETES_VERSION = "v1.28.4"
-DEFAULT_AKS_VERSION = "1.27"
+DEFAULT_AKS_VERSION = "1.28"
 
 FLANNEL_NAMESPACE = "kube-flannel"
 FLANNEL_HELM_REPO = "https://flannel-io.github.io/flannel"
