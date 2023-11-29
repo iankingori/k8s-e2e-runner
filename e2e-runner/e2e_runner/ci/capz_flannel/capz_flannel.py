@@ -809,18 +809,17 @@ class CapzFlannelCI(e2e_base.CI):
                     cmd=f"curl.exe --fail -L -o /build/kube-proxy.exe https://dl.k8s.io/{self.kubernetes_version}/bin/windows/amd64/kube-proxy.exe",  # noqa:
                 )
         context = {
-            "win_os": self.opts.win_os,
+            "k8s_bins": "k8sbins" in self.bins_built,
             "container_image_tag": self.opts.container_image_tag,
             "container_image_registry": self.opts.container_image_registry,
             "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),
-            "flannel_mode": self.opts.flannel_mode
         }
         output_file = "/tmp/kube-proxy-windows.yaml"
         e2e_utils.render_template(
-            template_file="kube-proxy.yaml.j2",
+            template_file="kube-proxy-windows.yaml.j2",
             output_file=output_file,
             context=context,
-            searchpath=f"{self.capz_flannel_dir}/kube-proxy/windows/containerd",  # noqa:
+            searchpath=f"{self.capz_flannel_dir}/kube-proxy",
         )
         e2e_utils.exec_kubectl(["apply", "-f", output_file])
 
