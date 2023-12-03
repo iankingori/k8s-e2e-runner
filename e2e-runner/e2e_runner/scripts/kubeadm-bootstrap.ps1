@@ -90,34 +90,6 @@ function Set-PowerProfile {
     }
 }
 
-function Add-ToServiceEnv {
-    Param(
-        [Parameter(Mandatory=$true)]
-        [string]$ServiceName,
-        [Parameter(Mandatory=$true)]
-        [string]$Name,
-        [Parameter(Mandatory=$true)]
-        [string]$Value
-    )
-    $newEnv = @()
-    $storedEnv = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$ServiceName" -Name "Environment" -ErrorAction SilentlyContinue
-    if($storedEnv) {
-        $newEnv = $storedEnv.Environment.Split()
-    }
-    $newEnv += "${Name}=${Value}"
-    $kwargs = @{
-        Path = "HKLM:\SYSTEM\CurrentControlSet\Services\$ServiceName"
-        Name = "Environment"
-        Type = "MultiString"
-        Value = $newEnv
-    }
-    if($storedEnv) {
-        Set-ItemProperty @kwargs
-    } else {
-        New-ItemProperty @kwargs
-    }
-}
-
 function Install-CIBinary {
     Param(
         [Parameter(Mandatory=$true)]
@@ -205,12 +177,6 @@ try {
     }
     if($SDNCNIBins) {
         Update-SDNCNI
-    }
-
-    # Rename main adapter NIC
-    $adapter = Get-NetAdapter -Name "Ethernet 2" -ErrorAction SilentlyContinue
-    if($adapter) {
-        $adapter | Rename-NetAdapter -NewName "eth0"
     }
 
     # Disable Windows Updates service

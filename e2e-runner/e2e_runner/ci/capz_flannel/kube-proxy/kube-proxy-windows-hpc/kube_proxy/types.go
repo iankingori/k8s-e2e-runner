@@ -1,4 +1,4 @@
-package types
+package kube_proxy
 
 type IPv4 struct {
 	IP      string `json:"ip"`

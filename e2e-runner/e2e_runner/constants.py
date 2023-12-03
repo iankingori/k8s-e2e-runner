@@ -25,10 +25,13 @@ NETWORK_QUOTAS = [
     "RouteTables",
 ]
 
-DEFAULT_KUBERNETES_VERSION = "v1.27.1"
-DEFAULT_AKS_VERSION = "1.27"
+DEFAULT_KUBERNETES_VERSION = "v1.28.4"
+DEFAULT_AKS_VERSION = "1.28"
 
-FLANNEL_MODE_OVERLAY = "overlay"
+FLANNEL_NAMESPACE = "kube-flannel"
+FLANNEL_HELM_REPO = "https://flannel-io.github.io/flannel"
+FLANNEL_HELM_VERSION = "v0.23.0"
+FLANNEL_MODE_OVERLAY = "vxlan"
 FLANNEL_MODE_L2BRIDGE = "host-gw"
 
 CLOUD_PROVIDER_AZURE_HELM_REPO = "https://raw.githubusercontent.com/kubernetes-sigs/cloud-provider-azure/{}/helm/repo"  # noqa: E501

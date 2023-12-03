@@ -662,14 +662,47 @@ class CapzFlannelCI(e2e_base.CI):
             name="kubeadm-config", namespace="kube-system")
         return yaml.safe_load(cfg_map.data['ClusterConfiguration'])
 
+    def _flannel_helm_values(self):
+        helm_values = {
+            "podCidr": self.opts.cluster_network_subnet,
+            "flannel": {
+                "backend": self.opts.flannel_mode,
+            }
+        }
+        if self.opts.flannel_mode == e2e_constants.FLANNEL_MODE_OVERLAY:
+            helm_values["flannel"]["vni"] = 4096
+            helm_values["flannel"]["backendPort"] = 4789
+        return helm_values
+
+    def _install_flannel_helm(self):
+        with tempfile.NamedTemporaryFile(suffix=".yaml") as f:
+            f.write(yaml.safe_dump(self._flannel_helm_values()).encode())
+            f.flush()
+            e2e_utils.run_shell_cmd(
+                cmd=[
+                    "helm", "install",
+                    "--repo", e2e_constants.FLANNEL_HELM_REPO, "flannel",
+                    "-n", e2e_constants.FLANNEL_NAMESPACE, "--values", f.name,
+                    "--version", e2e_constants.FLANNEL_HELM_VERSION,
+                    "--generate-name",
+                ],
+            )
+
     def _add_flannel_cni(self):
+        e2e_utils.exec_kubectl([
+            "create", "ns", e2e_constants.FLANNEL_NAMESPACE,
+        ])
+        e2e_utils.exec_kubectl([
+            "label", "--overwrite", "ns",
+            "kube-flannel", "pod-security.kubernetes.io/enforce=privileged",
+        ])
+
+        self._install_flannel_helm()
+
         cluster_config = self._get_kubeadm_cluster_config()
         context = {
-            "win_os": self.opts.win_os,
             "container_image_tag": self.opts.container_image_tag,
             "container_image_registry": self.opts.container_image_registry,
-            "cluster_network_subnet": self.opts.cluster_network_subnet,
-            "flannel_mode": self.opts.flannel_mode,
             "control_plane_cidr": self.opts.control_plane_subnet_cidr_block,
             "node_cidr": self.opts.node_subnet_cidr_block,
             "service_subnet": cluster_config['networking']['serviceSubnet'],
@@ -677,23 +710,12 @@ class CapzFlannelCI(e2e_base.CI):
             "kubernetes_service_host": self.control_plane_public_address,
             "kubernetes_service_port": self.control_plane_public_port,
         }
-        flannel_dir = os.path.join(self.capz_flannel_dir, "flannel")
-        kube_flannel = "/tmp/kube-flannel.yaml"
         kube_flannel_windows = "/tmp/kube-flannel-windows.yaml"
-
         e2e_utils.render_template(
-            template_file="kube-flannel.yaml.j2",
-            output_file=kube_flannel,
-            context=context,
-            searchpath=flannel_dir,
-        )
-        e2e_utils.exec_kubectl(["apply", "-f", kube_flannel])
-
-        e2e_utils.render_template(
-            template_file="kube-flannel.yaml.j2",
+            template_file="kube-flannel-windows.yaml.j2",
             output_file=kube_flannel_windows,
             context=context,
-            searchpath=f"{flannel_dir}/windows/containerd",
+            searchpath=f"{self.capz_flannel_dir}/flannel",
         )
         e2e_utils.exec_kubectl(["apply", "-f", kube_flannel_windows])
 
@@ -718,7 +740,7 @@ class CapzFlannelCI(e2e_base.CI):
                 "imageTag": image_tag,
             },
         }
-        if self.opts.flannel_mode == "host-gw":
+        if self.opts.flannel_mode == e2e_constants.FLANNEL_MODE_L2BRIDGE:
             helm_values["cloudControllerManager"]["configureCloudRoutes"] = True  # noqa: E501
         return helm_values
 
@@ -787,18 +809,17 @@ class CapzFlannelCI(e2e_base.CI):
                     cmd=f"curl.exe --fail -L -o /build/kube-proxy.exe https://dl.k8s.io/{self.kubernetes_version}/bin/windows/amd64/kube-proxy.exe",  # noqa:
                 )
         context = {
-            "win_os": self.opts.win_os,
+            "k8s_bins": "k8sbins" in self.bins_built,
             "container_image_tag": self.opts.container_image_tag,
             "container_image_registry": self.opts.container_image_registry,
             "enable_win_dsr": str(self.opts.enable_win_dsr).lower(),
-            "flannel_mode": self.opts.flannel_mode
         }
         output_file = "/tmp/kube-proxy-windows.yaml"
         e2e_utils.render_template(
-            template_file="kube-proxy.yaml.j2",
+            template_file="kube-proxy-windows.yaml.j2",
             output_file=output_file,
             context=context,
-            searchpath=f"{self.capz_flannel_dir}/kube-proxy/windows/containerd",  # noqa:
+            searchpath=f"{self.capz_flannel_dir}/kube-proxy",
         )
         e2e_utils.exec_kubectl(["apply", "-f", output_file])
 

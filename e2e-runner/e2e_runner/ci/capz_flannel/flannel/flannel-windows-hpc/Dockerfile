@@ -1,8 +1,7 @@
-ARG BASE_IMAGE="mcr.microsoft.com/windows/nanoserver:1809"
-ARG FLANNEL_VERSION="v0.21.2"
-ARG CNI_PLUGINS_VERSION="v1.2.0"
+ARG FLANNEL_VERSION="v0.23.0"
+ARG CNI_PLUGINS_VERSION="v1.3.0"
 ARG WINDOWS_CNI_PLUGINS_VERSION="v0.3.0"
-ARG FLANNEL_CNI_PLUGIN_VERSION="v1.1.2"
+ARG FLANNEL_CNI_PLUGIN_VERSION="v1.2.0"
 
 # Linux stage
 FROM --platform=linux/amd64 alpine:latest as prep
@@ -23,20 +22,22 @@ RUN unzip /windows-cni-plugins.zip -d /cni/bin
 # Golang build stage
 FROM --platform=linux/amd64 golang:latest as gobuilder
 
-ADD flannel-windows /flannel-windows
+ADD . /flannel-windows
 WORKDIR /flannel-windows
 ENV GOOS=windows GOARCH=amd64
 RUN go build -ldflags="-s -w" -o install-cni.exe ./cmd/install-cni
-RUN go build -ldflags="-s -w" -o run.exe ./cmd/run
 
 # Windows stage
-FROM $BASE_IMAGE
+FROM mcr.microsoft.com/oss/kubernetes/windows-host-process-containers-base-image:v1.0.0
 
 COPY --from=prep /flannel /flannel
 COPY --from=prep /cni /cni
 COPY --from=gobuilder /flannel-windows/install-cni.exe /flannel/install-cni.exe
-COPY --from=gobuilder /flannel-windows/run.exe /flannel/run.exe
+
+ENV CONTAINERD_CNI_BIN_DIR="/opt/cni/bin"
+ENV FLANNEL_NET_CONF="/etc/kube-flannel/net-conf.json"
+ENV FLANNEL_CNI_CONF="/etc/cni/net.d/10-flannel.conf"
 
 ENV PATH="C:\Windows\system32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0"
 
-ENTRYPOINT ["%CONTAINER_SANDBOX_MOUNT_POINT%\\flannel\\run.exe"]
+ENTRYPOINT ["%CONTAINER_SANDBOX_MOUNT_POINT%\\flannel\\flanneld.exe"]

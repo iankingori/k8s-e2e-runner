@@ -1,18 +1,9 @@
 package utils
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"path/filepath"
-)
-
-var (
-	CNIBinDir         = "/opt/cni/bin"
-	CNIConfFile       = "/etc/cni/net.d/10-flannel.conf"
-	KubeProxyDir      = "/k/kube-proxy"
-	KubeProxyConfFile = filepath.Join(KubeProxyDir, "config.conf")
-	KubeconfigFile    = filepath.Join(KubeProxyDir, "kubeconfig.conf")
-	SourceVipFile     = filepath.Join(KubeProxyDir, "sourceVip.json")
 )
 
 func CopyFile(src, dest string) error {
@@ -20,7 +11,7 @@ func CopyFile(src, dest string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("copy file %s to %s\n", src, dest)
+	log.Printf("copy file %s to %s", src, dest)
 	bytesRead, err := os.ReadFile(src)
 	if err != nil {
 		return err

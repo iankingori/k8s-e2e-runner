@@ -1,6 +1,6 @@
 periodics:
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-master
-  cron: "0 0 */2 * *"
+  cron: "0 2 */2 * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -19,6 +19,7 @@ periodics:
         - --build=containerdbins
         - --build=sdncnibins
         - capz_flannel
+        - --bootstrap-vm-size=Standard_D8s_v3
         - --flannel-mode=host-gw
         - --win-os=ltsc2022
         - --cluster-name=capzctrd
@@ -43,12 +44,13 @@ periodics:
         - --build=containerdbins
         - --build=sdncnibins
         - capz_flannel
-        - --flannel-mode=overlay
+        - --bootstrap-vm-size=Standard_D8s_v3
+        - --flannel-mode=vxlan
         - --win-os=ltsc2022
         - --cluster-name=capzctrd
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnbridge-stable
-  cron: "0 1 */2 * *"
+  cron: "0 10 */2 * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -70,7 +72,7 @@ periodics:
         - --cluster-name=capzctrd-ltsc2019
 
 - name: k8s-e2e-ltsc2019-containerd-flannel-sdnoverlay-stable
-  cron: "0 3 */2 * *"
+  cron: "0 14 */2 * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -87,12 +89,12 @@ periodics:
         - --test-regex-file-url=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/main/prow/test-regex/capz_flannel.yaml
         - --build=sdncnibins
         - capz_flannel
-        - --flannel-mode=overlay
+        - --flannel-mode=vxlan
         - --win-os=ltsc2019
         - --cluster-name=capzctrd-ltsc2019
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnbridge-stable
-  cron: "0 5 */2 * *"
+  cron: "0 18 */2 * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -114,7 +116,7 @@ periodics:
         - --cluster-name=capzctrd-ltsc2022
 
 - name: k8s-e2e-ltsc2022-containerd-flannel-sdnoverlay-stable
-  cron: "0 7 */2 * *"
+  cron: "0 22 */2 * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -131,12 +133,12 @@ periodics:
         - --test-regex-file-url=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/main/prow/test-regex/capz_flannel.yaml
         - --build=sdncnibins
         - capz_flannel
-        - --flannel-mode=overlay
+        - --flannel-mode=vxlan
         - --win-os=ltsc2022
         - --cluster-name=capzctrd-ltsc2022
 
 - name: aks-e2e-ltsc2019-azurecni-1.25
-  cron: "0 4 * * *"
+  cron: "0 1 * * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -159,7 +161,7 @@ periodics:
         - --cluster-name=aks-e2e-ltsc2019
 
 - name: aks-e2e-ltsc2022-azurecni-1.25
-  cron: "0 10 * * *"
+  cron: "0 3 * * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -182,7 +184,7 @@ periodics:
         - --cluster-name=aks-e2e-ltsc2022
 
 - name: aks-e2e-ltsc2019-azurecni-1.26
-  cron: "0 9 * * *"
+  cron: "0 0 * * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -205,7 +207,7 @@ periodics:
         - --cluster-name=aks-e2e-ltsc2019
 
 - name: aks-e2e-ltsc2022-azurecni-1.26
-  cron: "0 15 * * *"
+  cron: "0 4 * * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -228,7 +230,7 @@ periodics:
         - --cluster-name=aks-e2e-ltsc2022
 
 - name: aks-e2e-ltsc2019-azurecni-1.27
-  cron: "0 2 * * *"
+  cron: "0 8 * * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -251,7 +253,7 @@ periodics:
         - --cluster-name=aks-e2e-ltsc2019
 
 - name: aks-e2e-ltsc2022-azurecni-1.27
-  cron: "0 8 * * *"
+  cron: "0 12 * * *"
   always_run: true
   labels:
     preset-github-readonly-token: "true"
@@ -270,5 +272,51 @@ periodics:
         - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-v1.27.7-e2e-patched
         - aks
         - --aks-version=1.27
+        - --win-agents-sku=Windows2022
+        - --cluster-name=aks-e2e-ltsc2022
+
+- name: aks-e2e-ltsc2019-azurecni-1.28
+  cron: "0 16 * * *"
+  always_run: true
+  labels:
+    preset-github-readonly-token: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
+      imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
+      args:
+        - --parallel-test-nodes=1
+        - --test-regex-file-url=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/main/prow/test-regex/aks.yaml
+        - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-v1.28.4-e2e-patched
+        - aks
+        - --aks-version=1.28
+        - --win-agents-sku=Windows2019
+        - --cluster-name=aks-e2e-ltsc2019
+
+- name: aks-e2e-ltsc2022-azurecni-1.28
+  cron: "0 20 * * *"
+  always_run: true
+  labels:
+    preset-github-readonly-token: "true"
+    preset-ssh-key: "true"
+    preset-prod-azure-account: "true"
+    preset-windows-private-registry-cred: "true"
+  spec:
+    containers:
+    - image: ghcr.io/e2e-win/k8s-e2e-runner:main
+      imagePullPolicy: Always
+      command:
+        - /workspace/entrypoint.sh
+      args:
+        - --parallel-test-nodes=1
+        - --test-regex-file-url=https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/main/prow/test-regex/aks.yaml
+        - --e2e-bin=https://capzwin.blob.core.windows.net/bin/e2e.test-v1.28.4-e2e-patched
+        - aks
+        - --aks-version=1.28
         - --win-agents-sku=Windows2022
         - --cluster-name=aks-e2e-ltsc2022

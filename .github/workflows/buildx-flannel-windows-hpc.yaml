@@ -1,0 +1,15 @@
+name: Flannel Windows HPC Image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  buildx-flannel-windows-hpc:
+    uses: ./.github/workflows/docker-buildx.yaml
+    with:
+      image_name: flannel-windows-hpc
+      context: ./e2e-runner/e2e_runner/ci/capz_flannel/flannel/flannel-windows-hpc
+      platform: windows/amd64
+    secrets: inherit
