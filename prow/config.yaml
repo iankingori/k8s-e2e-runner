@@ -11,10 +11,10 @@ plank:
       gcs_credentials_secret: gcs-credentials
       skip_cloning: true
       utility_images:
-        clonerefs: gcr.io/k8s-prow/clonerefs:v20230329-c93d79fb7d
-        entrypoint: gcr.io/k8s-prow/entrypoint:v20230329-c93d79fb7d
-        initupload: gcr.io/k8s-prow/initupload:v20230329-c93d79fb7d
-        sidecar: gcr.io/k8s-prow/sidecar:v20230329-c93d79fb7d
+        clonerefs: gcr.io/k8s-prow/clonerefs:v20231130-2f95ffc454
+        entrypoint: gcr.io/k8s-prow/entrypoint:v20231130-2f95ffc454
+        initupload: gcr.io/k8s-prow/initupload:v20231130-2f95ffc454
+        sidecar: gcr.io/k8s-prow/sidecar:v20231130-2f95ffc454
 
 sinker:
   max_prowjob_age: 336h # 2 weeks
