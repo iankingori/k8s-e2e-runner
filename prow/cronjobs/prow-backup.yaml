@@ -7,7 +7,7 @@ metadata:
 spec:
   schedule: "@daily"
   successfulJobsHistoryLimit: 10
-  failedJobsHistoryLimit: 10
+  failedJobsHistoryLimit: 2
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
@@ -61,7 +61,7 @@ spec:
             - name: BACKUP_CONFIGMAPS
               value: "prow/config,prow/plugins,prow/job-config"
             - name: BACKUP_SECRETS
-              value: "prow/hmac-token,prow/github-token,test-pods/github-readonly-token,test-pods/az-credentials,test-pods/gcs-credentials,test-pods/ssh-key,test-pods/windows-private-registry-docker-config"
+              value: "prow/hmac-token,prow/github-token,prow/gcs-credentials,prow/github-e2e-bot-account,prow/github-e2e-bot-app,prow/microsoft-outlook-account,prow/dockerhub-e2e-bot-account,test-pods/github-readonly-token,test-pods/az-credentials,test-pods/gcs-credentials,test-pods/ssh-key,test-pods/windows-private-registry-docker-config"
             - name: ENCRYPTION_KEY
               value: /etc/ssh/id_rsa.pub
             volumeMounts:
