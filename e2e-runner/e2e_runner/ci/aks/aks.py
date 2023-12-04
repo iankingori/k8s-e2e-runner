@@ -64,8 +64,6 @@ class AksCI(e2e_base.CI):
         self._setup_aks_kubeconfig()
         self.logging.info("The cluster provisioned in %.2f minutes",
                           (time.time() - start) / 60)
-        if self.kubernetes_version < "v1.26":
-            self._enable_proxy_terminating_endpoints_feature_gate()
 
     def down(self):
         self.logging.info("Deleting AKS cluster resource group")
@@ -228,31 +226,6 @@ class AksCI(e2e_base.CI):
             taint.split("=")[0] for taint in self._get_linux_agents_taints()
         ]
         return linux_agents_taints
-
-    def _enable_proxy_terminating_endpoints_feature_gate(self):
-        self._setup_jumpbox()
-        for address in self.windows_private_addresses:
-            self.logging.info(
-                "Enabling ProxyTerminatingEndpoints feature gate on "
-                "K8s Windows agent: %s", address)
-            ssh_kwargs = {
-                "user": "azureuser",
-                "address": address,
-            }
-            script_file = "enable-proxy-terminating-endpoints-feature.ps1"
-            ps_script_path = os.path.join(
-                self.e2e_runner_dir, f"scripts/aks/{script_file}")
-            e2e_utils.upload_to_pod(
-                self.JUMPBOX_POD, ps_script_path, f"/tmp/{script_file}")
-            self._jumpbox_scp_upload(
-                file_path=f"/tmp/{script_file}",
-                remote_file_path=f"/{script_file}",
-                **ssh_kwargs,
-            )
-            self._jumpbox_exec_ssh(
-                cmd=["powershell", "-File", f"/{script_file}"],
-                **ssh_kwargs,
-            )
 
     def _collect_node_logs(self, node_name):
         self.logging.info("Collecting logs from node: %s", node_name)
