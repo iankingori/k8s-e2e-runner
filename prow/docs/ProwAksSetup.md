@@ -28,7 +28,13 @@ kubectl create namespace test-pods
 
 ### Create required Prow config files
 
-This is achieved by running the default `make` target from [here](https://github.com/e2e-win/k8s-e2e-runner/blob/main/prow/Makefile).
+This is achieved by running the following `make` targets from [here](https://github.com/e2e-win/k8s-e2e-runner/blob/main/prow/Makefile):
+
+```bash
+make update-prow-config
+make update-prow-plugins
+make update-prow-job-config
+```
 
 ### Restore Prow from backup
 
@@ -68,15 +74,15 @@ tar -xzvf ${BACKUP_NAME}.tar.gz
 kubectl apply --server-side=true -f https://raw.githubusercontent.com/kubernetes/test-infra/master/config/prow/cluster/prowjob-crd/prowjob_customresourcedefinition.yaml
 ```
 
-### Create the Prow cluster
+### Install Prow cluster
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/e2e-win/k8s-e2e-runner/main/prow/cluster.yaml
 ```
 
-#### Prow post-installation steps
+### Prow post-installation steps
 
-##### Configure Traefik ingress controller
+#### Configure Traefik ingress controller
 
 Follow the instructions from [prow/ingress/traefik](https://github.com/e2e-win/k8s-e2e-runner/tree/main/prow/ingress/traefik) for this.
 
