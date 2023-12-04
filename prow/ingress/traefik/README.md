@@ -1,4 +1,4 @@
-# Traefik v2 ingress controller
+# Traefik ingress controller
 
 Deployment steps:
 

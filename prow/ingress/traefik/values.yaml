@@ -10,7 +10,7 @@ globalArguments:
 
 certResolvers:
   le:
-    email: ibalutoiu@cloudbasesolutions.com
+    email: e2e-win@outlook.com
     httpChallenge:
       entryPoint: web
     storage: /data/acme.json
@@ -32,6 +32,12 @@ persistence:
   accessMode: ReadWriteOnce
   size: 128Mi
   path: /data
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 0
 
 extraObjects:
   # Global IngressRoute for HTTP to HTTPS redirect
