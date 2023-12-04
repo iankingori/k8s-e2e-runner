@@ -51,3 +51,5 @@ kubectl apply -f cluster.yaml
 # update the main Prow configmap.
 make update-prow-config
 ```
+
+For example, [this](https://github.com/e2e-win/k8s-e2e-runner/commit/d6de5f8f9385f9eeee4a948e8e428afd0aa0e40c) is a commit that merely updates the images tags, because no other changes were needed.
