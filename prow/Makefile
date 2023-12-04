@@ -5,11 +5,11 @@ all: update-prow-config update-prow-plugins update-prow-job-config
 
 .PHONY: update-prow-config
 update-prow-config:
-	kubectl create configmap -n prow config --from-file=config.yaml=config.yaml -o yaml --dry-run=client | kubectl apply -f -
+	kubectl create configmap -n prow config --from-file=config.yaml=config.yaml -o yaml --dry-run=client | kubectl replace configmap -f -
 
 .PHONY: update-prow-plugins
 update-prow-plugins:
-	kubectl create configmap -n prow plugins --from-file=plugins.yaml=plugins.yaml -o yaml --dry-run=client | kubectl apply -f -
+	kubectl create configmap -n prow plugins --from-file=plugins.yaml=plugins.yaml -o yaml --dry-run=client | kubectl replace configmap -f -
 
 .PHONY: update-prow-job-config
 update-prow-job-config:
