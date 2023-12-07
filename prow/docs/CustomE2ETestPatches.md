@@ -72,3 +72,36 @@ and the binary will be located at `_output/local/bin/linux/amd64/e2e.test`.
 We need to upload the patched binary to a public location (e.g. Azure storage
 account), and give its URL to the `--e2e-bin` parameter of the `e2e-runner`
 tool.
+
+### Build E2E Test Binary via GitHub Action
+
+In order to simplify the process of building the patched `e2e.test` binary, we
+can use [this GitHub action](https://github.com/e2e-win/k8s-e2e-runner/actions/workflows/build-kubernetes-e2e-test.yaml)
+from the [e2e-win/k8s-e2e-runner](https://github.com/e2e-win/k8s-e2e-runner)
+repository.
+
+This GitHub action is triggered manually, and it saves the `e2e.test` binary as an artifact.
+
+For example, to build the `e2e.test` binary from repo [e2e-win/kubernetes](https://github.com/e2e-win/kubernetes) and branch `v1.28.4-e2e-patched`, we can do the following:
+
+* Click `Run workflow` button on the [GitHub action page](https://github.com/e2e-win/k8s-e2e-runner/actions/workflows/build-kubernetes-e2e-test.yaml), and use the
+  following parameters:
+
+  ![workflow-trigger](./images/workflow_trigger.png)
+
+* Click the green `Run workflow` button to trigger the workflow.
+
+* Refresh the page, and you should see the workflow queued or running already:
+
+  ![workflow-in-progress](./images/workflow_in_progress.png)
+
+* Go the workflow run page, wait for it to finish and see the published `e2e.test` artifact:
+
+  ![workflow-finished](./images/workflow_finished.png)
+
+  NOTE: The published artifact is available for maximum 90 days before it gets automatically deleted.
+
+* Click the `e2e.test` artifact. This will download a zip archive with the `e2e.test` binary.
+
+  Extract the zip archive, and upload the `e2e.test` binary to a public web
+  server in order to be used with the `--e2e-bin` parameter of the `e2e-runner` tool.
