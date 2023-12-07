@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       KUBERNETES_REPOSITORY:
-        description: "Kubernetes repository used to build the E2E test binary"
-        default: "https://github.com/e2e-win/kubernetes.git"
+        description: Kubernetes repository given as "owner/repo" format
+        default: e2e-win/kubernetes
       KUBERNETES_BRANCH:
-        description: "Kubernetes branch used to build the E2E test binary"
-        default: "master"
+        description: Kubernetes branch name
+        default: master
 
 jobs:
   build-e2e-test:
