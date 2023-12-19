@@ -106,7 +106,7 @@ match more networking-specific tests via the `focus` regular expression
 intentionally, as this is the objective of the AKS CI jobs.
 
 However, the `skip` regular expression is also more restrictive, as we want to
-skip more tests are not networking-related or are not compatible with Windows.
+skip tests that are not networking-related or are not compatible with Windows.
 
 In addition to the tests run by the CAPZ Flannel CI, the AKS CI also include
 tests labeled with `[sig-network].Networking.Granular.Checks` or `[sig-network].LoadBalancers`.
