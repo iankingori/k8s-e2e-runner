@@ -1,2 +1,2 @@
-focus: "\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]"
-skip: "\\[LinuxOnly\\]|\\[Serial\\]|\\[Slow\\]|\\[Feature\\:GPUDevicePlugin\\]|\\[sig-api-machinery\\].Garbage.collector"
+focus: "(\\[sig-windows\\]|\\[sig-scheduling\\].SchedulerPreemption|\\[sig-apps\\].CronJob).*(\\[Serial\\]|\\[Slow\\])|(\\[Serial\\]|\\[Slow\\]).*(\\[Conformance\\]|\\[NodeConformance\\])|\\[sig-api-machinery\\].Garbage.collector"
+skip: "\\[LinuxOnly\\]|device.plugin.for.Windows|RebootHost|\\[sig-autoscaling\\].\\[Feature:HPA\\]"
