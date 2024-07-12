@@ -50,6 +50,8 @@ spec:
         - name: flannel-cfg
           mountPath: /etc/kube-flannel/
         env:
+        - name: CNI_VERSION
+          value: "{{ cni_version }}"
         - name: CONTAINERD_CNI_BIN_DIR
           value: /opt/cni/bin
         - name: FLANNEL_NET_CONF

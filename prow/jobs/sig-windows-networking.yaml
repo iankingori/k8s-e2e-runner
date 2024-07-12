@@ -19,6 +19,7 @@ periodics:
         - --build=containerdbins
         - --build=sdncnibins
         - capz_flannel
+        - --cni-version=1.0.0
         - --bootstrap-vm-size=Standard_D8s_v3
         - --flannel-mode=host-gw
         - --win-os=ltsc2022
@@ -44,6 +45,7 @@ periodics:
         - --build=containerdbins
         - --build=sdncnibins
         - capz_flannel
+        - --cni-version=1.0.0
         - --bootstrap-vm-size=Standard_D8s_v3
         - --flannel-mode=vxlan
         - --win-os=ltsc2022
