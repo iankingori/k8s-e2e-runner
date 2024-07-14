@@ -543,6 +543,7 @@ class CapzFlannelCI(e2e_base.CI):
             "control_plane_subnet_cidr": control_plane_subnet_cidr,
             "node_subnet_cidr": self.opts.node_subnet_cidr_block,
             "cluster_network_subnet": self.opts.cluster_network_subnet,
+            "cni_version": self.opts.cni_version,
 
             "azure_location": self.location,
             "azure_subscription_id": os.environ["AZURE_SUBSCRIPTION_ID"],
@@ -701,6 +702,7 @@ class CapzFlannelCI(e2e_base.CI):
 
         cluster_config = self._get_kubeadm_cluster_config()
         context = {
+            "cni_version": self.opts.cni_version,
             "container_image_tag": self.opts.container_image_tag,
             "container_image_registry": self.opts.container_image_registry,
             "control_plane_cidr": self.opts.control_plane_subnet_cidr_block,
@@ -809,6 +811,7 @@ class CapzFlannelCI(e2e_base.CI):
                     cmd=f"curl.exe --fail -L -o /build/kube-proxy.exe https://dl.k8s.io/{self.kubernetes_version}/bin/windows/amd64/kube-proxy.exe",  # noqa:
                 )
         context = {
+            "cni_version": self.opts.cni_version,
             "k8s_bins": "k8sbins" in self.bins_built,
             "container_image_tag": self.opts.container_image_tag,
             "container_image_registry": self.opts.container_image_registry,

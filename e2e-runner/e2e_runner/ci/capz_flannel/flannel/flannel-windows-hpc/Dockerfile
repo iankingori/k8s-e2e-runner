@@ -1,7 +1,7 @@
-ARG FLANNEL_VERSION="v0.23.0"
-ARG CNI_PLUGINS_VERSION="v1.3.0"
+ARG FLANNEL_VERSION="v0.25.2"
+ARG CNI_PLUGINS_VERSION="v1.5.0"
 ARG WINDOWS_CNI_PLUGINS_VERSION="v0.3.0"
-ARG FLANNEL_CNI_PLUGIN_VERSION="v1.2.0"
+ARG FLANNEL_CNI_PLUGIN_VERSION="v1.5.1-flannel1"
 
 # Linux stage
 FROM --platform=linux/amd64 alpine:latest as prep
@@ -12,7 +12,7 @@ ARG WINDOWS_CNI_PLUGINS_VERSION
 ARG FLANNEL_CNI_PLUGIN_VERSION
 
 RUN mkdir -p /flannel /cni/bin
-ADD https://github.com/coreos/flannel/releases/download/${FLANNEL_VERSION}/flanneld.exe /flannel/flanneld.exe
+ADD https://github.com/flannel-io/flannel/releases/download/${FLANNEL_VERSION}/flanneld.exe /flannel/flanneld.exe
 ADD https://github.com/containernetworking/plugins/releases/download/${CNI_PLUGINS_VERSION}/cni-plugins-windows-amd64-${CNI_PLUGINS_VERSION}.tgz /cni-plugins.tgz
 ADD https://github.com/microsoft/windows-container-networking/releases/download/${WINDOWS_CNI_PLUGINS_VERSION}/windows-container-networking-cni-amd64-${WINDOWS_CNI_PLUGINS_VERSION}.zip /windows-cni-plugins.zip
 ADD https://github.com/flannel-io/cni-plugin/releases/download/${FLANNEL_CNI_PLUGIN_VERSION}/flannel-amd64.exe /cni/bin/flannel.exe

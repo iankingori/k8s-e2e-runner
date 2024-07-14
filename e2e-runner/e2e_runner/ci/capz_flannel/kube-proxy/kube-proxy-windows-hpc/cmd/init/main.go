@@ -49,9 +49,10 @@ func getSourceVip() (string, error) {
 		return "", err
 	}
 	subnet := network.Ipams[0].Subnets[0].IpAddressPrefix
+	cniVersion := os.Getenv("CNI_VERSION")
 	ipamConfig := fmt.Sprintf(`
 	{
-		"cniVersion": "0.2.0",
+		"cniVersion": "%s",
 		"name": "%s",
 		"ipam": {
 			"type": "host-local",
@@ -60,7 +61,7 @@ func getSourceVip() (string, error) {
 			],
 			"dataDir": "/var/lib/cni/networks"
 		}
-	}`, network.Name, subnet)
+	}`, cniVersion, network.Name, subnet)
 	os.Setenv("CNI_COMMAND", "ADD")
 	os.Setenv("CNI_CONTAINERID", "SourceVip")
 	os.Setenv("CNI_NETNS", "SourceVip")

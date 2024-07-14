@@ -45,6 +45,8 @@ spec:
         command:
         - "%CONTAINER_SANDBOX_MOUNT_POINT%\\kube-proxy\\init.exe"
         env:
+        - name: CNI_VERSION
+          value: "{{ cni_version }}"
         - name: NODE_NAME
           valueFrom:
             fieldRef:

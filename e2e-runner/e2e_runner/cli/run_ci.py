@@ -127,6 +127,10 @@ class RunCI(Command):
                      e2e_constants.FLANNEL_MODE_L2BRIDGE],
             help="Flannel mode used by the CI.")
         p.add_argument(
+            "--cni-version",
+            default="0.3.0"
+        )
+        p.add_argument(
             "--kubernetes-version",
             default=e2e_constants.DEFAULT_KUBERNETES_VERSION,
             help="The Kubernetes version to deploy. If '--build=k8sbins' is "

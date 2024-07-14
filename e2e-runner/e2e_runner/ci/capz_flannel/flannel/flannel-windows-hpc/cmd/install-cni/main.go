@@ -213,7 +213,7 @@ func createCNIConf() error {
 		return err
 	}
 	cniConf := flannel.NetConf{}
-	cniConf.CNIVersion = "0.3.0"
+	cniConf.CNIVersion = flannel.CNIVersion
 	cniConf.Type = "flannel"
 	cniConf.Capabilities = map[string]bool{
 		"portMappings": true,
