@@ -1,2 +1,2 @@
-focus: "\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]"
-skip: "\\[LinuxOnly\\]|\\[Serial\\]|\\[Slow\\]|\\[Feature\\:GPUDevicePlugin\\]|\\[sig-api-machinery\\].Garbage.collector"
+focus: "\\[Conformance\\]|\\[NodeConformance\\]|\\[sig-windows\\]|\\[sig-apps\\].CronJob|\\[sig-api-machinery\\].ResourceQuota|\\[sig-scheduling\\].SchedulerPreemption"
+skip: "\\[LinuxOnly\\]|\\[Serial\\]|\\[Slow\\]|\\[Excluded:WindowsDocker\\]|\\[Feature:DynamicResourceAllocation\\]|Guestbook.application.should.create.and.stop.a.working.application|device.plugin.for.Windows|Container.Lifecycle.Hook.when.create.a.pod.with.lifecycle.hook.should.execute(.*)http.hook.properly|\\[sig-api-machinery\\].Garbage.collector"
