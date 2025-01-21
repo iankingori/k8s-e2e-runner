@@ -1,2 +1,2 @@
-focus: "(\\[sig-windows\\]|\\[sig-scheduling\\].SchedulerPreemption|\\[sig-autoscaling\\].\\[Feature:HPA\\]|\\[sig-apps\\].CronJob).*(\\[Serial\\]|\\[Slow\\])|(\\[Serial\\]|\\[Slow\\]).*(\\[Conformance\\]|\\[NodeConformance\\])|\\[sig-api-machinery\\].Garbage.collector"
+focus: "Services should serve a basic endpoint from pods"
 skip: "\\[LinuxOnly\\]|\\[Excluded:WindowsDocker\\]|device.plugin.for.Windows"
