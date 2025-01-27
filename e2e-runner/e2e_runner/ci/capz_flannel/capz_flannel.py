@@ -468,7 +468,7 @@ class CapzFlannelCI(e2e_base.CI):
             self._setup_capz_kubeconfig()
             self._add_azure_cloud_provider()
             self._add_flannel_cni()
-            self._wait_windows_agents(timeout=600)
+            self._wait_windows_agents(timeout=1000) # server 2025 is ocassionally taking a little longer to boot
             self._setup_ssh_config()
             self._add_kube_proxy_windows()
             self.k8s_client.wait_running_pods()

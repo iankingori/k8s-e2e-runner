@@ -16,6 +16,8 @@ function Get-WindowsLogs {
     Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='Windows Error Reporting'} -ErrorAction SilentlyContinue | `
         Select-Object -Property TimeCreated, Id, LevelDisplayName, Message | Format-List * | `
         Out-File -FilePath "$logsPath\crashes.log" -Encoding Ascii
+
+    /k/debug/collectlogs.ps1 -outDir "$logsPath\debug"
 }
 
 function Get-KubernetesLogs {
