@@ -32,8 +32,10 @@ get_k8s_logs() {
     kubectl get nodes -o wide > "$k8s_logs/nodes-list"
     kubectl version > "$k8s_logs/kubectl-version"
 
-    for pod_name in $(kubectl -o=name -n kube-system get pods | cut -d '/' -f2); do
-        kubectl -n kube-system logs "$pod_name" > "$k8s_logs/$pod_name-pod.log"
+    for namespace in $(kubectl -o=name -n kube-system get namespaces | cut -d '/' -f2); do
+        for pod_name in $(kubectl -o=name -n "$namespace" get pods | cut -d '/' -f2); do
+            kubectl -n "$namespace" logs "$pod_name" > "$k8s_logs/$pod_name-pod.log"
+        done
     done
 }
 
